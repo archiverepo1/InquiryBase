@@ -1,7 +1,3 @@
-// ============================================
-// InquiryBase v6.9 — Live Progress + Category Mapping
-// ============================================
-
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
 const OAI_FIGSHARE = "https://api.figshare.com/v2/oai?verb=ListRecords&metadataPrefix=oai_dc";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
@@ -9,46 +5,52 @@ const FIGSHARE_LISTSETS = "https://api.figshare.com/v2/oai?verb=ListSets";
 
 let ALL_ITEMS = [];
 let CATEGORIES = new Set();
-let CATEGORY_MAP = {}; // category_28930 → “Medical virology”
+let CATEGORY_MAP = {}; // "category_28930" -> "Medical virology"
 let SEARCH_TEXT = "";
 
-// ---------- Progress Logger ----------
+// ---------- Progress ----------
 function logProgress(msg) {
   const box = document.getElementById("progressBox");
-  if (box) box.innerHTML = msg;
+  if (box) box.textContent = msg;
+}
+function fadeOutProgress() {
+  const box = document.getElementById("progressBox");
+  if (!box) return;
+  setTimeout(() => box.classList.add("fade-out"), 1200);
+  setTimeout(() => (box.style.display = "none"), 1700);
 }
 
-// ---------- Fetch Figshare category map ----------
+// ---------- Figshare category map ----------
 async function fetchFigshareSets() {
   try {
-    logProgress("🔄 Loading Figshare categories...");
+    logProgress("🔄 Loading Figshare categories…");
     const res = await fetch(PROXY + encodeURIComponent(FIGSHARE_LISTSETS));
     const text = await res.text();
     const xml = new DOMParser().parseFromString(text, "text/xml");
     const sets = Array.from(xml.getElementsByTagName("set"));
     sets.forEach(s => {
-      const spec = s.getElementsByTagName("setSpec")[0]?.textContent;
-      const name = s.getElementsByTagName("setName")[0]?.textContent;
+      const spec = s.getElementsByTagName("setSpec")[0]?.textContent?.trim();
+      const name = s.getElementsByTagName("setName")[0]?.textContent?.trim();
       if (spec && name && spec.startsWith("category_")) {
         CATEGORY_MAP[spec] = name;
       }
     });
     logProgress(`✅ Figshare categories loaded (${Object.keys(CATEGORY_MAP).length})`);
-  } catch (err) {
-    console.warn("Failed to load ListSets", err);
+  } catch (e) {
+    console.warn("ListSets failed:", e);
   }
 }
 
-// ---------- Fetch Figshare (with pagination + categories) ----------
+// ---------- Fetch Figshare (pagination + categories) ----------
 async function fetchFigshare() {
-  await fetchFigshareSets(); // load category mapping first
+  await fetchFigshareSets();
 
   let url = OAI_FIGSHARE;
   const items = [];
   let page = 1;
 
   while (url) {
-    logProgress(`🔄 Harvesting Figshare page ${page}...`);
+    logProgress(`🔄 Harvesting Figshare page ${page}…`);
     const res = await fetch(PROXY + encodeURIComponent(url));
     const text = await res.text();
     const xml = new DOMParser().parseFromString(text, "text/xml");
@@ -67,13 +69,13 @@ async function fetchFigshare() {
       const identifier = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
       const date = pick("date")[0] || "";
 
-      // extract category_ setSpecs
+      // Extract category_ setSpecs -> human names
       const setSpecs = Array.from(r.getElementsByTagName("setSpec"))
         .map(n => n.textContent.trim())
         .filter(s => s.startsWith("category_"))
         .map(s => CATEGORY_MAP[s] || s.replace("category_", ""));
 
-      const cats = Array.from(new Set([...subs, ...setSpecs]));
+      const cats = Array.from(new Set([...(subs || []), ...setSpecs]));
       cats.forEach(c => c && CATEGORIES.add(c));
 
       items.push({
@@ -89,25 +91,27 @@ async function fetchFigshare() {
     if (nextToken) {
       url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
       page++;
-    } else url = null;
+    } else {
+      url = null;
+    }
   }
 
   logProgress(`✅ Figshare complete — ${items.length} records`);
   return items;
 }
 
-// ---------- Fetch Zenodo (with pagination + progress) ----------
+// ---------- Fetch Zenodo (pagination) ----------
 async function fetchZenodo() {
   let url = API_ZENODO;
   const items = [];
   let page = 1;
 
   while (url) {
-    logProgress(`🔄 Harvesting Zenodo page ${page}...`);
+    logProgress(`🔄 Harvesting Zenodo page ${page}…`);
     const res = await fetch(PROXY + encodeURIComponent(url));
     const json = await res.json();
 
-    json.hits.hits.forEach(r => {
+    (json.hits?.hits || []).forEach(r => {
       const md = r.metadata || {};
       const title = md.title || "(Untitled)";
       const desc = md.description || "";
@@ -136,10 +140,10 @@ async function fetchZenodo() {
   return items;
 }
 
-// ---------- Build Filters ----------
+// ---------- Filters ----------
 function buildFilters() {
   const catSel = document.getElementById("categoryFilter");
-  catSel.innerHTML = "<option value=''>All Categories</option>";
+  catSel.innerHTML = "<option value=''>All</option>";
   Array.from(CATEGORIES).sort().forEach(c => {
     const opt = document.createElement("option");
     opt.value = c;
@@ -147,14 +151,14 @@ function buildFilters() {
     catSel.appendChild(opt);
   });
 
-  document.getElementById("searchInput").addEventListener("input", e => {
+  const input = document.getElementById("searchInput");
+  input.addEventListener("input", e => {
     SEARCH_TEXT = e.target.value.toLowerCase();
     render();
   });
-
-  document.getElementById("searchInput").addEventListener("keypress", e => {
+  input.addEventListener("keypress", e => {
     if (e.key === "Enter") {
-      SEARCH_TEXT = e.target.value.toLowerCase();
+      SEARCH_TEXT = input.value.toLowerCase();
       render();
     }
   });
@@ -163,7 +167,7 @@ function buildFilters() {
   document.getElementById("sourceFilter").addEventListener("change", render);
 }
 
-// ---------- Render Results ----------
+// ---------- Render ----------
 function render() {
   const mount = document.getElementById("results");
   mount.innerHTML = "";
@@ -211,6 +215,9 @@ function render() {
 
 // ---------- Overview ----------
 function updateOverview() {
+  const panel = document.getElementById("overview");
+  if (!panel) return;
+
   const total = ALL_ITEMS.length;
   const fig = ALL_ITEMS.filter(i => i.source === "Figshare").length;
   const zen = ALL_ITEMS.filter(i => i.source === "Zenodo").length;
@@ -218,9 +225,23 @@ function updateOverview() {
   document.getElementById("countTotal").textContent = total;
   document.getElementById("countFigshare").textContent = fig;
   document.getElementById("countZenodo").textContent = zen;
+
+  // Top Categories
+  const freq = {};
+  ALL_ITEMS.forEach(i => {
+    (i.categories || []).forEach(c => {
+      if (!c) return;
+      freq[c] = (freq[c] || 0) + 1;
+    });
+  });
+  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const ul = document.getElementById("topCats");
+  if (ul) ul.innerHTML = top.map(([c, n]) => `<li>${c} (${n})</li>`).join("");
+
+  panel.classList.remove("hidden");
 }
 
-// ---------- Hero Animation ----------
+// ---------- Hero ----------
 function initHeroBg() {
   const canvas = document.getElementById("heroBg");
   const ctx = canvas.getContext("2d");
@@ -243,20 +264,17 @@ function initHeroBg() {
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "#cde3ff";
     points.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
+      p.x += p.vx; p.y += p.vy;
       if (p.x < 0 || p.x > width) p.vx *= -1;
       if (p.y < 0 || p.y > height) p.vy *= -1;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
     });
     ctx.strokeStyle = "rgba(205,227,255,0.2)";
     for (let i = 0; i < points.length; i++) {
       for (let j = i + 1; j < points.length; j++) {
         const dx = points[i].x - points[j].x;
         const dy = points[i].y - points[j].y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dist = Math.sqrt(dx*dx + dy*dy);
         if (dist < 100) {
           ctx.beginPath();
           ctx.moveTo(points[i].x, points[i].y);
@@ -274,12 +292,13 @@ function initHeroBg() {
 async function load() {
   initHeroBg();
   try {
-    logProgress("🚀 Starting data harvest...");
+    logProgress("🚀 Starting data harvest…");
     const [fig, zen] = await Promise.all([fetchFigshare(), fetchZenodo()]);
     ALL_ITEMS = [...fig, ...zen];
     buildFilters();
     render();
     logProgress(`✅ Harvest complete — ${ALL_ITEMS.length} total records`);
+    fadeOutProgress();
   } catch (e) {
     logProgress(`❌ Error: ${e.message}`);
   }
