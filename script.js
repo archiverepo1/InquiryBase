@@ -1,9 +1,9 @@
 // ============================================
-// InquiryBase v7.3 — Figshare + Zenodo + Pagination + Safe OAI Fetch
+// InquiryBase v7.6 — Fast Harvest + Fixed Figshare Pagination + Progress Bar
 // ============================================
 
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
-const OAI_FIGSHARE = "https://api.figshare.com/v2/oai?verb=ListRecords&metadataPrefix=oai_dc";
+const OAI_FIGSHARE = "https://ndownloader.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
 
 const PAGE_SIZE = 100;
@@ -12,8 +12,35 @@ let CATEGORIES = new Set();
 let SEARCH_TEXT = "";
 let CURRENT_PAGE = 1;
 
-// --- Safe delay between Figshare requests (1 second) ---
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
+// Utility delay
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Create visual progress bar
+function createProgressBar() {
+  const bar = document.createElement("div");
+  bar.id = "progressBar";
+  Object.assign(bar.style, {
+    position: "fixed",
+    top: "0",
+    left: "0",
+    height: "3px",
+    background: "#007bff",
+    width: "0%",
+    zIndex: "9999",
+    transition: "width 0.3s ease"
+  });
+  document.body.appendChild(bar);
+  return bar;
+}
+const progressBar = createProgressBar();
+
+function setProgressText(msg) {
+  const mount = document.getElementById("results");
+  mount.innerHTML = `<div class="loading">${msg}</div>`;
+}
+function updateBar(percent) {
+  progressBar.style.width = `${percent}%`;
+}
 
 // ---------- Fetch Figshare ----------
 async function fetchFigshare() {
@@ -21,42 +48,58 @@ async function fetchFigshare() {
   const items = [];
   let page = 0;
 
-  while (url && page < 5) { // limit to 5 OAI pages
+  while (url && page < 20) { // allow up to 20 OAI pages
     page++;
+    setProgressText(`🔹 Harvesting Figshare page ${page}... (${items.length} records so far)`);
+    updateBar((page / 20) * 50);
+
     const res = await fetch(PROXY + encodeURIComponent(url));
     const text = await res.text();
-
-    // Defensive XML parsing
     const xml = new DOMParser().parseFromString(text, "text/xml");
+
     const recs = Array.from(xml.getElementsByTagNameNS("*", "record"));
-    const token = xml.getElementsByTagNameNS("*", "resumptionToken")[0];
-    const nextToken = token ? token.textContent.trim() : null;
+    const tokenNode = xml.getElementsByTagNameNS("*", "resumptionToken")[0];
+    const nextToken = tokenNode ? tokenNode.textContent.trim() : null;
 
     console.log(`🔹 Figshare page ${page}: ${recs.length} records`);
-    recs.forEach(r => {
+    recs.forEach((r) => {
       const md = r.getElementsByTagNameNS("*", "metadata")[0];
       if (!md) return;
-      const pick = (tag) => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => n.textContent.trim());
+      const pick = (tag) =>
+        Array.from(md.getElementsByTagNameNS("*", tag)).map((n) => n.textContent.trim());
       const title = pick("title")[0] || "(Untitled)";
       const desc = pick("description")[0] || "";
       const subs = pick("subject");
       const ids = pick("identifier");
-      const identifier = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
+      const identifier =
+        ids.find((i) => i.startsWith("http")) ||
+        ids.find((i) => /^10\./.test(i)) ||
+        "";
       const date = pick("date")[0] || "";
-
-      subs.forEach(c => c && CATEGORIES.add(c));
-      items.push({ title, description: desc, identifier, date, categories: subs, source: "Figshare" });
+      subs.forEach((c) => c && CATEGORIES.add(c));
+      items.push({
+        title,
+        description: desc,
+        identifier,
+        date,
+        categories: subs,
+        source: "Figshare",
+      });
     });
 
+    // Proper handling of Figshare resumption tokens
     if (nextToken) {
-      url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
-      await delay(800); // polite delay
+      url = nextToken.includes("verb=ListRecords")
+        ? `https://ndownloader.figshare.com/oai?${nextToken}`
+        : `https://ndownloader.figshare.com/oai?verb=ListRecords&resumptionToken=${nextToken}`;
+      await delay(250);
     } else {
       url = null;
     }
   }
 
-  console.log(`✅ Figshare loaded: ${items.length} records`);
+  console.log(`✅ Figshare fully loaded: ${items.length} records`);
+  updateBar(50);
   return items;
 }
 
@@ -66,36 +109,42 @@ async function fetchZenodo() {
   const items = [];
   let page = 0;
 
-  while (url && page < 5) { // ~1000 records max
+  while (url && page < 5) {
     page++;
+    setProgressText(`🔹 Harvesting Zenodo page ${page}... (${items.length} records so far)`);
+    updateBar(50 + (page / 5) * 50);
+
     const res = await fetch(PROXY + encodeURIComponent(url));
     const json = await res.json();
     console.log(`🔹 Zenodo page ${page}: ${json.hits?.hits?.length || 0} records`);
 
-    json.hits.hits.forEach(r => {
+    json.hits.hits.forEach((r) => {
       const md = r.metadata || {};
       const title = md.title || "(Untitled)";
       const desc = md.description || "";
       const doi = md.doi || "";
-      const cats = [...(md.keywords || []), ...(md.subjects ? md.subjects.map(s => s.term) : [])];
+      const cats = [
+        ...(md.keywords || []),
+        ...(md.subjects ? md.subjects.map((s) => s.term) : []),
+      ];
       const date = md.publication_date || "";
-
-      cats.forEach(c => c && CATEGORIES.add(c));
+      cats.forEach((c) => c && CATEGORIES.add(c));
       items.push({
         title,
         description: desc,
         identifier: doi ? `https://doi.org/${doi}` : r.links.html,
         date,
         categories: cats,
-        source: "Zenodo"
+        source: "Zenodo",
       });
     });
 
     url = json.links?.next || null;
-    await delay(500);
+    await delay(200);
   }
 
   console.log(`✅ Zenodo loaded: ${items.length} records`);
+  updateBar(100);
   return items;
 }
 
@@ -103,25 +152,37 @@ async function fetchZenodo() {
 function buildFilters() {
   const catSel = document.getElementById("categoryFilter");
   catSel.innerHTML = "<option value=''>All</option>";
-  Array.from(CATEGORIES).sort().forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    catSel.appendChild(opt);
-  });
+  Array.from(CATEGORIES)
+    .sort()
+    .forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      catSel.appendChild(opt);
+    });
 
   const searchBox = document.getElementById("searchInput");
-  searchBox.addEventListener("input", e => {
+  searchBox.addEventListener("input", (e) => {
     SEARCH_TEXT = e.target.value.toLowerCase();
     CURRENT_PAGE = 1;
     render();
   });
-  searchBox.addEventListener("keypress", e => {
+  searchBox.addEventListener("keypress", (e) => {
     if (e.key === "Enter") render();
   });
 
-  document.getElementById("categoryFilter").addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
-  document.getElementById("sourceFilter").addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
+  document
+    .getElementById("categoryFilter")
+    .addEventListener("change", () => {
+      CURRENT_PAGE = 1;
+      render();
+    });
+  document
+    .getElementById("sourceFilter")
+    .addEventListener("change", () => {
+      CURRENT_PAGE = 1;
+      render();
+    });
 }
 
 // ---------- Render ----------
@@ -132,10 +193,11 @@ function render() {
   const srcSel = document.getElementById("sourceFilter").value;
   const text = SEARCH_TEXT;
 
-  const filtered = ALL_ITEMS.filter(it => {
+  const filtered = ALL_ITEMS.filter((it) => {
     const catOK = !catSel || it.categories.includes(catSel);
     const srcOK = !srcSel || it.source === srcSel;
-    const textOK = !text ||
+    const textOK =
+      !text ||
       it.title.toLowerCase().includes(text) ||
       it.description.toLowerCase().includes(text);
     return catOK && srcOK && textOK;
@@ -153,11 +215,14 @@ function render() {
     return;
   }
 
-  pageItems.forEach(it => {
+  pageItems.forEach((it) => {
     const card = document.createElement("div");
     card.className = "card";
-    const link = it.identifier.startsWith("http") ? it.identifier :
-      /^10\./.test(it.identifier) ? `https://doi.org/${it.identifier}` : "";
+    const link = it.identifier.startsWith("http")
+      ? it.identifier
+      : /^10\./.test(it.identifier)
+      ? `https://doi.org/${it.identifier}`
+      : "";
     card.innerHTML = `
       <div class="source-tag">${it.source}</div>
       <h3>${it.title}</h3>
@@ -175,7 +240,10 @@ function render() {
 function updatePagination(page, total) {
   const pagination = document.getElementById("pagination");
   const info = document.getElementById("pageInfo");
-  if (total <= 1) { pagination.classList.add("hidden"); return; }
+  if (total <= 1) {
+    pagination.classList.add("hidden");
+    return;
+  }
   pagination.classList.remove("hidden");
   info.textContent = `Page ${page} of ${total}`;
   document.getElementById("prevPage").disabled = page <= 1;
@@ -186,16 +254,24 @@ function updatePagination(page, total) {
 function updateOverview() {
   const panel = document.getElementById("overview");
   const total = ALL_ITEMS.length;
-  const fig = ALL_ITEMS.filter(i => i.source === "Figshare").length;
-  const zen = ALL_ITEMS.filter(i => i.source === "Zenodo").length;
+  const fig = ALL_ITEMS.filter((i) => i.source === "Figshare").length;
+  const zen = ALL_ITEMS.filter((i) => i.source === "Zenodo").length;
   document.getElementById("countTotal").textContent = total;
   document.getElementById("countFigshare").textContent = fig;
   document.getElementById("countZenodo").textContent = zen;
 
   const freq = {};
-  ALL_ITEMS.forEach(i => i.categories.forEach(c => { if (c) freq[c] = (freq[c] || 0) + 1; }));
-  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  document.getElementById("topCats").innerHTML = top.map(([c, n]) => `<li>${c} (${n})</li>`).join("");
+  ALL_ITEMS.forEach((i) =>
+    i.categories.forEach((c) => {
+      if (c) freq[c] = (freq[c] || 0) + 1;
+    })
+  );
+  const top = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  document.getElementById("topCats").innerHTML = top
+    .map(([c, n]) => `<li>${c} (${n})</li>`)
+    .join("");
   panel.classList.remove("hidden");
 }
 
@@ -206,13 +282,13 @@ function initHeroBg() {
   let w, h, pts;
 
   function resize() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = 260;
+    w = (canvas.width = window.innerWidth);
+    h = (canvas.height = 260);
     pts = Array.from({ length: 60 }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
       vx: (Math.random() - 0.5) * 0.6,
-      vy: (Math.random() - 0.5) * 0.6
+      vy: (Math.random() - 0.5) * 0.6,
     }));
   }
   resize();
@@ -220,18 +296,25 @@ function initHeroBg() {
   function draw() {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#cde3ff";
-    pts.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
+    pts.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
       if (p.x < 0 || p.x > w) p.vx *= -1;
       if (p.y < 0 || p.y > h) p.vy *= -1;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fill();
     });
     ctx.strokeStyle = "rgba(205,227,255,0.2)";
     for (let i = 0; i < pts.length; i++)
       for (let j = i + 1; j < pts.length; j++) {
-        const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+        const dx = pts[i].x - pts[j].x,
+          dy = pts[i].y - pts[j].y;
         if (Math.sqrt(dx * dx + dy * dy) < 100) {
-          ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.stroke();
         }
       }
     requestAnimationFrame(draw);
@@ -242,15 +325,18 @@ function initHeroBg() {
 // ---------- Main ----------
 async function load() {
   initHeroBg();
-  const mount = document.getElementById("results");
-  mount.innerHTML = `<div class="loading">Harvesting open data from Figshare and Zenodo…</div>`;
+  setProgressText("🚀 Starting harvest from Figshare + Zenodo…");
   try {
     const [fig, zen] = await Promise.all([fetchFigshare(), fetchZenodo()]);
     ALL_ITEMS = [...fig, ...zen];
     buildFilters();
     render();
+    updateBar(100);
+    setTimeout(() => (progressBar.style.opacity = "0"), 1200);
   } catch (e) {
-    mount.innerHTML = `<div class="loading">Error fetching data: ${e.message}</div>`;
+    document.getElementById(
+      "results"
+    ).innerHTML = `<div class="loading">Error fetching data: ${e.message}</div>`;
   }
 
   document.getElementById("homeBtn").addEventListener("click", () => {
@@ -264,10 +350,14 @@ async function load() {
   });
 
   document.getElementById("prevPage").addEventListener("click", () => {
-    if (CURRENT_PAGE > 1) { CURRENT_PAGE--; render(); }
+    if (CURRENT_PAGE > 1) {
+      CURRENT_PAGE--;
+      render();
+    }
   });
   document.getElementById("nextPage").addEventListener("click", () => {
-    CURRENT_PAGE++; render();
+    CURRENT_PAGE++;
+    render();
   });
 }
 
