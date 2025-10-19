@@ -3,27 +3,41 @@ body {
   font-family: "Inter", Arial, sans-serif;
   background: #f6f8fa;
   color: #222;
+  overflow-x: hidden;
 }
 
+/* Hero Section */
 .hero {
+  position: relative;
+  height: 260px;
   background: #002b55;
   color: white;
-  text-align: center;
-  padding: 3rem 1rem;
+  overflow: hidden;
 }
-
+#heroBg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+}
+.hero-text {
+  position: relative;
+  text-align: center;
+  padding-top: 4rem;
+  z-index: 1;
+}
 .hero h1 {
   margin: 0;
-  font-size: 2.5rem;
+  font-size: 2.6rem;
   font-weight: 700;
+  cursor: pointer;
 }
-
 .hero p {
-  margin-top: 0.5rem;
   color: #cde3ff;
   font-size: 1.1rem;
 }
 
+/* Filters */
 .controls {
   background: white;
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
@@ -33,19 +47,16 @@ body {
   top: 0;
   z-index: 10;
 }
-
 .filters label {
   margin: 0 1rem;
   font-weight: 600;
 }
-
 .filters input, .filters select {
   padding: 0.4rem 0.6rem;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 0.95rem;
 }
-
 .note {
   display: block;
   margin-top: 0.5rem;
@@ -53,13 +64,13 @@ body {
   font-size: 0.85rem;
 }
 
+/* Results Grid */
 .results {
   padding: 2rem;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1.5rem;
 }
-
 .card {
   background: white;
   border-radius: 10px;
@@ -67,27 +78,24 @@ body {
   padding: 1rem 1.3rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
 .card:hover {
   transform: translateY(-4px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
-
 .card h3 {
   font-size: 1.1rem;
   color: #003366;
   margin-bottom: 0.4rem;
 }
-
 .card p {
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
+/* Badges */
 .badges {
   margin-top: 0.5rem;
 }
-
 .badge {
   display: inline-block;
   background: #e8f0ff;
@@ -96,8 +104,14 @@ body {
   border-radius: 6px;
   font-size: 0.8rem;
   margin: 0.2rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.badge:hover {
+  background: #c8dbff;
 }
 
+/* Footer */
 .footer {
   text-align: center;
   padding: 1rem;
@@ -105,7 +119,6 @@ body {
   background: #f1f4f7;
   border-top: 1px solid #ddd;
 }
-
 .loading {
   text-align: center;
   font-size: 1.1rem;
