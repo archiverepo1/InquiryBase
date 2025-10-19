@@ -1,198 +1,208 @@
-// ---------- CONFIG: sources ----------
-const SOURCES = [
-  // Zenodo
-  {
-    key: "Zenodo",
-    type: "zenodo",
-    url: () => `https://zenodo.org/api/records/?q=(survey OR questionnaire) AND South Africa&size=40`,
-  },
+// ==============================================
+// InquiryBase v3.5 — SA University OAI Harvester
+// Title + DOI/URL + Categories + Keywords
+// ==============================================
 
-  // Figshare (Institutions)
-  { key: "UCT (ZivaHub)",      type: "figshare", url: () => `https://zivahub.uct.ac.za/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "UP",                  type: "figshare", url: () => `https://researchdata.up.ac.za/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "UKZN",                type: "figshare", url: () => `https://ukzn.figshare.com/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "Stellenbosch (SUN)", type: "figshare", url: () => `https://sun.figshare.com/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "NWU (Dayta)",         type: "figshare", url: () => `https://dayta.nwu.ac.za/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "Rhodes (RU)",         type: "figshare", url: () => `https://researchdata.ru.ac.za/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "UFH",                 type: "figshare", url: () => `https://ufh.figshare.com/api/articles?search_for=survey+questionnaire&page_size=40` },
-  { key: "UFS",                 type: "figshare", url: () => `https://ufs.figshare.com/api/articles?search_for=survey+questionnaire&page_size=40` },
+// ✅ Your Cloudflare Worker proxy
+const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
+
+// ---------- OAI endpoints per institution ----------
+const OAI_SOURCES = [
+  { inst: "UCT (ZivaHub)", url: "https://zivahub.uct.ac.za/oai" },
+  { inst: "University of Pretoria (UP)", url: "https://researchdata.up.ac.za/oai" },
+  { inst: "University of KwaZulu-Natal (UKZN)", url: "https://ukzn.figshare.com/oai" },
+  { inst: "Stellenbosch University (SUN)", url: "https://sun.figshare.com/oai" },
+  { inst: "North-West University (NWU, Dayta)", url: "https://dayta.nwu.ac.za/oai" },
+  { inst: "Rhodes University (RU)", url: "https://researchdata.ru.ac.za/oai" },
+  { inst: "University of Fort Hare (UFH)", url: "https://ufh.figshare.com/oai" },
+  { inst: "University of the Free State (UFS)", url: "https://ufs.figshare.com/oai" },
 ];
 
 // ---------- state ----------
-let ALL_ITEMS = [];        // unified items
-let SUBJECT_MAP = {};      // subject -> items[]
+let ALL_ITEMS = [];        // unified cards
+let GROUPED = {};          // inst -> items[]
 let INSTITUTIONS = new Set();
+let SEARCH_TEXT = "";
 
-// ---------- helpers ----------
+// ---------- small helpers ----------
 const byAlpha = (a, b) => a.localeCompare(b, undefined, { sensitivity: "base" });
+const norm = s => (s || "").trim();
+const containsSurvey = s => /\b(survey|questionnaire)s?\b/i.test(s || "");
 
-function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+// Heuristic: split subjects into "Categories" vs "Keywords"
+// - categories often look like discipline names (Proper Case, multi-word), or match known discipline terms
+const DISCIPLINE_HINTS = [
+  "agronomy","agricultural","veterinary","food sciences","economics","medical virology",
+  "biomedical engineering","biophysics","health","education","social sciences",
+  "environment","biodiversity","informatics","epidemiology","psychology"
+];
 
-function firstN(s, n=180){
-  if(!s) return "No description available.";
-  const clean = s.replace(/<[^>]*>/g,'').trim();
+function splitSubjects(subjects) {
+  const cats = [];
+  const keys = [];
+  subjects.forEach(s => {
+    const x = s.trim();
+    if (!x) return;
+    const lower = x.toLowerCase();
+    const isDiscipline =
+      DISCIPLINE_HINTS.some(h => lower.includes(h)) ||
+      (/[A-Z][a-z]+/.test(x) && x.split(" ").length >= 1 && x.length <= 80);
+    // Keep short generic words as keywords
+    if (isDiscipline) cats.push(x);
+    else keys.push(x);
+  });
+  // De-duplicate while preserving order
+  return {
+    categories: Array.from(new Set(cats)),
+    keywords: Array.from(new Set(keys))
+  };
+}
+
+function firstDOIorURL(ids) {
+  // Prefer DOI
+  for (const id of ids) {
+    if (/^10\.\d{4,9}\//.test(id) || id.startsWith("https://doi.org/")) {
+      return id.startsWith("http") ? id : `https://doi.org/${id}`;
+    }
+  }
+  // Else return first URL if present
+  for (const id of ids) if (id.startsWith("http")) return id;
+  // Else fallback to first id string
+  return ids[0] || "";
+}
+
+function firstN(s, n = 220) {
+  if (!s) return "";
+  const clean = s.replace(/\s+/g, " ").trim();
   return clean.length > n ? clean.slice(0, n) + "…" : clean;
 }
 
-// Extract subjects/keywords across platforms
-function extractSubjects(record) {
-  const subj = new Set();
+// ---------- OAI fetch + parse ----------
+async function fetchOAIListRecords(baseUrl, resumptionToken = null) {
+  const url = resumptionToken
+    ? `${baseUrl}?verb=ListRecords&resumptionToken=${encodeURIComponent(resumptionToken)}`
+    : `${baseUrl}?verb=ListRecords&metadataPrefix=oai_dc`;
+  const proxied = PROXY + encodeURIComponent(url);
+  const r = await fetch(proxied);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  const xmlText = await r.text();
+  return xmlText;
+}
 
-  // Figshare
-  if (record.__source === "figshare") {
-    if (Array.isArray(record.categories)) {
-      record.categories.forEach(c => c?.title && subj.add(c.title.trim()));
-    }
-    if (Array.isArray(record.tags)) {
-      record.tags.slice(0, 6).forEach(t => typeof t === "string" && subj.add(cap(t.trim())));
-    }
+function parseOAI(xmlText, instLabel) {
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(xmlText, "text/xml");
+
+  // Check errors
+  const errorEl = xml.querySelector("OAI-PMH > error");
+  if (errorEl) {
+    console.warn(`[${instLabel}] OAI error:`, errorEl.textContent);
+    return { items: [], next: null };
   }
 
-  // Zenodo
-  if (record.__source === "zenodo") {
-    const m = record.metadata || {};
-    if (Array.isArray(m.subjects)) {
-      m.subjects.forEach(s => (s?.term || s?.title) && subj.add((s.term || s.title).trim()));
-    }
-    if (Array.isArray(m.keywords)) {
-      m.keywords.slice(0, 6).forEach(k => typeof k === "string" && subj.add(cap(k.trim())));
-    }
-    // fallback: communities
-    if (Array.isArray(record.communities)) {
-      record.communities.forEach(c => c?.id && subj.add(cap(c.id.replace(/-/g,' '))));
-    }
-  }
+  const recs = Array.from(xml.getElementsByTagName("record"));
+  const items = [];
 
-  // If still nothing, very light classifier from title
-  if (subj.size === 0) {
-    const text = ((record.title || "") + " " + (record.description || "")).toLowerCase();
-    if (/\b(health|clinic|covid|hiv|epidemiology|patient)\b/.test(text)) subj.add("Health");
-    else if (/\b(education|school|student|learning|teacher)\b/.test(text)) subj.add("Education");
-    else if (/\b(social|community|society|behaviour|behavior)\b/.test(text)) subj.add("Social Sciences");
-    else if (/\b(environment|climate|water|biodiversity)\b/.test(text)) subj.add("Environment");
-    else subj.add("Uncategorized");
-  }
+  recs.forEach(rec => {
+    const md = rec.getElementsByTagName("metadata")[0];
+    if (!md) return;
 
-  return Array.from(subj).slice(0, 6);
-}
+    // Dublin Core namespace elements
+    const dc = md.getElementsByTagNameNS("*", "dc")[0] || md;
+    const pick = tag => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => norm(n.textContent));
 
-function normalizeFigshareItem(raw, sourceKey){
-  return {
-    __source: "figshare",
-    __institution: sourceKey,
-    id: raw.id,
-    title: raw.title,
-    description: raw.description || "",
-    url: raw.url,
-    published: raw.published_date || raw.modified_date || "",
-    categories: raw.categories || [],
-    tags: raw.tags || [],
-    raw,
-  };
-}
+    const titles = pick("title");
+    const descs = pick("description");
+    const subjects = pick("subject"); // includes both keywords + categories
+    const idents = pick("identifier");
+    const dates  = pick("date");
+    const title = titles[0] || "(untitled)";
+    const joinedText = `${title} ${descs.join(" ")} ${subjects.join(" ")}`;
 
-function normalizeZenodoItem(raw){
-  const m = raw.metadata || {};
-  const link = raw.links?.html || raw.links?.latest_html || `https://zenodo.org/records/${raw.id}`;
-  return {
-    __source: "zenodo",
-    __institution: "Zenodo",
-    id: raw.id,
-    title: m.title || raw.title,
-    description: m.description || "",
-    url: link,
-    published: m.publication_date || raw.created || "",
-    metadata: m,
-    raw,
-  };
-}
+    // Filter: only survey / questionnaire
+    if (!containsSurvey(joinedText)) return;
 
-async function fetchSource(source){
-  const url = source.url();
-  try{
-    const r = await fetch(url);
-    if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    const data = await r.json();
+    const { categories, keywords } = splitSubjects(subjects);
+    const identifier = firstDOIorURL(idents);
 
-    if(source.type === "figshare"){
-      return (Array.isArray(data) ? data : []).map(d => normalizeFigshareItem(d, source.key));
-    }
-    if(source.type === "zenodo"){
-      const hits = Array.isArray(data?.hits?.hits) ? data.hits.hits : (Array.isArray(data?.hits) ? data.hits : (Array.isArray(data?.records) ? data.records : []));
-      // Zenodo API returns { hits: { hits: [...] } } OR { hits: [...] } depending on endpoint
-      const list = Array.isArray(hits) ? hits.map(h => h?.metadata ? h : h) : (Array.isArray(data?.hits?.records) ? data.hits.records : []);
-      // Normalize different shapes
-      const records = (data.records || (data.hits?.hits?.map(h=>h) ?? []) || list);
-      const flat = (records.length ? records : (data.hits?.hits || [])).map(z => normalizeZenodoItem(z));
-      return flat;
-    }
-    return [];
-  }catch(e){
-    console.warn(`Failed ${source.key}:`, e.message);
-    return [];
-  }
-}
-
-function buildInstitutionFilter(){
-  const sel = document.getElementById("institutionFilter");
-  // clear
-  sel.innerHTML = `<option value="">All</option>`;
-  Array.from(INSTITUTIONS).sort(byAlpha).forEach(name=>{
-    const opt = document.createElement("option");
-    opt.value = name; opt.textContent = name;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener("change", render);
-}
-
-function regroup(){
-  SUBJECT_MAP = {};
-  const instFilter = document.getElementById("institutionFilter").value;
-  const pool = instFilter ? ALL_ITEMS.filter(i => i.__institution === instFilter) : ALL_ITEMS;
-
-  pool.forEach(item=>{
-    const subjects = extractSubjects(item);
-    subjects.forEach(s=>{
-      if(!SUBJECT_MAP[s]) SUBJECT_MAP[s] = [];
-      SUBJECT_MAP[s].push(item);
+    items.push({
+      inst: instLabel,
+      title,
+      identifier,
+      date: dates[0] || "",
+      categories,
+      keywords,
+      description: firstN(descs[0] || "")
     });
   });
+
+  // Pagination
+  const tokenEl = xml.querySelector("resumptionToken");
+  const next = tokenEl && tokenEl.textContent ? tokenEl.textContent.trim() : null;
+
+  return { items, next };
 }
 
-function sectionTpl(subject, items){
+async function harvestInstitution(source, maxBatches = 1) {
+  // maxBatches=1 keeps it fast. Increase later to walk full feed.
+  let token = null;
+  let collected = [];
+  for (let i = 0; i < maxBatches; i++) {
+    const xml = await fetchOAIListRecords(source.url, token);
+    const { items, next } = parseOAI(xml, source.inst);
+    collected = collected.concat(items);
+    if (!next) break;
+    token = next;
+  }
+  return collected;
+}
+
+// ---------- render ----------
+function groupByInstitution(items) {
+  const map = {};
+  items.forEach(it => {
+    if (!map[it.inst]) map[it.inst] = [];
+    map[it.inst].push(it);
+  });
+  return map;
+}
+
+function sectionTpl(inst, items) {
   const count = items.length;
-  const id = `sec-${subject.replace(/\s+/g,'-').toLowerCase()}`;
+  const id = `sec-${inst.replace(/\s+/g, "-").toLowerCase()}`;
   const wrap = document.createElement("section");
   wrap.className = "section";
   wrap.innerHTML = `
     <div class="section-head" data-toggle="${id}">
-      <h2>${subject}</h2>
+      <h2>${inst}</h2>
       <span class="count-pill">${count}</span>
     </div>
     <div id="${id}" class="grid" style="display: grid;"></div>
   `;
 
   const grid = wrap.querySelector(".grid");
-  items.forEach(it=>{
-    const tags = extractSubjects(it).slice(0,3).map(t=>`<span class="badge">${t}</span>`).join(" ");
-    const meta = `
-      <span>${it.__institution}</span>
-      ${it.published ? ` • <span>${new Date(it.published).toISOString().slice(0,10)}</span>` : ""}
-    `;
+  items.forEach(it => {
+    const cats = it.categories.map(c => `<span class="badge">${c}</span>`).join("");
+    const keys = it.keywords.map(k => `<span class="badge">${k}</span>`).join("");
+    const dateStr = it.date ? ` • <span>${new Date(it.date).toISOString().slice(0,10)}</span>` : "";
+    const aHref = it.identifier || "#";
+    const aLabel = it.identifier ? (it.identifier.startsWith("http") ? it.identifier : `https://doi.org/${it.identifier}`) : "";
+
     const card = document.createElement("article");
     card.className = "card";
     card.innerHTML = `
       <h3>${it.title}</h3>
-      <p class="meta">${meta}</p>
-      <p>${firstN(it.description)}</p>
-      <div>${tags}</div>
-      <a href="${it.url}" target="_blank" rel="noopener">View record ↗</a>
+      <p class="meta">${inst}${dateStr}</p>
+      ${it.description ? `<p>${it.description}</p>` : ""}
+      ${cats ? `<div class="badges">${cats}</div>` : ""}
+      ${keys ? `<div class="badges">${keys}</div>` : ""}
+      ${aLabel ? `<a class="link" href="${aHref}" target="_blank" rel="noopener">Link / DOI ↗</a>` : ""}
     `;
     grid.appendChild(card);
   });
 
-  // toggle collapse
-  wrap.querySelector(".section-head").addEventListener("click", (e)=>{
+  // collapse/expand
+  wrap.querySelector(".section-head").addEventListener("click", () => {
     const panel = document.getElementById(id);
     const isOpen = panel.style.display !== "none";
     panel.style.display = isOpen ? "none" : "grid";
@@ -201,37 +211,78 @@ function sectionTpl(subject, items){
   return wrap;
 }
 
-function render(){
-  regroup();
-
+function render() {
   const mount = document.getElementById("results");
   mount.innerHTML = "";
 
-  const subjects = Object.keys(SUBJECT_MAP).sort(byAlpha);
-  if(!subjects.length){
+  // filters
+  const instSel = document.getElementById("institutionFilter").value;
+  const text = (SEARCH_TEXT || "").toLowerCase();
+
+  // filter pool
+  const pool = ALL_ITEMS.filter(it => {
+    const instOK = !instSel || it.inst === instSel;
+    if (!instOK) return false;
+    if (!text) return true;
+    const hay = `${it.title} ${it.description} ${it.categories.join(" ")} ${it.keywords.join(" ")}`.toLowerCase();
+    return hay.includes(text);
+  });
+
+  GROUPED = groupByInstitution(pool);
+
+  const insts = Object.keys(GROUPED).sort(byAlpha);
+  if (!insts.length) {
     mount.innerHTML = `<div class="section"><div class="section-head"><h2>No results</h2></div></div>`;
     return;
   }
 
-  subjects.forEach(sub=>{
-    const sec = sectionTpl(sub, SUBJECT_MAP[sub]);
+  insts.forEach(inst => {
+    const sec = sectionTpl(inst, GROUPED[inst]);
     mount.appendChild(sec);
   });
 }
 
-async function loadAll(){
+function buildInstitutionFilter() {
+  const sel = document.getElementById("institutionFilter");
+  sel.innerHTML = `<option value="">All</option>`;
+  Array.from(INSTITUTIONS).sort(byAlpha).forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", render);
+}
+
+function wireSearch() {
+  const input = document.getElementById("searchInput");
+  input.addEventListener("input", () => {
+    SEARCH_TEXT = input.value || "";
+    render();
+  });
+}
+
+// ---------- load ----------
+async function loadAll() {
   const mount = document.getElementById("results");
-  mount.innerHTML = `<div class="section"><div class="section-head"><h2>Loading…</h2></div></div>`;
+  mount.innerHTML = `<div class="section"><div class="section-head"><h2>Harvesting university OAI feeds…</h2></div></div>`;
 
-  const results = await Promise.all(SOURCES.map(fetchSource));
-  ALL_ITEMS = results.flat();
+  // Fetch sequentially (gentle on endpoints). Set batches=1 for speed.
+  const items = [];
+  for (const src of OAI_SOURCES) {
+    try {
+      const got = await harvestInstitution(src, 1);
+      items.push(...got);
+    } catch (e) {
+      console.warn(`Failed ${src.inst}:`, e.message);
+    }
+  }
 
-  // track institutions for filter
-  ALL_ITEMS.forEach(i => INSTITUTIONS.add(i.__institution || i.__source));
+  ALL_ITEMS = items;
+  ALL_ITEMS.forEach(i => INSTITUTIONS.add(i.inst));
+
   buildInstitutionFilter();
-
+  wireSearch();
   render();
 }
 
-// Kick off
 document.addEventListener("DOMContentLoaded", loadAll);
