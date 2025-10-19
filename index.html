@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase — Open Survey Atlas</title>
+  <title>InquiryBase — Open Survey Atlas (SA Universities)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="hero">
     <h1>InquiryBase</h1>
-    <p>Discover how South African researchers design surveys and collect data — automatically aggregated from Zenodo and university Figshare repositories.</p>
+    <p>Discover how South African researchers design surveys and questionnaires — harvested from university Figshare OAI feeds.</p>
   </header>
 
   <section class="controls">
@@ -20,18 +20,20 @@
           <option value="">All</option>
         </select>
       </label>
-      <label class="small-note">Auto-updated on page load • Showing first page from each source</label>
+      <label>
+        Search:
+        <input id="searchInput" type="text" placeholder="Filter titles, keywords, categories…" />
+      </label>
+      <span class="small-note">Auto-harvested on page load • OAI-PMH (oai_dc)</span>
     </div>
   </section>
 
-  <main id="results" class="results">
+  <main id="results" class="results" aria-live="polite">
     <!-- Sections render here -->
   </main>
 
   <footer class="footer">
-    <p>© 2025 InquiryBase • Federated from
-      <a href="https://zenodo.org/" target="_blank" rel="noopener">Zenodo</a> & SA Figshare instances.
-    </p>
+    <p>© 2025 InquiryBase • Data from SA University Figshare OAI-PMH feeds via Cloudflare Worker.</p>
   </footer>
 
   <script src="script.js"></script>
