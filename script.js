@@ -1,3 +1,7 @@
+// ============================================
+// InquiryBase v7.3 — Figshare + Zenodo + Pagination + Safe OAI Fetch
+// ============================================
+
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
 const OAI_FIGSHARE = "https://api.figshare.com/v2/oai?verb=ListRecords&metadataPrefix=oai_dc";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
@@ -8,25 +12,31 @@ let CATEGORIES = new Set();
 let SEARCH_TEXT = "";
 let CURRENT_PAGE = 1;
 
+// --- Safe delay between Figshare requests (1 second) ---
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
 // ---------- Fetch Figshare ----------
 async function fetchFigshare() {
   let url = OAI_FIGSHARE;
   const items = [];
   let page = 0;
 
-  while (url && page < 5) { // limit to 5 pages
+  while (url && page < 5) { // limit to 5 OAI pages
     page++;
     const res = await fetch(PROXY + encodeURIComponent(url));
     const text = await res.text();
+
+    // Defensive XML parsing
     const xml = new DOMParser().parseFromString(text, "text/xml");
-    const records = Array.from(xml.getElementsByTagName("record"));
-    const token = xml.getElementsByTagName("resumptionToken")[0];
+    const recs = Array.from(xml.getElementsByTagNameNS("*", "record"));
+    const token = xml.getElementsByTagNameNS("*", "resumptionToken")[0];
     const nextToken = token ? token.textContent.trim() : null;
 
-    records.forEach(r => {
-      const md = r.getElementsByTagName("metadata")[0];
+    console.log(`🔹 Figshare page ${page}: ${recs.length} records`);
+    recs.forEach(r => {
+      const md = r.getElementsByTagNameNS("*", "metadata")[0];
       if (!md) return;
-      const pick = tag => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => n.textContent.trim());
+      const pick = (tag) => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => n.textContent.trim());
       const title = pick("title")[0] || "(Untitled)";
       const desc = pick("description")[0] || "";
       const subs = pick("subject");
@@ -38,10 +48,15 @@ async function fetchFigshare() {
       items.push({ title, description: desc, identifier, date, categories: subs, source: "Figshare" });
     });
 
-    if (nextToken) url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
-    else url = null;
+    if (nextToken) {
+      url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
+      await delay(800); // polite delay
+    } else {
+      url = null;
+    }
   }
 
+  console.log(`✅ Figshare loaded: ${items.length} records`);
   return items;
 }
 
@@ -51,29 +66,40 @@ async function fetchZenodo() {
   const items = [];
   let page = 0;
 
-  while (url && page < 5) { // 5 pages = ~1000 records
+  while (url && page < 5) { // ~1000 records max
     page++;
     const res = await fetch(PROXY + encodeURIComponent(url));
     const json = await res.json();
+    console.log(`🔹 Zenodo page ${page}: ${json.hits?.hits?.length || 0} records`);
 
     json.hits.hits.forEach(r => {
       const md = r.metadata || {};
       const title = md.title || "(Untitled)";
       const desc = md.description || "";
       const doi = md.doi || "";
-      const categories = [...(md.keywords || []), ...(md.subjects ? md.subjects.map(s => s.term) : [])];
+      const cats = [...(md.keywords || []), ...(md.subjects ? md.subjects.map(s => s.term) : [])];
       const date = md.publication_date || "";
-      categories.forEach(c => c && CATEGORIES.add(c));
-      items.push({ title, description: desc, identifier: doi ? `https://doi.org/${doi}` : r.links.html, date, categories, source: "Zenodo" });
+
+      cats.forEach(c => c && CATEGORIES.add(c));
+      items.push({
+        title,
+        description: desc,
+        identifier: doi ? `https://doi.org/${doi}` : r.links.html,
+        date,
+        categories: cats,
+        source: "Zenodo"
+      });
     });
 
     url = json.links?.next || null;
+    await delay(500);
   }
 
+  console.log(`✅ Zenodo loaded: ${items.length} records`);
   return items;
 }
 
-// ---------- Filters ----------
+// ---------- Build Filters ----------
 function buildFilters() {
   const catSel = document.getElementById("categoryFilter");
   catSel.innerHTML = "<option value=''>All</option>";
@@ -84,14 +110,18 @@ function buildFilters() {
     catSel.appendChild(opt);
   });
 
-  document.getElementById("searchInput").addEventListener("input", e => {
+  const searchBox = document.getElementById("searchInput");
+  searchBox.addEventListener("input", e => {
     SEARCH_TEXT = e.target.value.toLowerCase();
     CURRENT_PAGE = 1;
     render();
   });
+  searchBox.addEventListener("keypress", e => {
+    if (e.key === "Enter") render();
+  });
+
   document.getElementById("categoryFilter").addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
   document.getElementById("sourceFilter").addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
-  document.getElementById("searchInput").addEventListener("keypress", e => { if (e.key === "Enter") render(); });
 }
 
 // ---------- Render ----------
@@ -141,6 +171,7 @@ function render() {
   updateOverview();
 }
 
+// ---------- Pagination ----------
 function updatePagination(page, total) {
   const pagination = document.getElementById("pagination");
   const info = document.getElementById("pageInfo");
@@ -168,7 +199,7 @@ function updateOverview() {
   panel.classList.remove("hidden");
 }
 
-// ---------- Hero Animation ----------
+// ---------- Hero BG ----------
 function initHeroBg() {
   const canvas = document.getElementById("heroBg");
   const ctx = canvas.getContext("2d");
@@ -212,7 +243,7 @@ function initHeroBg() {
 async function load() {
   initHeroBg();
   const mount = document.getElementById("results");
-  mount.innerHTML = `<div class="loading">Harvesting open data...</div>`;
+  mount.innerHTML = `<div class="loading">Harvesting open data from Figshare and Zenodo…</div>`;
   try {
     const [fig, zen] = await Promise.all([fetchFigshare(), fetchZenodo()]);
     ALL_ITEMS = [...fig, ...zen];
