@@ -3,37 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase — Open Survey Atlas (SA Universities)</title>
+  <title>InquiryBase — South African Open Research Atlas</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="hero">
     <h1>InquiryBase</h1>
-    <p>Discover how South African researchers design surveys and questionnaires — harvested from university Figshare OAI feeds.</p>
+    <p>Explore open research datasets from South African universities — harvested from Figshare OAI-PMH feeds.</p>
   </header>
 
   <section class="controls">
     <div class="filters">
-      <label>
-        Institution:
-        <select id="institutionFilter">
-          <option value="">All</option>
-        </select>
+      <label>Institution:
+        <select id="institutionFilter"><option value="">All</option></select>
       </label>
-      <label>
-        Search:
-        <input id="searchInput" type="text" placeholder="Filter titles, keywords, categories…" />
+      <label>Category:
+        <select id="categoryFilter"><option value="">All</option></select>
       </label>
-      <span class="small-note">Auto-harvested on page load • OAI-PMH (oai_dc)</span>
+      <label>Search:
+        <input id="searchInput" type="text" placeholder="Search titles, keywords, categories, descriptions…" />
+      </label>
+      <span class="small-note">Auto-harvested live • OAI-PMH (oai_dc)</span>
     </div>
   </section>
 
   <main id="results" class="results" aria-live="polite">
-    <!-- Sections render here -->
+    <div class="section"><div class="section-head"><h2>Loading data…</h2></div></div>
   </main>
 
   <footer class="footer">
-    <p>© 2025 InquiryBase • Data from SA University Figshare OAI-PMH feeds via Cloudflare Worker.</p>
+    <p>© 2025 InquiryBase • Federated from South African university Figshare OAI feeds via Cloudflare Worker.</p>
   </footer>
 
   <script src="script.js"></script>
