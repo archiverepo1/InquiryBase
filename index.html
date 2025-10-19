@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase – Open Research Atlas</title>
+  <title>InquiryBase — Open Research Atlas</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- ===== HERO HEADER ===== -->
   <header class="hero">
     <canvas id="heroBg"></canvas>
     <div class="hero-text">
@@ -15,10 +16,11 @@
     </div>
   </header>
 
+  <!-- ===== FILTER CONTROLS ===== -->
   <section class="controls">
     <div class="filters">
-      <label>Category:
-        <select id="categoryFilter"><option value="">All</option></select>
+      <label>Institution:
+        <select id="institutionFilter"><option value="">All</option></select>
       </label>
       <label>Source:
         <select id="sourceFilter">
@@ -27,24 +29,13 @@
           <option value="Zenodo">Zenodo</option>
         </select>
       </label>
-      <label>Institution:
-        <select id="institutionFilter"><option value="">All</option></select>
-      </label>
-      <label>Country:
-        <select id="countryFilter"><option value="">All</option></select>
-      </label>
-      <label>Page Size:
-        <select id="pageSizeSelect">
-          <option value="50">50</option>
-          <option value="100" selected>100</option>
-        </select>
-      </label>
       <label>Search:
-        <input id="searchInput" type="text" placeholder="Search titles or descriptions…" />
+        <input id="searchInput" type="text" placeholder="Search titles, descriptions, or institutions…">
       </label>
       <span class="note">Auto-harvested live • OAI + REST APIs</span>
     </div>
 
+    <!-- Dashboard summary panel -->
     <aside id="overview" class="overview hidden">
       <h3>📊 Data Overview</h3>
       <p><strong>Total:</strong> <span id="countTotal">0</span> datasets</p>
@@ -52,21 +43,22 @@
       <p><strong>Zenodo:</strong> <span id="countZenodo">0</span></p>
       <h4>Top Categories</h4>
       <ul id="topCats"></ul>
-      <h4>Top Institutions</h4>
-      <ul id="topInst"></ul>
     </aside>
   </section>
 
+  <!-- ===== RESULTS GRID ===== -->
   <main id="results" class="results">
     <div class="loading">Harvesting open data from Figshare and Zenodo…</div>
   </main>
 
+  <!-- ===== PAGINATION ===== -->
   <div id="pagination" class="pagination hidden">
     <button id="prevPage">⟨ Prev</button>
     <span id="pageInfo">Page 1 of 1</span>
     <button id="nextPage">Next ⟩</button>
   </div>
 
+  <!-- ===== FOOTER ===== -->
   <footer class="footer">
     <p>© 2025 InquiryBase • Powered by Figshare + Zenodo • Served via Cloudflare Worker</p>
     <p>Developed by Vuyo Ngayeka</p>
