@@ -1,5 +1,5 @@
 // ============================================
-// InquiryBase v6.5 — Figshare + Zenodo + Dashboard
+// InquiryBase v6.7 — Figshare + Zenodo + Pagination
 // ============================================
 
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
@@ -10,59 +10,83 @@ let ALL_ITEMS = [];
 let CATEGORIES = new Set();
 let SEARCH_TEXT = "";
 
-// ---------- Fetch Figshare ----------
+// ---------- Fetch Figshare (with pagination) ----------
 async function fetchFigshare() {
-  const res = await fetch(PROXY + encodeURIComponent(OAI_FIGSHARE));
-  const text = await res.text();
-  const xml = new DOMParser().parseFromString(text, "text/xml");
-  const records = Array.from(xml.getElementsByTagName("record"));
+  let url = OAI_FIGSHARE;
   const items = [];
 
-  records.forEach(r => {
-    const md = r.getElementsByTagName("metadata")[0];
-    if (!md) return;
-    const pick = tag => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => n.textContent.trim());
-    const title = pick("title")[0] || "(Untitled)";
-    const desc = pick("description")[0] || "";
-    const subs = pick("subject");
-    const ids = pick("identifier");
-    const identifier = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
-    const date = pick("date")[0] || "";
+  while (url) {
+    const res = await fetch(PROXY + encodeURIComponent(url));
+    const text = await res.text();
+    const xml = new DOMParser().parseFromString(text, "text/xml");
+    const records = Array.from(xml.getElementsByTagName("record"));
+    const token = xml.getElementsByTagName("resumptionToken")[0];
+    const nextToken = token ? token.textContent.trim() : null;
 
-    subs.forEach(c => c && CATEGORIES.add(c));
-    items.push({ title, description: desc, identifier, date, categories: subs, source: "Figshare" });
-  });
+    records.forEach(r => {
+      const md = r.getElementsByTagName("metadata")[0];
+      if (!md) return;
+      const pick = tag => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => n.textContent.trim());
+      const title = pick("title")[0] || "(Untitled)";
+      const desc = pick("description")[0] || "";
+      const subs = pick("subject");
+      const ids = pick("identifier");
+      const identifier = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
+      const date = pick("date")[0] || "";
 
+      subs.forEach(c => c && CATEGORIES.add(c));
+      items.push({ title, description: desc, identifier, date, categories: subs, source: "Figshare" });
+    });
+
+    // Stop when no more tokens
+    if (nextToken) {
+      url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
+      console.log("Fetching next Figshare page...");
+    } else {
+      url = null;
+    }
+  }
+
+  console.log(`✅ Figshare loaded: ${items.length} items`);
   return items;
 }
 
-// ---------- Fetch Zenodo ----------
+// ---------- Fetch Zenodo (with pagination) ----------
 async function fetchZenodo() {
-  const res = await fetch(PROXY + encodeURIComponent(API_ZENODO));
-  const json = await res.json();
+  let url = API_ZENODO;
   const items = [];
 
-  json.hits.hits.forEach(r => {
-    const md = r.metadata || {};
-    const title = md.title || "(Untitled)";
-    const desc = md.description || "";
-    const doi = md.doi || (r.doi ? r.doi : "");
-    const keywords = md.keywords || [];
-    const subjects = md.subjects ? md.subjects.map(s => s.term) : [];
-    const categories = [...keywords, ...subjects];
-    const date = md.publication_date || "";
+  while (url) {
+    const res = await fetch(PROXY + encodeURIComponent(url));
+    const json = await res.json();
 
-    categories.forEach(c => c && CATEGORIES.add(c));
-    items.push({
-      title,
-      description: desc,
-      identifier: doi ? `https://doi.org/${doi}` : r.links.html,
-      date,
-      categories,
-      source: "Zenodo"
+    json.hits.hits.forEach(r => {
+      const md = r.metadata || {};
+      const title = md.title || "(Untitled)";
+      const desc = md.description || "";
+      const doi = md.doi || (r.doi ? r.doi : "");
+      const keywords = md.keywords || [];
+      const subjects = md.subjects ? md.subjects.map(s => s.term) : [];
+      const categories = [...keywords, ...subjects];
+      const date = md.publication_date || "";
+
+      categories.forEach(c => c && CATEGORIES.add(c));
+      items.push({
+        title,
+        description: desc,
+        identifier: doi ? `https://doi.org/${doi}` : r.links.html,
+        date,
+        categories,
+        source: "Zenodo"
+      });
     });
-  });
 
+    // pagination link
+    url = json.links?.next || null;
+    if (url) console.log("Fetching next Zenodo page...");
+  }
+
+  console.log(`✅ Zenodo loaded: ${items.length} items`);
   return items;
 }
 
@@ -125,20 +149,13 @@ function render() {
     card.innerHTML = `
       <div class="source-tag">${it.source}</div>
       <h3>${it.title}</h3>
-      <p>${it.description.slice(0, 250)}${
-      it.description.length > 250 ? "…" : ""
-    }</p>
+      <p>${it.description.slice(0, 250)}${it.description.length > 250 ? "…" : ""}</p>
       ${cats ? `<div class='badges'>${cats}</div>` : ""}
-      ${
-        link
-          ? `<p><a href='${link}' target='_blank'>View Record ↗</a></p>`
-          : ""
-      }
+      ${link ? `<p><a href='${link}' target='_blank'>View Record ↗</a></p>` : ""}
     `;
     mount.appendChild(card);
   });
 
-  // badge click → filter
   document.querySelectorAll(".badge").forEach(b => {
     b.addEventListener("click", () => {
       document.getElementById("categoryFilter").value = b.dataset.key;
