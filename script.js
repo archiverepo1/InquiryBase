@@ -1,56 +1,21 @@
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
 const OAI_FIGSHARE = "https://api.figshare.com/v2/oai?verb=ListRecords&metadataPrefix=oai_dc";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
-const FIGSHARE_LISTSETS = "https://api.figshare.com/v2/oai?verb=ListSets";
 
+const PAGE_SIZE = 100;
 let ALL_ITEMS = [];
 let CATEGORIES = new Set();
-let CATEGORY_MAP = {}; // "category_28930" -> "Medical virology"
 let SEARCH_TEXT = "";
+let CURRENT_PAGE = 1;
 
-// ---------- Progress ----------
-function logProgress(msg) {
-  const box = document.getElementById("progressBox");
-  if (box) box.textContent = msg;
-}
-function fadeOutProgress() {
-  const box = document.getElementById("progressBox");
-  if (!box) return;
-  setTimeout(() => box.classList.add("fade-out"), 1200);
-  setTimeout(() => (box.style.display = "none"), 1700);
-}
-
-// ---------- Figshare category map ----------
-async function fetchFigshareSets() {
-  try {
-    logProgress("🔄 Loading Figshare categories…");
-    const res = await fetch(PROXY + encodeURIComponent(FIGSHARE_LISTSETS));
-    const text = await res.text();
-    const xml = new DOMParser().parseFromString(text, "text/xml");
-    const sets = Array.from(xml.getElementsByTagName("set"));
-    sets.forEach(s => {
-      const spec = s.getElementsByTagName("setSpec")[0]?.textContent?.trim();
-      const name = s.getElementsByTagName("setName")[0]?.textContent?.trim();
-      if (spec && name && spec.startsWith("category_")) {
-        CATEGORY_MAP[spec] = name;
-      }
-    });
-    logProgress(`✅ Figshare categories loaded (${Object.keys(CATEGORY_MAP).length})`);
-  } catch (e) {
-    console.warn("ListSets failed:", e);
-  }
-}
-
-// ---------- Fetch Figshare (pagination + categories) ----------
+// ---------- Fetch Figshare ----------
 async function fetchFigshare() {
-  await fetchFigshareSets();
-
   let url = OAI_FIGSHARE;
   const items = [];
-  let page = 1;
+  let page = 0;
 
-  while (url) {
-    logProgress(`🔄 Harvesting Figshare page ${page}…`);
+  while (url && page < 5) { // limit to 5 pages
+    page++;
     const res = await fetch(PROXY + encodeURIComponent(url));
     const text = await res.text();
     const xml = new DOMParser().parseFromString(text, "text/xml");
@@ -69,74 +34,42 @@ async function fetchFigshare() {
       const identifier = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
       const date = pick("date")[0] || "";
 
-      // Extract category_ setSpecs -> human names
-      const setSpecs = Array.from(r.getElementsByTagName("setSpec"))
-        .map(n => n.textContent.trim())
-        .filter(s => s.startsWith("category_"))
-        .map(s => CATEGORY_MAP[s] || s.replace("category_", ""));
-
-      const cats = Array.from(new Set([...(subs || []), ...setSpecs]));
-      cats.forEach(c => c && CATEGORIES.add(c));
-
-      items.push({
-        title,
-        description: desc,
-        identifier,
-        date,
-        categories: cats,
-        source: "Figshare",
-      });
+      subs.forEach(c => c && CATEGORIES.add(c));
+      items.push({ title, description: desc, identifier, date, categories: subs, source: "Figshare" });
     });
 
-    if (nextToken) {
-      url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
-      page++;
-    } else {
-      url = null;
-    }
+    if (nextToken) url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
+    else url = null;
   }
 
-  logProgress(`✅ Figshare complete — ${items.length} records`);
   return items;
 }
 
-// ---------- Fetch Zenodo (pagination) ----------
+// ---------- Fetch Zenodo ----------
 async function fetchZenodo() {
   let url = API_ZENODO;
   const items = [];
-  let page = 1;
+  let page = 0;
 
-  while (url) {
-    logProgress(`🔄 Harvesting Zenodo page ${page}…`);
+  while (url && page < 5) { // 5 pages = ~1000 records
+    page++;
     const res = await fetch(PROXY + encodeURIComponent(url));
     const json = await res.json();
 
-    (json.hits?.hits || []).forEach(r => {
+    json.hits.hits.forEach(r => {
       const md = r.metadata || {};
       const title = md.title || "(Untitled)";
       const desc = md.description || "";
-      const doi = md.doi || (r.doi ? r.doi : "");
+      const doi = md.doi || "";
+      const categories = [...(md.keywords || []), ...(md.subjects ? md.subjects.map(s => s.term) : [])];
       const date = md.publication_date || "";
-      const keywords = md.keywords || [];
-      const subjects = md.subjects ? md.subjects.map(s => s.term) : [];
-      const categories = [...keywords, ...subjects];
-
       categories.forEach(c => c && CATEGORIES.add(c));
-      items.push({
-        title,
-        description: desc,
-        identifier: doi ? `https://doi.org/${doi}` : r.links.html,
-        date,
-        categories,
-        source: "Zenodo",
-      });
+      items.push({ title, description: desc, identifier: doi ? `https://doi.org/${doi}` : r.links.html, date, categories, source: "Zenodo" });
     });
 
     url = json.links?.next || null;
-    if (url) page++;
   }
 
-  logProgress(`✅ Zenodo complete — ${items.length} records`);
   return items;
 }
 
@@ -151,20 +84,14 @@ function buildFilters() {
     catSel.appendChild(opt);
   });
 
-  const input = document.getElementById("searchInput");
-  input.addEventListener("input", e => {
+  document.getElementById("searchInput").addEventListener("input", e => {
     SEARCH_TEXT = e.target.value.toLowerCase();
+    CURRENT_PAGE = 1;
     render();
   });
-  input.addEventListener("keypress", e => {
-    if (e.key === "Enter") {
-      SEARCH_TEXT = input.value.toLowerCase();
-      render();
-    }
-  });
-
-  document.getElementById("categoryFilter").addEventListener("change", render);
-  document.getElementById("sourceFilter").addEventListener("change", render);
+  document.getElementById("categoryFilter").addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
+  document.getElementById("sourceFilter").addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
+  document.getElementById("searchInput").addEventListener("keypress", e => { if (e.key === "Enter") render(); });
 }
 
 // ---------- Render ----------
@@ -175,114 +102,107 @@ function render() {
   const srcSel = document.getElementById("sourceFilter").value;
   const text = SEARCH_TEXT;
 
-  const pool = ALL_ITEMS.filter(it => {
+  const filtered = ALL_ITEMS.filter(it => {
     const catOK = !catSel || it.categories.includes(catSel);
     const srcOK = !srcSel || it.source === srcSel;
-    const textOK =
-      !text ||
+    const textOK = !text ||
       it.title.toLowerCase().includes(text) ||
-      it.description.toLowerCase().includes(text) ||
-      it.categories.join(" ").toLowerCase().includes(text);
+      it.description.toLowerCase().includes(text);
     return catOK && srcOK && textOK;
   });
 
-  if (!pool.length) {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  CURRENT_PAGE = Math.min(CURRENT_PAGE, totalPages);
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const pageItems = filtered.slice(start, end);
+
+  if (!pageItems.length) {
     mount.innerHTML = `<div class="loading">No results found.</div>`;
-    updateOverview();
+    updatePagination(0, 0);
     return;
   }
 
-  pool.forEach(it => {
+  pageItems.forEach(it => {
     const card = document.createElement("div");
     card.className = "card";
-    const link =
-      it.identifier.startsWith("http")
-        ? it.identifier
-        : /^10\./.test(it.identifier)
-        ? `https://doi.org/${it.identifier}`
-        : "";
+    const link = it.identifier.startsWith("http") ? it.identifier :
+      /^10\./.test(it.identifier) ? `https://doi.org/${it.identifier}` : "";
     card.innerHTML = `
       <div class="source-tag">${it.source}</div>
       <h3>${it.title}</h3>
-      <p>${it.description.slice(0, 250)}${it.description.length > 250 ? "…" : ""}</p>
-      ${link ? `<p><a href='${link}' target='_blank'>View Record ↗</a></p>` : ""}
+      <p>${it.description.slice(0, 220)}${it.description.length > 220 ? "…" : ""}</p>
+      ${link ? `<p><a href="${link}" target="_blank">View Record ↗</a></p>` : ""}
     `;
     mount.appendChild(card);
   });
 
+  updatePagination(CURRENT_PAGE, totalPages);
   updateOverview();
+}
+
+function updatePagination(page, total) {
+  const pagination = document.getElementById("pagination");
+  const info = document.getElementById("pageInfo");
+  if (total <= 1) { pagination.classList.add("hidden"); return; }
+  pagination.classList.remove("hidden");
+  info.textContent = `Page ${page} of ${total}`;
+  document.getElementById("prevPage").disabled = page <= 1;
+  document.getElementById("nextPage").disabled = page >= total;
 }
 
 // ---------- Overview ----------
 function updateOverview() {
   const panel = document.getElementById("overview");
-  if (!panel) return;
-
   const total = ALL_ITEMS.length;
   const fig = ALL_ITEMS.filter(i => i.source === "Figshare").length;
   const zen = ALL_ITEMS.filter(i => i.source === "Zenodo").length;
-
   document.getElementById("countTotal").textContent = total;
   document.getElementById("countFigshare").textContent = fig;
   document.getElementById("countZenodo").textContent = zen;
 
-  // Top Categories
   const freq = {};
-  ALL_ITEMS.forEach(i => {
-    (i.categories || []).forEach(c => {
-      if (!c) return;
-      freq[c] = (freq[c] || 0) + 1;
-    });
-  });
+  ALL_ITEMS.forEach(i => i.categories.forEach(c => { if (c) freq[c] = (freq[c] || 0) + 1; }));
   const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const ul = document.getElementById("topCats");
-  if (ul) ul.innerHTML = top.map(([c, n]) => `<li>${c} (${n})</li>`).join("");
-
+  document.getElementById("topCats").innerHTML = top.map(([c, n]) => `<li>${c} (${n})</li>`).join("");
   panel.classList.remove("hidden");
 }
 
-// ---------- Hero ----------
+// ---------- Hero Animation ----------
 function initHeroBg() {
   const canvas = document.getElementById("heroBg");
   const ctx = canvas.getContext("2d");
-  let width, height, points;
+  let w, h, pts;
 
   function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = 260;
-    points = Array.from({ length: 60 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = 260;
+    pts = Array.from({ length: 60 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
       vx: (Math.random() - 0.5) * 0.6,
-      vy: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.5) * 0.6
     }));
   }
   resize();
   window.addEventListener("resize", resize);
-
   function draw() {
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#cde3ff";
-    points.forEach(p => {
+    pts.forEach(p => {
       p.x += p.vx; p.y += p.vy;
-      if (p.x < 0 || p.x > width) p.vx *= -1;
-      if (p.y < 0 || p.y > height) p.vy *= -1;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
       ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
     });
     ctx.strokeStyle = "rgba(205,227,255,0.2)";
-    for (let i = 0; i < points.length; i++) {
-      for (let j = i + 1; j < points.length; j++) {
-        const dx = points[i].x - points[j].x;
-        const dy = points[i].y - points[j].y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < 100) {
-          ctx.beginPath();
-          ctx.moveTo(points[i].x, points[i].y);
-          ctx.lineTo(points[j].x, points[j].y);
-          ctx.stroke();
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+        if (Math.sqrt(dx * dx + dy * dy) < 100) {
+          ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke();
         }
       }
-    }
     requestAnimationFrame(draw);
   }
   draw();
@@ -291,16 +211,15 @@ function initHeroBg() {
 // ---------- Main ----------
 async function load() {
   initHeroBg();
+  const mount = document.getElementById("results");
+  mount.innerHTML = `<div class="loading">Harvesting open data...</div>`;
   try {
-    logProgress("🚀 Starting data harvest…");
     const [fig, zen] = await Promise.all([fetchFigshare(), fetchZenodo()]);
     ALL_ITEMS = [...fig, ...zen];
     buildFilters();
     render();
-    logProgress(`✅ Harvest complete — ${ALL_ITEMS.length} total records`);
-    fadeOutProgress();
   } catch (e) {
-    logProgress(`❌ Error: ${e.message}`);
+    mount.innerHTML = `<div class="loading">Error fetching data: ${e.message}</div>`;
   }
 
   document.getElementById("homeBtn").addEventListener("click", () => {
@@ -308,8 +227,16 @@ async function load() {
     document.getElementById("sourceFilter").value = "";
     document.getElementById("searchInput").value = "";
     SEARCH_TEXT = "";
+    CURRENT_PAGE = 1;
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  document.getElementById("prevPage").addEventListener("click", () => {
+    if (CURRENT_PAGE > 1) { CURRENT_PAGE--; render(); }
+  });
+  document.getElementById("nextPage").addEventListener("click", () => {
+    CURRENT_PAGE++; render();
   });
 }
 
