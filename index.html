@@ -1,38 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase — South African Open Research Atlas</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InquiryBase — Open Research Atlas</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="hero">
     <h1>InquiryBase</h1>
-    <p>Explore open research datasets from South African universities — harvested from Figshare OAI-PMH feeds.</p>
+    <p>Explore open research datasets harvested live from Figshare’s global OAI-PMH feed.</p>
   </header>
 
   <section class="controls">
     <div class="filters">
-      <label>Institution:
-        <select id="institutionFilter"><option value="">All</option></select>
-      </label>
       <label>Category:
         <select id="categoryFilter"><option value="">All</option></select>
       </label>
       <label>Search:
-        <input id="searchInput" type="text" placeholder="Search titles, keywords, categories, descriptions…" />
+        <input id="searchInput" type="text" placeholder="Search titles, keywords, or descriptions…">
       </label>
-      <span class="small-note">Auto-harvested live • OAI-PMH (oai_dc)</span>
+      <span class="note">Auto-harvested in real time • OAI-PMH (oai_dc)</span>
     </div>
   </section>
 
-  <main id="results" class="results" aria-live="polite">
-    <div class="section"><div class="section-head"><h2>Loading data…</h2></div></div>
+  <main id="results" class="results">
+    <div class="loading">Harvesting open data from Figshare…</div>
   </main>
 
   <footer class="footer">
-    <p>© 2025 InquiryBase • Federated from South African university Figshare OAI feeds via Cloudflare Worker.</p>
+    <p>© 2025 InquiryBase • Powered by Figshare OAI-PMH • Served via Cloudflare Worker</p>
   </footer>
 
   <script src="script.js"></script>
