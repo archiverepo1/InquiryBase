@@ -1,6 +1,4 @@
-/* ===============================================
-   InquiryBase v8.0 – Open Research Atlas Styling
-   =============================================== */
+/* InquiryBase v8.0 — clean and complete CSS */
 
 body {
   font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -9,7 +7,7 @@ body {
   color: #222;
 }
 
-/* ---------- Header / Hero ---------- */
+/* Hero header */
 header {
   position: relative;
   text-align: center;
@@ -36,7 +34,7 @@ header p {
   color: #dce8f6;
 }
 
-/* ---------- Controls ---------- */
+/* Filters and controls */
 .controls {
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
@@ -72,7 +70,7 @@ select:focus, input:focus {
   font-style: italic;
 }
 
-/* ---------- Results Grid ---------- */
+/* Results grid */
 #results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -88,7 +86,7 @@ select:focus, input:focus {
   margin: 3rem auto;
 }
 
-/* ---------- Dataset Cards ---------- */
+/* Dataset cards */
 .card {
   background: #fff;
   border: 1px solid #e3e7ea;
@@ -135,7 +133,7 @@ select:focus, input:focus {
   margin-bottom: 0.7rem;
 }
 
-/* ---------- Overview Panel ---------- */
+/* Overview panel */
 #overview {
   position: absolute;
   right: 2rem; top: 14.5rem;
@@ -160,9 +158,8 @@ select:focus, input:focus {
   font-size: 0.85rem;
   color: #444;
 }
-#topInst li { margin-bottom: 0.3rem; }
 
-/* ---------- Pagination ---------- */
+/* Pagination */
 .pagination {
   text-align: center;
   padding: 1rem;
@@ -187,7 +184,7 @@ select:focus, input:focus {
 }
 .pagination.hidden { display: none; }
 
-/* ---------- Footer ---------- */
+/* Footer */
 footer {
   text-align: center;
   color: #666;
@@ -197,7 +194,7 @@ footer {
   border-top: 1px solid #e0e0e0;
 }
 
-/* ---------- Responsive ---------- */
+/* Responsive */
 @media (max-width: 900px) {
   #overview { position: static; margin: 1.5rem auto; width: 90%; }
   .controls { flex-direction: column; gap: 0.8rem; align-items: stretch; }
@@ -205,7 +202,7 @@ footer {
   #results { padding: 1.3rem; }
 }
 
-/* ---------- Progress Bar ---------- */
+/* Progress bar */
 #progressBar {
   position: fixed;
   top: 0; left: 0;
