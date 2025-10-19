@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survey Data Finder | Figshare Open API</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+h1 { color: #003366; }
+#results { margin-top: 20px; display: grid; gap: 1rem; }
+.card { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body>
+  <h1>Survey & Questionnaire Data Finder</h1>
+  <input id="query" type="text" placeholder="Search keyword (e.g. mental health survey)" size="50">
+  <button onclick="searchFigshare()">Search</button>
+  <div id="results"></div>
+
+<script>
+async function searchFigshare() {
+  const query = document.getElementById("query").value;
+  const url = `https://api.figshare.com/v2/articles/search?search_for=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+  data.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <h3>${item.title}</h3>
+      <p>${item.description ? item.description.slice(0, 200) + "..." : "No description available."}</p>
+      <p><strong>Published:</strong> ${item.published_date}</p>
+      <a href="${item.url}" target="_blank">View on Figshare</a>
+    `;
+    resultsDiv.appendChild(card);
+  });
+}
+</script>
+</body>
+</html>
