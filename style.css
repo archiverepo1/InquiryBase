@@ -1,201 +1,217 @@
-/* ================================
-   InquiryBase v6.5 — Complete CSS
-   ================================ */
+/* ==============================================
+   InquiryBase v6.8 – Clean Learn-Anything Style
+   ============================================== */
 
-/* Global layout */
-* {
-  box-sizing: border-box;
-}
 body {
+  font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
-  font-family: "Inter", Arial, sans-serif;
-  background: #f6f8fa;
+  background-color: #f6f8fa;
   color: #222;
-  overflow-x: hidden;
 }
 
-/* -------- Hero Section -------- */
-.hero {
+header {
   position: relative;
-  height: 260px;
-  background: #002b55;
+  text-align: center;
   color: white;
+  background-color: #072b57;
   overflow: hidden;
 }
+
 #heroBg {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-}
-.hero-text {
-  position: relative;
-  text-align: center;
-  padding-top: 4rem;
-  z-index: 1;
-}
-.hero h1 {
-  margin: 0;
-  font-size: 2.6rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.hero p {
-  color: #cde3ff;
-  font-size: 1.1rem;
+  height: 260px;
+  z-index: 0;
 }
 
-/* -------- Filters bar -------- */
+header h1 {
+  position: relative;
+  z-index: 1;
+  font-size: 2.6rem;
+  margin: 0;
+  padding-top: 90px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+header p {
+  position: relative;
+  z-index: 1;
+  margin: 10px 0 60px;
+  font-size: 1.05rem;
+  color: #dce8f6;
+}
+
+/* --- Controls --- */
 .controls {
   background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  padding: 1rem 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 15;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 1.2rem 1.5rem;
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
 }
-.filters {
-  flex: 1 1 auto;
-  text-align: center;
-}
-.filters label {
-  margin: 0 1rem;
+
+.controls label {
   font-weight: 600;
+  color: #333;
 }
-.filters input,
-.filters select {
-  padding: 0.4rem 0.6rem;
+
+select,
+input[type="text"] {
+  font-size: 0.95rem;
+  padding: 0.45rem 0.6rem;
   border: 1px solid #ccc;
   border-radius: 6px;
-  font-size: 0.95rem;
-}
-.note {
-  display: block;
-  margin-top: 0.5rem;
-  color: #777;
-  font-size: 0.85rem;
+  min-width: 180px;
 }
 
-/* -------- Dashboard panel -------- */
-.overview {
-  background: #ffffff;
-  border-left: 3px solid #003366;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 0.8rem 1.2rem;
-  min-width: 220px;
-  margin-left: 1rem;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-.overview.hidden {
-  display: none;
-}
-.overview h3 {
-  margin: 0 0 0.3rem;
-  font-size: 1rem;
-  color: #003366;
-}
-.overview h4 {
-  margin: 0.6rem 0 0.3rem;
-  font-size: 0.9rem;
-  color: #003366;
-}
-.overview ul {
-  margin: 0;
-  padding-left: 1.2rem;
-}
-.overview li {
-  list-style: disc;
-  margin: 2px 0;
-  color: #222;
+select:focus,
+input:focus {
+  outline: none;
+  border-color: #005fcc;
+  box-shadow: 0 0 0 2px rgba(0, 95, 204, 0.15);
 }
 
-/* -------- Results grid -------- */
-.results {
-  padding: 2rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-.card {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-  padding: 1rem 1.3rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-.card h3 {
-  font-size: 1.1rem;
-  color: #003366;
-  margin-bottom: 0.4rem;
-}
-.card p {
-  font-size: 0.9rem;
-  line-height: 1.4;
-  margin: 0.3rem 0;
-}
-.source-tag {
-  display: inline-block;
-  background: #003366;
-  color: #fff;
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-bottom: 4px;
-}
-
-/* -------- Badges -------- */
-.badges {
-  margin-top: 0.5rem;
-}
-.badge {
-  display: inline-block;
-  background: #e8f0ff;
-  color: #003366;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  margin: 0.2rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.badge:hover {
-  background: #c8dbff;
-}
-
-/* -------- Footer -------- */
-.footer {
-  text-align: center;
-  padding: 1rem;
-  color: #555;
-  background: #f1f4f7;
-  border-top: 1px solid #ddd;
-}
 .loading {
   text-align: center;
-  font-size: 1.1rem;
-  color: #555;
-  margin-top: 2rem;
+  color: #777;
+  font-size: 1rem;
+  margin: 3rem auto;
 }
 
-/* -------- Responsive -------- */
-@media (max-width: 860px) {
+/* --- Results grid --- */
+#results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.4rem;
+  padding: 2rem 2.5rem;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* --- Card --- */
+.card {
+  background: #fff;
+  border: 1px solid #e3e7ea;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #c6d9f3;
+  box-shadow: 0 6px 18px rgba(0, 80, 160, 0.08);
+}
+
+.card h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #072b57;
+  margin: 0 0 0.5rem;
+}
+
+.card p {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.45;
+  margin: 0.4rem 0;
+}
+
+.card a {
+  text-decoration: none;
+  color: #005fcc;
+  font-weight: 600;
+}
+
+.card a:hover {
+  text-decoration: underline;
+}
+
+/* --- Source Tag --- */
+.source-tag {
+  display: inline-block;
+  background: #eff6ff;
+  color: #005fcc;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin-bottom: 0.7rem;
+}
+
+/* --- Data Overview --- */
+#overview {
+  position: absolute;
+  right: 2rem;
+  top: 14.5rem;
+  background: #fff;
+  border: 1px solid #cbd8e6;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+  border-radius: 10px;
+  padding: 1rem 1.3rem;
+  width: 250px;
+  z-index: 2;
+}
+
+#overview.hidden {
+  display: none;
+}
+
+#overview h4 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  color: #072b57;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+#overview p {
+  font-size: 0.85rem;
+  margin: 0.2rem 0;
+}
+
+#overview ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+#overview li {
+  margin-bottom: 0.3rem;
+}
+
+/* --- Footer --- */
+footer {
+  text-align: center;
+  color: #666;
+  font-size: 0.85rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+  #overview {
+    position: static;
+    margin: 1.5rem auto;
+    width: 90%;
+  }
   .controls {
     flex-direction: column;
-    align-items: center;
+    gap: 0.8rem;
   }
-  .overview {
-    margin-top: 1rem;
-    margin-left: 0;
+  #results {
+    padding: 1.3rem;
   }
 }
