@@ -7,16 +7,16 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ===== HERO HEADER ===== -->
+  <!-- ===== HERO ===== -->
   <header class="hero">
     <canvas id="heroBg"></canvas>
     <div class="hero-text">
       <h1 id="homeBtn">InquiryBase</h1>
-      <p>Explore open research datasets, harvested live from Figshare & Zenodo.</p>
+      <p>Explore open research datasets harvested live from Figshare & Zenodo.</p>
     </div>
   </header>
 
-  <!-- ===== FILTER CONTROLS ===== -->
+  <!-- ===== FILTERS ===== -->
   <section class="controls">
     <div class="filters">
       <label>Institution:
@@ -30,12 +30,11 @@
         </select>
       </label>
       <label>Search:
-        <input id="searchInput" type="text" placeholder="Search titles, descriptions, or institutions…">
+        <input id="searchInput" type="text" placeholder="Search titles, descriptions, or institutions…" />
       </label>
       <span class="note">Auto-harvested live • OAI + REST APIs</span>
     </div>
 
-    <!-- Dashboard summary panel -->
     <aside id="overview" class="overview hidden">
       <h3>📊 Data Overview</h3>
       <p><strong>Total:</strong> <span id="countTotal">0</span> datasets</p>
@@ -46,9 +45,12 @@
     </aside>
   </section>
 
-  <!-- ===== RESULTS GRID ===== -->
+  <!-- ===== RESULTS ===== -->
   <main id="results" class="results">
-    <div class="loading">Harvesting open data from Figshare and Zenodo…</div>
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Harvesting open data from Figshare and Zenodo…</div>
+    </div>
   </main>
 
   <!-- ===== PAGINATION ===== -->
