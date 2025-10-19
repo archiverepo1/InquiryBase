@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase - Open Research Atlas</title>
+  <title>InquiryBase – Open Research Atlas</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -27,8 +27,20 @@
           <option value="Zenodo">Zenodo</option>
         </select>
       </label>
+      <label>Institution:
+        <select id="institutionFilter"><option value="">All</option></select>
+      </label>
+      <label>Country:
+        <select id="countryFilter"><option value="">All</option></select>
+      </label>
+      <label>Page Size:
+        <select id="pageSizeSelect">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+        </select>
+      </label>
       <label>Search:
-        <input id="searchInput" type="text" placeholder="Search titles or descriptions…">
+        <input id="searchInput" type="text" placeholder="Search titles or descriptions…" />
       </label>
       <span class="note">Auto-harvested live • OAI + REST APIs</span>
     </div>
@@ -40,6 +52,8 @@
       <p><strong>Zenodo:</strong> <span id="countZenodo">0</span></p>
       <h4>Top Categories</h4>
       <ul id="topCats"></ul>
+      <h4>Top Institutions</h4>
+      <ul id="topInst"></ul>
     </aside>
   </section>
 
