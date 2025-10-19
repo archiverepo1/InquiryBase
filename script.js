@@ -1,16 +1,36 @@
 // ============================================
-// InquiryBase v6.7 — Figshare + Zenodo + Pagination
+// InquiryBase v6.8 — Figshare + Zenodo + Category Mapping + Pagination
 // ============================================
 
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
 const OAI_FIGSHARE = "https://api.figshare.com/v2/oai?verb=ListRecords&metadataPrefix=oai_dc";
+const OAI_FIGSHARE_SETS = "https://api.figshare.com/v2/oai?verb=ListSets";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
 
 let ALL_ITEMS = [];
 let CATEGORIES = new Set();
+let CATEGORY_MAP = {};
 let SEARCH_TEXT = "";
 
-// ---------- Fetch Figshare (with pagination) ----------
+// ---------- Load Figshare Category Names ----------
+async function loadFigshareCategories() {
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(OAI_FIGSHARE_SETS));
+    const text = await res.text();
+    const xml = new DOMParser().parseFromString(text, "text/xml");
+    const sets = Array.from(xml.getElementsByTagName("set"));
+    sets.forEach(s => {
+      const spec = s.getElementsByTagName("setSpec")[0]?.textContent.trim();
+      const name = s.getElementsByTagName("setName")[0]?.textContent.trim();
+      if (spec && name && spec.startsWith("category_")) CATEGORY_MAP[spec.replace("category_", "")] = name;
+    });
+    console.log("✅ Loaded Figshare category map:", Object.keys(CATEGORY_MAP).length);
+  } catch (e) {
+    console.warn("⚠️ Could not load Figshare categories:", e.message);
+  }
+}
+
+// ---------- Fetch Figshare (categories + pagination) ----------
 async function fetchFigshare() {
   let url = OAI_FIGSHARE;
   const items = [];
@@ -34,24 +54,37 @@ async function fetchFigshare() {
       const identifier = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
       const date = pick("date")[0] || "";
 
-      subs.forEach(c => c && CATEGORIES.add(c));
-      items.push({ title, description: desc, identifier, date, categories: subs, source: "Figshare" });
+      // Extract <setSpec> categories
+      const setSpecs = Array.from(r.getElementsByTagName("setSpec"))
+        .map(n => n.textContent.trim())
+        .filter(s => s.startsWith("category_"))
+        .map(s => s.replace("category_", ""))
+        .map(code => CATEGORY_MAP[code] || code);
+
+      const cats = Array.from(new Set([...subs, ...setSpecs]));
+      cats.forEach(c => c && CATEGORIES.add(c));
+
+      items.push({
+        title,
+        description: desc,
+        identifier,
+        date,
+        categories: cats,
+        source: "Figshare"
+      });
     });
 
-    // Stop when no more tokens
     if (nextToken) {
       url = `https://api.figshare.com/v2/oai?verb=ListRecords&resumptionToken=${nextToken}`;
       console.log("Fetching next Figshare page...");
-    } else {
-      url = null;
-    }
+    } else url = null;
   }
 
   console.log(`✅ Figshare loaded: ${items.length} items`);
   return items;
 }
 
-// ---------- Fetch Zenodo (with pagination) ----------
+// ---------- Fetch Zenodo (pagination) ----------
 async function fetchZenodo() {
   let url = API_ZENODO;
   const items = [];
@@ -67,10 +100,11 @@ async function fetchZenodo() {
       const doi = md.doi || (r.doi ? r.doi : "");
       const keywords = md.keywords || [];
       const subjects = md.subjects ? md.subjects.map(s => s.term) : [];
-      const categories = [...keywords, ...subjects];
       const date = md.publication_date || "";
 
+      const categories = [...keywords, ...subjects];
       categories.forEach(c => c && CATEGORIES.add(c));
+
       items.push({
         title,
         description: desc,
@@ -81,7 +115,6 @@ async function fetchZenodo() {
       });
     });
 
-    // pagination link
     url = json.links?.next || null;
     if (url) console.log("Fetching next Zenodo page...");
   }
@@ -101,15 +134,22 @@ function buildFilters() {
     catSel.appendChild(opt);
   });
 
-  document.getElementById("searchInput").addEventListener("input", e => {
+  const searchInput = document.getElementById("searchInput");
+  searchInput.addEventListener("input", e => {
     SEARCH_TEXT = e.target.value.toLowerCase();
     render();
   });
+
+  // Enable pressing Enter to search
+  searchInput.addEventListener("keypress", e => {
+    if (e.key === "Enter") render();
+  });
+
   document.getElementById("categoryFilter").addEventListener("change", render);
   document.getElementById("sourceFilter").addEventListener("change", render);
 }
 
-// ---------- Render Results ----------
+// ---------- Render ----------
 function render() {
   const mount = document.getElementById("results");
   mount.innerHTML = "";
@@ -137,36 +177,27 @@ function render() {
   pool.forEach(it => {
     const card = document.createElement("div");
     card.className = "card";
-    const cats = it.categories
-      .map(c => `<span class='badge' data-key='${c}'>${c}</span>`)
-      .join(" ");
+
     const link =
       it.identifier.startsWith("http")
         ? it.identifier
         : /^10\./.test(it.identifier)
         ? `https://doi.org/${it.identifier}`
         : "";
+
     card.innerHTML = `
       <div class="source-tag">${it.source}</div>
       <h3>${it.title}</h3>
       <p>${it.description.slice(0, 250)}${it.description.length > 250 ? "…" : ""}</p>
-      ${cats ? `<div class='badges'>${cats}</div>` : ""}
       ${link ? `<p><a href='${link}' target='_blank'>View Record ↗</a></p>` : ""}
     `;
     mount.appendChild(card);
   });
 
-  document.querySelectorAll(".badge").forEach(b => {
-    b.addEventListener("click", () => {
-      document.getElementById("categoryFilter").value = b.dataset.key;
-      render();
-    });
-  });
-
   updateOverview();
 }
 
-// ---------- Dashboard Overview ----------
+// ---------- Dashboard ----------
 function updateOverview() {
   const panel = document.getElementById("overview");
   if (!panel) return;
@@ -195,7 +226,7 @@ function updateOverview() {
   panel.classList.remove("hidden");
 }
 
-// ---------- Hero Animation ----------
+// ---------- Hero ----------
 function initHeroBg() {
   const canvas = document.getElementById("heroBg");
   const ctx = canvas.getContext("2d");
@@ -251,6 +282,7 @@ async function load() {
   const mount = document.getElementById("results");
   mount.innerHTML = `<div class="loading">Fetching Figshare + Zenodo datasets...</div>`;
   try {
+    await loadFigshareCategories();
     const [fig, zen] = await Promise.all([fetchFigshare(), fetchZenodo()]);
     ALL_ITEMS = [...fig, ...zen];
     buildFilters();
