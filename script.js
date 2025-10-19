@@ -1,24 +1,21 @@
+// ============================================
+// InquiryBase v8.2 — Dynamic Figshare + Zenodo + Spinner Fade
+// ============================================
+
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
 
 const FIGSHARE_ENDPOINTS = [
-  // South African Universities
   { name: "University of the Free State (UFS)", url: "https://ufs.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
   { name: "University of Cape Town (UCT)", url: "https://uct.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
   { name: "Stellenbosch University", url: "https://sun.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
   { name: "University of Pretoria (UP)", url: "https://up.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
   { name: "University of Johannesburg", url: "https://uj.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
-  { name: "University of the Witwatersrand", url: "https://wits.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
   { name: "University of KwaZulu-Natal (UKZN)", url: "https://ukzn.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
-  { name: "North-West University (NWU)", url: "https://nwu.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
-  { name: "Rhodes University (RU)", url: "https://ru.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
   { name: "University of the Western Cape (UWC)", url: "https://uwc.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
-
-  // International
   { name: "Monash University", url: "https://monash.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "Australia" },
   { name: "Imperial College London", url: "https://imperialcollegelondon.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "UK" },
-  { name: "University College London (UCL)", url: "https://ucl.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "UK" },
-  { name: "University of Melbourne", url: "https://unimelb.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "Australia" }
+  { name: "University College London (UCL)", url: "https://ucl.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "UK" }
 ];
 
 const PAGE_SIZE = 100;
@@ -28,12 +25,20 @@ let INSTITUTIONS = [];
 let SEARCH_TEXT = "";
 let CURRENT_PAGE = 1;
 
-// ===== Utility =====
+// --- Spinner message helper ---
+const setProgressText = (msg) => {
+  document.getElementById("results").innerHTML = `
+    <div class="loading" id="loadingSpinner">
+      <div class="spinner"></div>
+      <div>${msg}</div>
+    </div>`;
+};
+
+// --- Helpers ---
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 const xmlPick = (n, tag) => Array.from(n.getElementsByTagNameNS("*", tag)).map(t => t.textContent.trim());
-const setProgressText = (msg) => { document.getElementById("results").innerHTML = `<div class="loading">${msg}</div>`; };
 
-// ===== Figshare Fetch (single institution, test first page) =====
+// --- Fetch Figshare Institutions ---
 async function fetchFigshareInstitution(inst) {
   try {
     const res = await fetch(PROXY + encodeURIComponent(inst.url));
@@ -63,7 +68,7 @@ async function fetchFigshareInstitution(inst) {
   }
 }
 
-// ===== Zenodo Fetch =====
+// --- Fetch Zenodo ---
 async function fetchZenodo() {
   let url = API_ZENODO;
   const items = [];
@@ -98,7 +103,7 @@ async function fetchZenodo() {
   return items;
 }
 
-// ===== Search + Render =====
+// --- Build Filters ---
 function buildFilters() {
   const instSel = document.getElementById("institutionFilter");
   instSel.innerHTML = `<option value="">All</option>` + INSTITUTIONS.map(n => `<option value="${n}">${n}</option>`).join("");
@@ -108,14 +113,12 @@ function buildFilters() {
   searchBox.addEventListener("input", e => { SEARCH_TEXT = e.target.value.toLowerCase(); CURRENT_PAGE = 1; render(); });
 }
 
+// --- Filtering ---
 function filteredItems() {
   const instSel = document.getElementById("institutionFilter")?.value || "";
   const text = SEARCH_TEXT;
   let pool = [...ALL_ITEMS];
-
-  INST_CACHE.forEach((v, k) => {
-    if (!instSel || instSel === k) pool.push(...v);
-  });
+  INST_CACHE.forEach((v, k) => { if (!instSel || instSel === k) pool.push(...v); });
 
   return pool.filter(it =>
     (!instSel || it.institution === instSel) &&
@@ -128,6 +131,7 @@ function filteredItems() {
   );
 }
 
+// --- Render Results ---
 function render() {
   const mount = document.getElementById("results");
   mount.innerHTML = "";
@@ -157,8 +161,17 @@ function render() {
   });
 
   updateOverview();
+  fadeOutSpinner();
 }
 
+// --- Fade-out Spinner ---
+function fadeOutSpinner() {
+  const spinner = document.getElementById("loadingSpinner");
+  if (spinner) spinner.classList.add("fade-out");
+  setTimeout(() => spinner?.remove(), 700);
+}
+
+// --- Overview Panel ---
 function updateOverview() {
   const total = [...ALL_ITEMS, ...Array.from(INST_CACHE.values()).flat()].length;
   const fig = Array.from(INST_CACHE.values()).flat().length;
@@ -168,7 +181,7 @@ function updateOverview() {
   document.getElementById("countZenodo").textContent = zen;
 }
 
-// ===== Hero Background =====
+// --- Hero Background Animation ---
 function initHeroBg() {
   const canvas = document.getElementById("heroBg");
   const ctx = canvas.getContext("2d");
@@ -206,15 +219,12 @@ function initHeroBg() {
   draw();
 }
 
-// ===== Main Load =====
+// --- Main ---
 async function load() {
   initHeroBg();
   setProgressText("🚀 Loading InquiryBase: Harvesting Zenodo first…");
-
-  // Zenodo first
   const zenPromise = fetchZenodo().then(items => { ALL_ITEMS = items; render(); });
 
-  // Test each Figshare institution asynchronously
   for (const inst of FIGSHARE_ENDPOINTS) {
     fetchFigshareInstitution(inst).then(records => {
       if (records.length > 0) {
