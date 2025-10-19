@@ -1,5 +1,5 @@
 // ============================================
-// InquiryBase v6 — Figshare + Zenodo Aggregator
+// InquiryBase v6.5 — Figshare + Zenodo + Dashboard
 // ============================================
 
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
@@ -53,19 +53,27 @@ async function fetchZenodo() {
     const date = md.publication_date || "";
 
     categories.forEach(c => c && CATEGORIES.add(c));
-    items.push({ title, description: desc, identifier: doi ? `https://doi.org/${doi}` : r.links.html, date, categories, source: "Zenodo" });
+    items.push({
+      title,
+      description: desc,
+      identifier: doi ? `https://doi.org/${doi}` : r.links.html,
+      date,
+      categories,
+      source: "Zenodo"
+    });
   });
 
   return items;
 }
 
-// ---------- Rendering ----------
+// ---------- Filters ----------
 function buildFilters() {
   const catSel = document.getElementById("categoryFilter");
   catSel.innerHTML = "<option value=''>All</option>";
   Array.from(CATEGORIES).sort().forEach(c => {
     const opt = document.createElement("option");
-    opt.value = c; opt.textContent = c;
+    opt.value = c;
+    opt.textContent = c;
     catSel.appendChild(opt);
   });
 
@@ -77,6 +85,7 @@ function buildFilters() {
   document.getElementById("sourceFilter").addEventListener("change", render);
 }
 
+// ---------- Render Results ----------
 function render() {
   const mount = document.getElementById("results");
   mount.innerHTML = "";
@@ -87,42 +96,86 @@ function render() {
   const pool = ALL_ITEMS.filter(it => {
     const catOK = !catSel || it.categories.includes(catSel);
     const srcOK = !srcSel || it.source === srcSel;
-    const textOK = !text || (
+    const textOK =
+      !text ||
       it.title.toLowerCase().includes(text) ||
       it.description.toLowerCase().includes(text) ||
-      it.categories.join(" ").toLowerCase().includes(text)
-    );
+      it.categories.join(" ").toLowerCase().includes(text);
     return catOK && srcOK && textOK;
   });
 
   if (!pool.length) {
     mount.innerHTML = `<div class="loading">No results found.</div>`;
+    updateOverview();
     return;
   }
 
   pool.forEach(it => {
     const card = document.createElement("div");
     card.className = "card";
-    const cats = it.categories.map(c => `<span class='badge' data-key='${c}'>${c}</span>`).join(" ");
-    const link = it.identifier.startsWith("http") ? it.identifier :
-                 /^10\./.test(it.identifier) ? `https://doi.org/${it.identifier}` : "";
+    const cats = it.categories
+      .map(c => `<span class='badge' data-key='${c}'>${c}</span>`)
+      .join(" ");
+    const link =
+      it.identifier.startsWith("http")
+        ? it.identifier
+        : /^10\./.test(it.identifier)
+        ? `https://doi.org/${it.identifier}`
+        : "";
     card.innerHTML = `
       <div class="source-tag">${it.source}</div>
       <h3>${it.title}</h3>
-      <p>${it.description.slice(0, 250)}${it.description.length > 250 ? "…" : ""}</p>
+      <p>${it.description.slice(0, 250)}${
+      it.description.length > 250 ? "…" : ""
+    }</p>
       ${cats ? `<div class='badges'>${cats}</div>` : ""}
-      ${link ? `<p><a href='${link}' target='_blank'>View Record ↗</a></p>` : ""}
+      ${
+        link
+          ? `<p><a href='${link}' target='_blank'>View Record ↗</a></p>`
+          : ""
+      }
     `;
     mount.appendChild(card);
   });
 
-  // Make badges clickable
+  // badge click → filter
   document.querySelectorAll(".badge").forEach(b => {
     b.addEventListener("click", () => {
       document.getElementById("categoryFilter").value = b.dataset.key;
       render();
     });
   });
+
+  updateOverview();
+}
+
+// ---------- Dashboard Overview ----------
+function updateOverview() {
+  const panel = document.getElementById("overview");
+  if (!panel) return;
+
+  const total = ALL_ITEMS.length;
+  const fig = ALL_ITEMS.filter(i => i.source === "Figshare").length;
+  const zen = ALL_ITEMS.filter(i => i.source === "Zenodo").length;
+
+  document.getElementById("countTotal").textContent = total;
+  document.getElementById("countFigshare").textContent = fig;
+  document.getElementById("countZenodo").textContent = zen;
+
+  const freq = {};
+  ALL_ITEMS.forEach(i =>
+    i.categories.forEach(c => {
+      if (!c) return;
+      freq[c] = (freq[c] || 0) + 1;
+    })
+  );
+  const top = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const ul = document.getElementById("topCats");
+  ul.innerHTML = top.map(([c, n]) => `<li>${c} (${n})</li>`).join("");
+  panel.classList.remove("hidden");
 }
 
 // ---------- Hero Animation ----------
@@ -148,17 +201,20 @@ function initHeroBg() {
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "#cde3ff";
     points.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
+      p.x += p.vx;
+      p.y += p.vy;
       if (p.x < 0 || p.x > width) p.vx *= -1;
       if (p.y < 0 || p.y > height) p.vy *= -1;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fill();
     });
     ctx.strokeStyle = "rgba(205,227,255,0.2)";
-    for (let i=0; i<points.length; i++) {
-      for (let j=i+1; j<points.length; j++) {
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
         const dx = points[i].x - points[j].x;
         const dy = points[i].y - points[j].y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 100) {
           ctx.beginPath();
           ctx.moveTo(points[i].x, points[i].y);
@@ -182,15 +238,18 @@ async function load() {
     ALL_ITEMS = [...fig, ...zen];
     buildFilters();
     render();
+    updateOverview();
   } catch (e) {
     mount.innerHTML = `<div class="loading">Error fetching data: ${e.message}</div>`;
   }
+
   document.getElementById("homeBtn").addEventListener("click", () => {
     document.getElementById("categoryFilter").value = "";
     document.getElementById("sourceFilter").value = "";
     document.getElementById("searchInput").value = "";
     SEARCH_TEXT = "";
     render();
+    updateOverview();
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 }
