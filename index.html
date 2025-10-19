@@ -1,38 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenSurvey Atlas | Figshare Open Data Explorer</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>InquiryBase — OpenSurvey Atlas (SA)</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>🌍 OpenSurvey Atlas</h1>
-    <p>Explore how researchers across universities design surveys, questionnaires, and data collection instruments- powered by a Javascript (Figshare Open REST API).</p>
+  <header class="hero">
+    <div class="hero-inner">
+      <h1>InquiryBase</h1>
+      <p class="tagline">
+        Discover how South African researchers design surveys & questionnaires — automatically harvested from Zenodo and university Figshare repositories.
+      </p>
+      <div class="controls">
+        <select id="repoFilter" aria-label="Filter by repository">
+          <option value="">All Repositories</option>
+        </select>
+        <input id="quickFilter" type="search" placeholder="Quick filter (e.g., mental health, education)" />
+        <button id="btnReset" type="button">Reset</button>
+      </div>
+      <div id="status" class="status">Preparing request…</div>
+    </div>
   </header>
 
-  <section class="search-section">
-    <input id="query" type="text" placeholder="Search keyword (e.g. mental health survey, education questionnaire)">
-    <button onclick="searchFigshare()">Search</button>
-  </section>
+  <main>
+    <section id="results" class="results">
+      <!-- Sections render here -->
+    </section>
+  </main>
 
-  <section id="filters">
-    <select id="categoryFilter" onchange="filterResults()">
-      <option value="">All Categories</option>
-      <option value="health">Health</option>
-      <option value="education">Education</option>
-      <option value="social">Social Sciences</option>
-      <option value="environment">Environment</option>
-    </select>
-  </section>
-
-  <section id="results"></section>
-
-  <footer>
-    <p>© 2025 OpenSurvey Atlas  Powered by <a href="https://api.figshare.com/v2" target="_blank">Figshare API</a> | Built by Vuyo Ngayeka</p>
+  <footer class="footer">
+    <div class="container">
+      © 2025 InquiryBase · OpenSurvey Atlas (SA) · Powered by public APIs
+      · <a href="https://zenodo.org/" target="_blank" rel="noopener">Zenodo</a> & Figshare for Institutions
+    </div>
   </footer>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
