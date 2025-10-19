@@ -11,7 +11,7 @@
     <canvas id="heroBg"></canvas>
     <div class="hero-text">
       <h1 id="homeBtn">InquiryBase</h1>
-      <p>Explore open research datasets — harvested live from Figshare’s global OAI-PMH feed.</p>
+      <p>Explore open research datasets — harvested live from Figshare & Zenodo.</p>
     </div>
   </header>
 
@@ -20,19 +20,26 @@
       <label>Category:
         <select id="categoryFilter"><option value="">All</option></select>
       </label>
+      <label>Source:
+        <select id="sourceFilter">
+          <option value="">All</option>
+          <option value="Figshare">Figshare</option>
+          <option value="Zenodo">Zenodo</option>
+        </select>
+      </label>
       <label>Search:
         <input id="searchInput" type="text" placeholder="Search titles, keywords, or descriptions…">
       </label>
-      <span class="note">Auto-harvested live • OAI-PMH (oai_dc)</span>
+      <span class="note">Auto-harvested live • OAI + REST APIs</span>
     </div>
   </section>
 
   <main id="results" class="results">
-    <div class="loading">Harvesting open data from Figshare…</div>
+    <div class="loading">Harvesting open data from Figshare and Zenodo…</div>
   </main>
 
   <footer class="footer">
-    <p>© 2025 InquiryBase • Powered by Figshare OAI-PMH • Served via Cloudflare Worker</p>
+    <p>© 2025 InquiryBase • Powered by Figshare + Zenodo • Served via Cloudflare Worker</p>
   </footer>
 
   <script src="script.js"></script>
