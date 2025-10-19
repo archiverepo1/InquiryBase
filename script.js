@@ -1,141 +1,89 @@
-// ============================================
-// InquiryBase v7.6 — Fast Harvest + Fixed Figshare Pagination + Progress Bar
-// ============================================
-
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
-const OAI_FIGSHARE = "https://ndownloader.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc";
 const API_ZENODO = "https://zenodo.org/api/records/?q=*&size=200";
+const PAGE_SIZE_DEFAULT = 100;
 
-const PAGE_SIZE = 100;
-let ALL_ITEMS = [];
-let CATEGORIES = new Set();
+// --- South African & selected global Figshare endpoints ---
+const FIGSHARE_ENDPOINTS = [
+  { name: "University of the Free State (UFS)", url: "https://ufs.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "University of Cape Town (UCT)", url: "https://uct.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "University of Pretoria (UP)", url: "https://up.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "Stellenbosch University (SUN)", url: "https://sun.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "University of Johannesburg (UJ)", url: "https://uj.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "University of KwaZulu-Natal (UKZN)", url: "https://ukzn.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "North-West University (NWU)", url: "https://nwu.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "University of the Western Cape (UWC)", url: "https://uwc.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  { name: "Rhodes University (RU)", url: "https://ru.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "South Africa" },
+  // Optional: Add a few global for reference
+  { name: "Monash University", url: "https://monash.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "Australia" },
+  { name: "University College London (UCL)", url: "https://ucl.figshare.com/oai?verb=ListRecords&metadataPrefix=oai_dc", country: "UK" }
+];
+
+// ------- Global state -------
+let ALL_ITEMS = [];         // merged data (Zenodo + Figshare)
+let INST_CACHE = new Map(); // institution cache
+let CATEGORIES = new Set(); // global categories
 let SEARCH_TEXT = "";
 let CURRENT_PAGE = 1;
+let PAGE_SIZE = PAGE_SIZE_DEFAULT;
 
-// Utility delay
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+// --- Utility helpers ---
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-// Create visual progress bar
+function xmlPick(node, tag) {
+  return Array.from(node.getElementsByTagNameNS("*", tag)).map(n => n.textContent.trim());
+}
+
+// --- Progress bar ---
 function createProgressBar() {
+  if (document.getElementById("progressBar")) return document.getElementById("progressBar");
   const bar = document.createElement("div");
   bar.id = "progressBar";
   Object.assign(bar.style, {
-    position: "fixed",
-    top: "0",
-    left: "0",
-    height: "3px",
-    background: "#007bff",
-    width: "0%",
-    zIndex: "9999",
-    transition: "width 0.3s ease"
+    position: "fixed", top: "0", left: "0",
+    height: "3px", background: "#007bff", width: "0%",
+    zIndex: "9999", transition: "width 0.25s ease"
   });
   document.body.appendChild(bar);
   return bar;
 }
 const progressBar = createProgressBar();
+const updateBar = (pct) => { progressBar.style.width = `${pct}%`; };
+const setProgressText = (msg) => {
+  document.getElementById("results").innerHTML = `<div class="loading">${msg}</div>`;
+};
 
-function setProgressText(msg) {
-  const mount = document.getElementById("results");
-  mount.innerHTML = `<div class="loading">${msg}</div>`;
-}
-function updateBar(percent) {
-  progressBar.style.width = `${percent}%`;
-}
-
-// ---------- Fetch Figshare ----------
-async function fetchFigshare() {
-  let url = OAI_FIGSHARE;
-  const items = [];
-  let page = 0;
-
-  while (url && page < 20) { // allow up to 20 OAI pages
-    page++;
-    setProgressText(`🔹 Harvesting Figshare page ${page}... (${items.length} records so far)`);
-    updateBar((page / 20) * 50);
-
-    const res = await fetch(PROXY + encodeURIComponent(url));
-    const text = await res.text();
-    const xml = new DOMParser().parseFromString(text, "text/xml");
-
-    const recs = Array.from(xml.getElementsByTagNameNS("*", "record"));
-    const tokenNode = xml.getElementsByTagNameNS("*", "resumptionToken")[0];
-    const nextToken = tokenNode ? tokenNode.textContent.trim() : null;
-
-    console.log(`🔹 Figshare page ${page}: ${recs.length} records`);
-    recs.forEach((r) => {
-      const md = r.getElementsByTagNameNS("*", "metadata")[0];
-      if (!md) return;
-      const pick = (tag) =>
-        Array.from(md.getElementsByTagNameNS("*", tag)).map((n) => n.textContent.trim());
-      const title = pick("title")[0] || "(Untitled)";
-      const desc = pick("description")[0] || "";
-      const subs = pick("subject");
-      const ids = pick("identifier");
-      const identifier =
-        ids.find((i) => i.startsWith("http")) ||
-        ids.find((i) => /^10\./.test(i)) ||
-        "";
-      const date = pick("date")[0] || "";
-      subs.forEach((c) => c && CATEGORIES.add(c));
-      items.push({
-        title,
-        description: desc,
-        identifier,
-        date,
-        categories: subs,
-        source: "Figshare",
-      });
-    });
-
-    // Proper handling of Figshare resumption tokens
-    if (nextToken) {
-      url = nextToken.includes("verb=ListRecords")
-        ? `https://ndownloader.figshare.com/oai?${nextToken}`
-        : `https://ndownloader.figshare.com/oai?verb=ListRecords&resumptionToken=${nextToken}`;
-      await delay(250);
-    } else {
-      url = null;
-    }
-  }
-
-  console.log(`✅ Figshare fully loaded: ${items.length} records`);
-  updateBar(50);
-  return items;
-}
-
-// ---------- Fetch Zenodo ----------
-async function fetchZenodo() {
+// --- Fetch Zenodo first (global data) ---
+async function fetchZenodo(maxPages = 5) {
   let url = API_ZENODO;
   const items = [];
   let page = 0;
 
-  while (url && page < 5) {
+  while (url && page < maxPages) {
     page++;
-    setProgressText(`🔹 Harvesting Zenodo page ${page}... (${items.length} records so far)`);
-    updateBar(50 + (page / 5) * 50);
+    setProgressText(`🔹 Harvesting Zenodo page ${page}… (${items.length} records so far)`);
+    updateBar((page / maxPages) * 100);
 
     const res = await fetch(PROXY + encodeURIComponent(url));
     const json = await res.json();
-    console.log(`🔹 Zenodo page ${page}: ${json.hits?.hits?.length || 0} records`);
 
-    json.hits.hits.forEach((r) => {
+    (json.hits?.hits || []).forEach(r => {
       const md = r.metadata || {};
       const title = md.title || "(Untitled)";
       const desc = md.description || "";
       const doi = md.doi || "";
-      const cats = [
-        ...(md.keywords || []),
-        ...(md.subjects ? md.subjects.map((s) => s.term) : []),
-      ];
+      const cats = [...(md.subjects ? md.subjects.map(s => s.term) : [])];
       const date = md.publication_date || "";
-      cats.forEach((c) => c && CATEGORIES.add(c));
+      cats.forEach(c => c && CATEGORIES.add(c));
+
       items.push({
         title,
         description: desc,
-        identifier: doi ? `https://doi.org/${doi}` : r.links.html,
+        identifier: doi ? `https://doi.org/${doi}` : (r.links?.html || ""),
         date,
         categories: cats,
-        source: "Zenodo",
+        institution: "—",
+        country: "—",
+        source: "Zenodo"
       });
     });
 
@@ -143,221 +91,236 @@ async function fetchZenodo() {
     await delay(200);
   }
 
-  console.log(`✅ Zenodo loaded: ${items.length} records`);
-  updateBar(100);
   return items;
 }
 
-// ---------- Build Filters ----------
+// --- Fetch selected Figshare institution (only dc:subject) ---
+async function fetchFigshare(inst) {
+  const url = inst.url;
+  const res = await fetch(PROXY + encodeURIComponent(url));
+  const text = await res.text();
+  const xml = new DOMParser().parseFromString(text, "text/xml");
+
+  const recs = Array.from(xml.getElementsByTagNameNS("*", "record"));
+  const items = [];
+
+  recs.forEach(r => {
+    const md = r.getElementsByTagNameNS("*", "metadata")[0];
+    if (!md) return;
+    const title = xmlPick(md, "title")[0] || "(Untitled)";
+    const desc = xmlPick(md, "description")[0] || "";
+    const cats = xmlPick(md, "subject"); // only categories
+    const ids = xmlPick(md, "identifier");
+    const link = ids.find(i => i.startsWith("http")) || ids.find(i => /^10\./.test(i)) || "";
+    const date = xmlPick(md, "date")[0] || "";
+
+    cats.forEach(c => c && CATEGORIES.add(c));
+    items.push({
+      title,
+      description: desc,
+      identifier: link,
+      date,
+      categories: cats,
+      institution: inst.name,
+      country: inst.country,
+      source: "Figshare"
+    });
+  });
+
+  console.log(`✅ ${inst.name}: ${items.length} records`);
+  return items;
+}
+
+// --- Build Filters ---
 function buildFilters() {
+  const instSel = document.getElementById("institutionFilter");
+  instSel.innerHTML = "<option value=''>All</option>";
+  FIGSHARE_ENDPOINTS.forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f.name;
+    opt.textContent = f.name;
+    instSel.appendChild(opt);
+  });
+
+  // page size
+  const pageSel = document.getElementById("pageSizeSelect");
+  if (pageSel) {
+    pageSel.innerHTML = `<option value="50">50</option><option value="100" selected>100</option>`;
+    pageSel.addEventListener("change", () => {
+      PAGE_SIZE = parseInt(pageSel.value, 10) || PAGE_SIZE_DEFAULT;
+      CURRENT_PAGE = 1; render();
+    });
+  }
+
+  // search
+  const searchBox = document.getElementById("searchInput");
+  if (searchBox) {
+    searchBox.addEventListener("input", e => {
+      SEARCH_TEXT = e.target.value.toLowerCase();
+      CURRENT_PAGE = 1; render();
+    });
+  }
+
+  // institution selection (lazy fetch)
+  instSel.addEventListener("change", async e => {
+    const pick = e.target.value;
+    if (!pick) return render();
+
+    const inst = FIGSHARE_ENDPOINTS.find(x => x.name === pick);
+    if (!inst) return;
+
+    if (!INST_CACHE.has(pick)) {
+      setProgressText(`🎯 Loading ${pick} datasets…`);
+      updateBar(0);
+      const data = await fetchFigshare(inst);
+      INST_CACHE.set(pick, data);
+      ALL_ITEMS.push(...data);
+      updateBar(100);
+      setTimeout(() => (progressBar.style.opacity = "0"), 800);
+    }
+
+    render();
+  });
+
+  // category dropdown updates dynamically
   const catSel = document.getElementById("categoryFilter");
-  catSel.innerHTML = "<option value=''>All</option>";
-  Array.from(CATEGORIES)
-    .sort()
-    .forEach((c) => {
+  if (catSel) {
+    catSel.innerHTML = "<option value=''>All</option>";
+    Array.from(CATEGORIES).sort().forEach(c => {
       const opt = document.createElement("option");
       opt.value = c;
       opt.textContent = c;
       catSel.appendChild(opt);
     });
+    catSel.addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
+  }
 
-  const searchBox = document.getElementById("searchInput");
-  searchBox.addEventListener("input", (e) => {
-    SEARCH_TEXT = e.target.value.toLowerCase();
-    CURRENT_PAGE = 1;
-    render();
-  });
-  searchBox.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") render();
-  });
-
-  document
-    .getElementById("categoryFilter")
-    .addEventListener("change", () => {
-      CURRENT_PAGE = 1;
-      render();
-    });
-  document
-    .getElementById("sourceFilter")
-    .addEventListener("change", () => {
-      CURRENT_PAGE = 1;
-      render();
-    });
+  const srcSel = document.getElementById("sourceFilter");
+  if (srcSel) srcSel.addEventListener("change", () => { CURRENT_PAGE = 1; render(); });
 }
 
-// ---------- Render ----------
+// --- Filter & render ---
+function filteredItems() {
+  const catSel = document.getElementById("categoryFilter")?.value || "";
+  const srcSel = document.getElementById("sourceFilter")?.value || "";
+  const instSel = document.getElementById("institutionFilter")?.value || "";
+
+  return ALL_ITEMS.filter(it => {
+    const catOK = !catSel || it.categories?.includes(catSel);
+    const srcOK = !srcSel || it.source === srcSel;
+    const instOK = !instSel || it.institution === instSel;
+    const textOK = !SEARCH_TEXT ||
+      (it.title || "").toLowerCase().includes(SEARCH_TEXT) ||
+      (it.description || "").toLowerCase().includes(SEARCH_TEXT);
+    return catOK && srcOK && instOK && textOK;
+  });
+}
+
 function render() {
   const mount = document.getElementById("results");
   mount.innerHTML = "";
-  const catSel = document.getElementById("categoryFilter").value;
-  const srcSel = document.getElementById("sourceFilter").value;
-  const text = SEARCH_TEXT;
+  const pool = filteredItems();
 
-  const filtered = ALL_ITEMS.filter((it) => {
-    const catOK = !catSel || it.categories.includes(catSel);
-    const srcOK = !srcSel || it.source === srcSel;
-    const textOK =
-      !text ||
-      it.title.toLowerCase().includes(text) ||
-      it.description.toLowerCase().includes(text);
-    return catOK && srcOK && textOK;
-  });
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const totalPages = Math.ceil(pool.length / PAGE_SIZE) || 1;
   CURRENT_PAGE = Math.min(CURRENT_PAGE, totalPages);
   const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE;
-  const pageItems = filtered.slice(start, end);
+  const pageItems = pool.slice(start, end);
 
   if (!pageItems.length) {
-    mount.innerHTML = `<div class="loading">No results found.</div>`;
+    mount.innerHTML = `<div class="loading">No results found. Select an institution to load datasets.</div>`;
     updatePagination(0, 0);
     return;
   }
 
-  pageItems.forEach((it) => {
+  pageItems.forEach(it => {
     const card = document.createElement("div");
     card.className = "card";
-    const link = it.identifier.startsWith("http")
+    const link = it.identifier?.startsWith("http")
       ? it.identifier
-      : /^10\./.test(it.identifier)
-      ? `https://doi.org/${it.identifier}`
-      : "";
+      : (/^10\./.test(it.identifier || "") ? `https://doi.org/${it.identifier}` : "");
     card.innerHTML = `
-      <div class="source-tag">${it.source}</div>
+      <div class="source-tag">${it.source}${it.institution ? ` • ${it.institution}` : ""}</div>
       <h3>${it.title}</h3>
-      <p>${it.description.slice(0, 220)}${it.description.length > 220 ? "…" : ""}</p>
-      ${link ? `<p><a href="${link}" target="_blank">View Record ↗</a></p>` : ""}
+      <p>${(it.description || "").slice(0, 220)}${(it.description || "").length > 220 ? "…" : ""}</p>
+      ${link ? `<p><a href="${link}" target="_blank" rel="noopener">View Record ↗</a></p>` : ""}
     `;
     mount.appendChild(card);
   });
 
   updatePagination(CURRENT_PAGE, totalPages);
-  updateOverview();
 }
 
-// ---------- Pagination ----------
+// --- Pagination ---
 function updatePagination(page, total) {
   const pagination = document.getElementById("pagination");
   const info = document.getElementById("pageInfo");
-  if (total <= 1) {
-    pagination.classList.add("hidden");
-    return;
-  }
+  if (!pagination || !info) return;
+  if (total <= 1) { pagination.classList.add("hidden"); return; }
   pagination.classList.remove("hidden");
   info.textContent = `Page ${page} of ${total}`;
   document.getElementById("prevPage").disabled = page <= 1;
   document.getElementById("nextPage").disabled = page >= total;
 }
 
-// ---------- Overview ----------
-function updateOverview() {
-  const panel = document.getElementById("overview");
-  const total = ALL_ITEMS.length;
-  const fig = ALL_ITEMS.filter((i) => i.source === "Figshare").length;
-  const zen = ALL_ITEMS.filter((i) => i.source === "Zenodo").length;
-  document.getElementById("countTotal").textContent = total;
-  document.getElementById("countFigshare").textContent = fig;
-  document.getElementById("countZenodo").textContent = zen;
-
-  const freq = {};
-  ALL_ITEMS.forEach((i) =>
-    i.categories.forEach((c) => {
-      if (c) freq[c] = (freq[c] || 0) + 1;
-    })
-  );
-  const top = Object.entries(freq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-  document.getElementById("topCats").innerHTML = top
-    .map(([c, n]) => `<li>${c} (${n})</li>`)
-    .join("");
-  panel.classList.remove("hidden");
-}
-
-// ---------- Hero BG ----------
+// --- Hero background animation ---
 function initHeroBg() {
   const canvas = document.getElementById("heroBg");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   let w, h, pts;
 
   function resize() {
-    w = (canvas.width = window.innerWidth);
-    h = (canvas.height = 260);
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = 260;
     pts = Array.from({ length: 60 }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.6,
-      vy: (Math.random() - 0.5) * 0.6,
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6
     }));
   }
   resize();
   window.addEventListener("resize", resize);
+
   function draw() {
-    ctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0,0,w,h);
     ctx.fillStyle = "#cde3ff";
-    pts.forEach((p) => {
-      p.x += p.vx;
-      p.y += p.vy;
+    pts.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
       if (p.x < 0 || p.x > w) p.vx *= -1;
       if (p.y < 0 || p.y > h) p.vy *= -1;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
     });
     ctx.strokeStyle = "rgba(205,227,255,0.2)";
-    for (let i = 0; i < pts.length; i++)
-      for (let j = i + 1; j < pts.length; j++) {
-        const dx = pts[i].x - pts[j].x,
-          dy = pts[i].y - pts[j].y;
-        if (Math.sqrt(dx * dx + dy * dy) < 100) {
-          ctx.beginPath();
-          ctx.moveTo(pts[i].x, pts[i].y);
-          ctx.lineTo(pts[j].x, pts[j].y);
-          ctx.stroke();
-        }
-      }
+    for (let i=0;i<pts.length;i++) for (let j=i+1;j<pts.length;j++) {
+      const dx = pts[i].x-pts[j].x, dy = pts[i].y-pts[j].y;
+      if (Math.sqrt(dx*dx+dy*dy) < 100) { ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke(); }
+    }
     requestAnimationFrame(draw);
   }
   draw();
 }
 
-// ---------- Main ----------
+// --- Initialize ---
 async function load() {
   initHeroBg();
-  setProgressText("🚀 Starting harvest from Figshare + Zenodo…");
+  setProgressText("🚀 Loading Zenodo data…");
   try {
-    const [fig, zen] = await Promise.all([fetchFigshare(), fetchZenodo()]);
-    ALL_ITEMS = [...fig, ...zen];
+    const zenItems = await fetchZenodo(5);
+    ALL_ITEMS = [...zenItems];
     buildFilters();
     render();
     updateBar(100);
     setTimeout(() => (progressBar.style.opacity = "0"), 1200);
-  } catch (e) {
-    document.getElementById(
-      "results"
-    ).innerHTML = `<div class="loading">Error fetching data: ${e.message}</div>`;
+  } catch (err) {
+    document.getElementById("results").innerHTML = `<div class="loading">Error: ${err.message}</div>`;
   }
 
-  document.getElementById("homeBtn").addEventListener("click", () => {
-    document.getElementById("categoryFilter").value = "";
-    document.getElementById("sourceFilter").value = "";
-    document.getElementById("searchInput").value = "";
-    SEARCH_TEXT = "";
-    CURRENT_PAGE = 1;
-    render();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  // Pagination buttons
+  document.getElementById("prevPage")?.addEventListener("click", () => {
+    if (CURRENT_PAGE > 1) { CURRENT_PAGE--; render(); }
   });
-
-  document.getElementById("prevPage").addEventListener("click", () => {
-    if (CURRENT_PAGE > 1) {
-      CURRENT_PAGE--;
-      render();
-    }
-  });
-  document.getElementById("nextPage").addEventListener("click", () => {
-    CURRENT_PAGE++;
-    render();
+  document.getElementById("nextPage")?.addEventListener("click", () => {
+    CURRENT_PAGE++; render();
   });
 }
 
