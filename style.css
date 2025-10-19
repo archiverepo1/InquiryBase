@@ -1,3 +1,11 @@
+/* ================================
+   InquiryBase v6.5 — Complete CSS
+   ================================ */
+
+/* Global layout */
+* {
+  box-sizing: border-box;
+}
 body {
   margin: 0;
   font-family: "Inter", Arial, sans-serif;
@@ -6,7 +14,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Hero Section */
+/* -------- Hero Section -------- */
 .hero {
   position: relative;
   height: 260px;
@@ -16,7 +24,8 @@ body {
 }
 #heroBg {
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
 }
@@ -37,21 +46,29 @@ body {
   font-size: 1.1rem;
 }
 
-/* Filters */
+/* -------- Filters bar -------- */
 .controls {
-  background: white;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  padding: 1rem;
-  text-align: center;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 1rem 2rem;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.filters {
+  flex: 1 1 auto;
+  text-align: center;
 }
 .filters label {
   margin: 0 1rem;
   font-weight: 600;
 }
-.filters input, .filters select {
+.filters input,
+.filters select {
   padding: 0.4rem 0.6rem;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -64,7 +81,42 @@ body {
   font-size: 0.85rem;
 }
 
-/* Results Grid */
+/* -------- Dashboard panel -------- */
+.overview {
+  background: #ffffff;
+  border-left: 3px solid #003366;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 0.8rem 1.2rem;
+  min-width: 220px;
+  margin-left: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.overview.hidden {
+  display: none;
+}
+.overview h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+  color: #003366;
+}
+.overview h4 {
+  margin: 0.6rem 0 0.3rem;
+  font-size: 0.9rem;
+  color: #003366;
+}
+.overview ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.overview li {
+  list-style: disc;
+  margin: 2px 0;
+  color: #222;
+}
+
+/* -------- Results grid -------- */
 .results {
   padding: 2rem;
   display: grid;
@@ -72,15 +124,15 @@ body {
   gap: 1.5rem;
 }
 .card {
-  background: white;
+  background: #fff;
   border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
   padding: 1rem 1.3rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .card h3 {
   font-size: 1.1rem;
@@ -90,9 +142,19 @@ body {
 .card p {
   font-size: 0.9rem;
   line-height: 1.4;
+  margin: 0.3rem 0;
+}
+.source-tag {
+  display: inline-block;
+  background: #003366;
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
 }
 
-/* Badges */
+/* -------- Badges -------- */
 .badges {
   margin-top: 0.5rem;
 }
@@ -111,7 +173,7 @@ body {
   background: #c8dbff;
 }
 
-/* Footer */
+/* -------- Footer -------- */
 .footer {
   text-align: center;
   padding: 1rem;
@@ -124,4 +186,16 @@ body {
   font-size: 1.1rem;
   color: #555;
   margin-top: 2rem;
+}
+
+/* -------- Responsive -------- */
+@media (max-width: 860px) {
+  .controls {
+    flex-direction: column;
+    align-items: center;
+  }
+  .overview {
+    margin-top: 1rem;
+    margin-left: 0;
+  }
 }
