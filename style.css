@@ -12,202 +12,152 @@ header {
   background-color: #072b57;
   overflow: hidden;
 }
-
 #heroBg {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 260px;
+  top: 0; left: 0;
+  width: 100%; height: 260px;
   z-index: 0;
 }
-
+.hero-text {
+  position: relative; z-index: 1;
+}
 header h1 {
-  position: relative;
-  z-index: 1;
   font-size: 2.6rem;
   margin: 0;
   padding-top: 90px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
 }
-
 header p {
-  position: relative;
-  z-index: 1;
   margin: 10px 0 60px;
   font-size: 1.05rem;
   color: #dce8f6;
 }
 
-/* --- Controls --- */
+/* Controls */
 .controls {
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
   padding: 1.2rem 1.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
+  display: flex; flex-wrap: wrap;
+  gap: 1rem; justify-content: center;
   align-items: center;
 }
-
 .controls label {
-  font-weight: 600;
-  color: #333;
+  font-weight: 600; color: #333;
 }
-
-select,
-input[type="text"] {
+select, input[type="text"] {
   font-size: 0.95rem;
   padding: 0.45rem 0.6rem;
   border: 1px solid #ccc;
   border-radius: 6px;
   min-width: 180px;
 }
-
-select:focus,
-input:focus {
+select:focus, input:focus {
   outline: none;
   border-color: #005fcc;
-  box-shadow: 0 0 0 2px rgba(0, 95, 204, 0.15);
+  box-shadow: 0 0 0 2px rgba(0,95,204,0.15);
 }
 
-.note {
-  display: block;
-  margin-top: 0.3rem;
-  color: #6a7787;
-  font-size: 0.85rem;
-}
-
-.loading {
-  text-align: center;
-  color: #777;
-  font-size: 1rem;
-  margin: 3rem auto;
-}
-
-/* --- Results grid --- */
-.results {
-  padding: 2rem 2.5rem;
-  max-width: 1300px;
-  margin: 0 auto;
+/* Results grid */
+#results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.4rem;
+  padding: 2rem 2.5rem;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+.loading {
+  text-align: center; color: #777;
+  font-size: 1rem; margin: 3rem auto;
 }
 
-/* --- Card --- */
+/* Card */
 .card {
   background: #fff;
   border: 1px solid #e3e7ea;
   border-radius: 14px;
   padding: 1.5rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   transition: all 0.25s ease;
+  opacity: 0; transform: translateY(5px);
+  animation: fadeIn 0.4s forwards;
 }
+@keyframes fadeIn { to {opacity: 1; transform: none;} }
 
 .card:hover {
   transform: translateY(-3px);
   border-color: #c6d9f3;
-  box-shadow: 0 6px 18px rgba(0, 80, 160, 0.08);
+  box-shadow: 0 6px 18px rgba(0,80,160,0.08);
 }
-
 .card h3 {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #072b57;
-  margin: 0 0 0.5rem;
+  font-size: 1.05rem; font-weight: 600;
+  color: #072b57; margin: 0 0 0.5rem;
 }
-
 .card p {
-  font-size: 0.9rem;
-  color: #444;
-  line-height: 1.45;
-  margin: 0.4rem 0;
+  font-size: 0.9rem; color: #444;
+  line-height: 1.45; margin: 0.4rem 0;
 }
-
 .card a {
-  text-decoration: none;
-  color: #005fcc;
+  text-decoration: none; color: #005fcc;
   font-weight: 600;
 }
-
-.card a:hover {
-  text-decoration: underline;
-}
-
-/* --- Source Tag --- */
+.card a:hover { text-decoration: underline; }
 .source-tag {
   display: inline-block;
-  background: #eff6ff;
-  color: #005fcc;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 5px;
-  padding: 3px 8px;
+  background: #eff6ff; color: #005fcc;
+  font-size: 0.75rem; font-weight: 600;
+  border-radius: 5px; padding: 3px 8px;
   margin-bottom: 0.7rem;
 }
 
-/* --- Data Overview --- */
-.overview {
+/* Overview Panel */
+#overview {
   position: absolute;
-  right: 2rem;
-  top: 14.5rem;
+  right: 2rem; top: 14.5rem;
   background: #fff;
   border: 1px solid #cbd8e6;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.07);
   border-radius: 10px;
   padding: 1rem 1.3rem;
-  width: 250px;
-  z-index: 2;
+  width: 250px; z-index: 2;
 }
-.overview.hidden { display: none; }
-
-.overview h3 {
-  margin: 0 0 0.4rem;
-  font-size: 1.05rem;
-  color: #072b57;
+#overview.hidden { display: none; }
+#overview h3, #overview h4 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem; color: #072b57;
+  font-weight: 700;
 }
-.overview h4 {
-  margin: 0.6rem 0 0.3rem;
-  font-size: 0.95rem;
-  color: #072b57;
-}
-.overview p {
-  font-size: 0.85rem;
-  margin: 0.2rem 0;
-}
-.overview ul {
+#overview ul {
   margin: 0.3rem 0 0;
   padding-left: 1.1rem;
-  font-size: 0.85rem;
-  color: #444;
+  font-size: 0.85rem; color: #444;
 }
-.overview li { margin-bottom: 0.3rem; }
 
-/* --- Progress Box --- */
-#progressBox {
+/* Pagination */
+.pagination {
   text-align: center;
-  margin: 1rem auto 0;
+  padding: 1rem;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
   font-size: 0.95rem;
-  color: #004b9b;
-  background: #e8f1ff;
-  border: 1px solid #c6dbff;
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  max-width: 700px;
-  box-shadow: 0 2px 5px rgba(0, 90, 200, 0.05);
-  transition: opacity 0.4s ease, transform 0.4s ease;
 }
-#progressBox.fade-out {
-  opacity: 0;
-  transform: translateY(-6px);
+.pagination button {
+  background: #005fcc;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 12px;
+  margin: 0 8px;
+  cursor: pointer;
 }
+.pagination button:hover {
+  background: #073a84;
+}
+.pagination.hidden { display: none; }
 
-/* --- Footer --- */
-.footer {
+/* Footer */
+footer {
   text-align: center;
   color: #666;
   font-size: 0.85rem;
@@ -216,18 +166,8 @@ input:focus {
   border-top: 1px solid #e0e0e0;
 }
 
-/* --- Responsive --- */
 @media (max-width: 900px) {
-  .overview {
-    position: static;
-    margin: 1.2rem auto 0;
-    width: 90%;
-  }
-  .controls {
-    flex-direction: column;
-    gap: 0.8rem;
-  }
-  .results {
-    padding: 1.3rem;
-  }
+  #overview { position: static; margin: 1.5rem auto; width: 90%; }
+  .controls { flex-direction: column; gap: 0.8rem; }
+  #results { padding: 1.3rem; }
 }
