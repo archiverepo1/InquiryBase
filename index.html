@@ -8,8 +8,11 @@
 </head>
 <body>
   <header class="hero">
-    <h1>InquiryBase</h1>
-    <p>Explore open research datasets harvested live from Figshare’s global OAI-PMH feed.</p>
+    <canvas id="heroBg"></canvas>
+    <div class="hero-text">
+      <h1 id="homeBtn">InquiryBase</h1>
+      <p>Explore open research datasets — harvested live from Figshare’s global OAI-PMH feed.</p>
+    </div>
   </header>
 
   <section class="controls">
@@ -20,7 +23,7 @@
       <label>Search:
         <input id="searchInput" type="text" placeholder="Search titles, keywords, or descriptions…">
       </label>
-      <span class="note">Auto-harvested in real time • OAI-PMH (oai_dc)</span>
+      <span class="note">Auto-harvested live • OAI-PMH (oai_dc)</span>
     </div>
   </section>
 
