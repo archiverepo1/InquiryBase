@@ -1,12 +1,9 @@
 // ==============================================
-// InquiryBase v3.5 — SA University OAI Harvester
-// Title + DOI/URL + Categories + Keywords
+// InquiryBase v4 — South African Open Research Atlas
 // ==============================================
 
-// ✅ Your Cloudflare Worker proxy
 const PROXY = "https://inquirybase.archiverepo1.workers.dev/?url=";
 
-// ---------- OAI endpoints per institution ----------
 const OAI_SOURCES = [
   { inst: "UCT (ZivaHub)", url: "https://zivahub.uct.ac.za/oai" },
   { inst: "University of Pretoria (UP)", url: "https://researchdata.up.ac.za/oai" },
@@ -18,270 +15,185 @@ const OAI_SOURCES = [
   { inst: "University of the Free State (UFS)", url: "https://ufs.figshare.com/oai" },
 ];
 
-// ---------- state ----------
-let ALL_ITEMS = [];        // unified cards
-let GROUPED = {};          // inst -> items[]
+let ALL_ITEMS = [];
 let INSTITUTIONS = new Set();
+let CATEGORIES = new Set();
 let SEARCH_TEXT = "";
 
-// ---------- small helpers ----------
-const byAlpha = (a, b) => a.localeCompare(b, undefined, { sensitivity: "base" });
+// helpers
 const norm = s => (s || "").trim();
-const containsSurvey = s => /\b(survey|questionnaire)s?\b/i.test(s || "");
+const byAlpha = (a, b) => a.localeCompare(b, undefined, { sensitivity: "base" });
+const firstN = (s, n = 250) => s && s.length > n ? s.slice(0, n) + "…" : s;
+const isDOI = s => /^10\.\d{4,9}\//.test(s) || s.startsWith("https://doi.org/");
+const pick = (xml, tag) => Array.from(xml.getElementsByTagNameNS("*", tag)).map(n => norm(n.textContent));
 
-// Heuristic: split subjects into "Categories" vs "Keywords"
-// - categories often look like discipline names (Proper Case, multi-word), or match known discipline terms
-const DISCIPLINE_HINTS = [
-  "agronomy","agricultural","veterinary","food sciences","economics","medical virology",
-  "biomedical engineering","biophysics","health","education","social sciences",
-  "environment","biodiversity","informatics","epidemiology","psychology"
-];
-
-function splitSubjects(subjects) {
-  const cats = [];
-  const keys = [];
-  subjects.forEach(s => {
-    const x = s.trim();
-    if (!x) return;
-    const lower = x.toLowerCase();
-    const isDiscipline =
-      DISCIPLINE_HINTS.some(h => lower.includes(h)) ||
-      (/[A-Z][a-z]+/.test(x) && x.split(" ").length >= 1 && x.length <= 80);
-    // Keep short generic words as keywords
-    if (isDiscipline) cats.push(x);
-    else keys.push(x);
-  });
-  // De-duplicate while preserving order
-  return {
-    categories: Array.from(new Set(cats)),
-    keywords: Array.from(new Set(keys))
-  };
-}
-
-function firstDOIorURL(ids) {
-  // Prefer DOI
-  for (const id of ids) {
-    if (/^10\.\d{4,9}\//.test(id) || id.startsWith("https://doi.org/")) {
-      return id.startsWith("http") ? id : `https://doi.org/${id}`;
-    }
-  }
-  // Else return first URL if present
-  for (const id of ids) if (id.startsWith("http")) return id;
-  // Else fallback to first id string
-  return ids[0] || "";
-}
-
-function firstN(s, n = 220) {
-  if (!s) return "";
-  const clean = s.replace(/\s+/g, " ").trim();
-  return clean.length > n ? clean.slice(0, n) + "…" : clean;
-}
-
-// ---------- OAI fetch + parse ----------
-async function fetchOAIListRecords(baseUrl, resumptionToken = null) {
-  const url = resumptionToken
-    ? `${baseUrl}?verb=ListRecords&resumptionToken=${encodeURIComponent(resumptionToken)}`
+// ---------- Fetch + parse ----------
+async function fetchOAI(baseUrl, token = null) {
+  const url = token
+    ? `${baseUrl}?verb=ListRecords&resumptionToken=${encodeURIComponent(token)}`
     : `${baseUrl}?verb=ListRecords&metadataPrefix=oai_dc`;
   const proxied = PROXY + encodeURIComponent(url);
   const r = await fetch(proxied);
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  const xmlText = await r.text();
-  return xmlText;
+  return await r.text();
 }
 
 function parseOAI(xmlText, instLabel) {
   const parser = new DOMParser();
   const xml = parser.parseFromString(xmlText, "text/xml");
-
-  // Check errors
-  const errorEl = xml.querySelector("OAI-PMH > error");
-  if (errorEl) {
-    console.warn(`[${instLabel}] OAI error:`, errorEl.textContent);
-    return { items: [], next: null };
-  }
-
   const recs = Array.from(xml.getElementsByTagName("record"));
   const items = [];
 
   recs.forEach(rec => {
     const md = rec.getElementsByTagName("metadata")[0];
     if (!md) return;
+    const titles = pick(md, "title");
+    const descs = pick(md, "description");
+    const subs = pick(md, "subject");
+    const ids = pick(md, "identifier");
+    const dates = pick(md, "date");
 
-    // Dublin Core namespace elements
-    const dc = md.getElementsByTagNameNS("*", "dc")[0] || md;
-    const pick = tag => Array.from(md.getElementsByTagNameNS("*", tag)).map(n => norm(n.textContent));
-
-    const titles = pick("title");
-    const descs = pick("description");
-    const subjects = pick("subject"); // includes both keywords + categories
-    const idents = pick("identifier");
-    const dates  = pick("date");
     const title = titles[0] || "(untitled)";
-    const joinedText = `${title} ${descs.join(" ")} ${subjects.join(" ")}`;
+    const desc = descs[0] || "";
+    const identifier = ids.find(i => isDOI(i) || i.startsWith("http")) || ids[0] || "";
+    const date = dates[0] || "";
+    const cats = [];
+    const keys = [];
 
-    // Filter: only survey / questionnaire
-    if (!containsSurvey(joinedText)) return;
-
-    const { categories, keywords } = splitSubjects(subjects);
-    const identifier = firstDOIorURL(idents);
-
-    items.push({
-      inst: instLabel,
-      title,
-      identifier,
-      date: dates[0] || "",
-      categories,
-      keywords,
-      description: firstN(descs[0] || "")
+    subs.forEach(s => {
+      if (!s) return;
+      // Basic heuristic: treat longer or Proper-case entries as categories
+      if (/[A-Z][a-z]/.test(s) && s.split(" ").length <= 6) cats.push(s);
+      else keys.push(s);
     });
+
+    cats.forEach(c => CATEGORIES.add(c));
+    items.push({ inst: instLabel, title, description: desc, identifier, date, categories: cats, keywords: keys });
   });
 
-  // Pagination
-  const tokenEl = xml.querySelector("resumptionToken");
-  const next = tokenEl && tokenEl.textContent ? tokenEl.textContent.trim() : null;
-
-  return { items, next };
+  return items;
 }
 
-async function harvestInstitution(source, maxBatches = 1) {
-  // maxBatches=1 keeps it fast. Increase later to walk full feed.
-  let token = null;
-  let collected = [];
-  for (let i = 0; i < maxBatches; i++) {
-    const xml = await fetchOAIListRecords(source.url, token);
-    const { items, next } = parseOAI(xml, source.inst);
-    collected = collected.concat(items);
+async function harvestInstitution(source, maxBatch = 1) {
+  let token = null, all = [];
+  for (let i = 0; i < maxBatch; i++) {
+    const xml = await fetchOAI(source.url, token);
+    const parsed = parseOAI(xml, source.inst);
+    all.push(...parsed);
+    const next = xml.match(/<resumptionToken>([^<]+)<\/resumptionToken>/);
     if (!next) break;
-    token = next;
+    token = next[1];
   }
-  return collected;
+  return all;
 }
 
-// ---------- render ----------
-function groupByInstitution(items) {
-  const map = {};
-  items.forEach(it => {
-    if (!map[it.inst]) map[it.inst] = [];
-    map[it.inst].push(it);
+// ---------- Rendering ----------
+function buildFilters() {
+  const instSel = document.getElementById("institutionFilter");
+  const catSel = document.getElementById("categoryFilter");
+  instSel.innerHTML = `<option value="">All</option>`;
+  catSel.innerHTML = `<option value="">All</option>`;
+
+  Array.from(INSTITUTIONS).sort(byAlpha).forEach(i => {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = i;
+    instSel.appendChild(o);
   });
-  return map;
+  Array.from(CATEGORIES).sort(byAlpha).forEach(c => {
+    const o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    catSel.appendChild(o);
+  });
+
+  instSel.addEventListener("change", render);
+  catSel.addEventListener("change", render);
+  document.getElementById("searchInput").addEventListener("input", e => {
+    SEARCH_TEXT = e.target.value.toLowerCase();
+    render();
+  });
 }
 
 function sectionTpl(inst, items) {
-  const count = items.length;
-  const id = `sec-${inst.replace(/\s+/g, "-").toLowerCase()}`;
   const wrap = document.createElement("section");
   wrap.className = "section";
   wrap.innerHTML = `
-    <div class="section-head" data-toggle="${id}">
-      <h2>${inst}</h2>
-      <span class="count-pill">${count}</span>
-    </div>
-    <div id="${id}" class="grid" style="display: grid;"></div>
-  `;
-
+    <div class="section-head"><h2>${inst}</h2><span class="count-pill">${items.length}</span></div>
+    <div class="grid"></div>`;
   const grid = wrap.querySelector(".grid");
+
   items.forEach(it => {
     const cats = it.categories.map(c => `<span class="badge">${c}</span>`).join("");
     const keys = it.keywords.map(k => `<span class="badge">${k}</span>`).join("");
-    const dateStr = it.date ? ` • <span>${new Date(it.date).toISOString().slice(0,10)}</span>` : "";
-    const aHref = it.identifier || "#";
-    const aLabel = it.identifier ? (it.identifier.startsWith("http") ? it.identifier : `https://doi.org/${it.identifier}`) : "";
-
+    const link = it.identifier && it.identifier.startsWith("http") ? it.identifier
+      : it.identifier && isDOI(it.identifier) ? `https://doi.org/${it.identifier}` : "";
+    const linkHtml = link ? `<a class="link" href="${link}" target="_blank" rel="noopener">Link / DOI ↗</a>` : "";
     const card = document.createElement("article");
     card.className = "card";
     card.innerHTML = `
       <h3>${it.title}</h3>
-      <p class="meta">${inst}${dateStr}</p>
-      ${it.description ? `<p>${it.description}</p>` : ""}
+      <p class="meta">${it.inst}${it.date ? " • " + new Date(it.date).toISOString().slice(0,10) : ""}</p>
+      ${it.description ? `<p>${firstN(it.description)}</p>` : ""}
       ${cats ? `<div class="badges">${cats}</div>` : ""}
       ${keys ? `<div class="badges">${keys}</div>` : ""}
-      ${aLabel ? `<a class="link" href="${aHref}" target="_blank" rel="noopener">Link / DOI ↗</a>` : ""}
-    `;
+      ${linkHtml}`;
     grid.appendChild(card);
-  });
-
-  // collapse/expand
-  wrap.querySelector(".section-head").addEventListener("click", () => {
-    const panel = document.getElementById(id);
-    const isOpen = panel.style.display !== "none";
-    panel.style.display = isOpen ? "none" : "grid";
   });
 
   return wrap;
 }
 
 function render() {
+  const instSel = document.getElementById("institutionFilter").value;
+  const catSel = document.getElementById("categoryFilter").value;
+  const text = SEARCH_TEXT;
   const mount = document.getElementById("results");
   mount.innerHTML = "";
 
-  // filters
-  const instSel = document.getElementById("institutionFilter").value;
-  const text = (SEARCH_TEXT || "").toLowerCase();
-
-  // filter pool
   const pool = ALL_ITEMS.filter(it => {
     const instOK = !instSel || it.inst === instSel;
-    if (!instOK) return false;
-    if (!text) return true;
-    const hay = `${it.title} ${it.description} ${it.categories.join(" ")} ${it.keywords.join(" ")}`.toLowerCase();
-    return hay.includes(text);
+    const catOK = !catSel || it.categories.includes(catSel);
+    const textOK = !text || (
+      it.title.toLowerCase().includes(text) ||
+      it.description.toLowerCase().includes(text) ||
+      it.keywords.join(" ").toLowerCase().includes(text) ||
+      it.categories.join(" ").toLowerCase().includes(text)
+    );
+    return instOK && catOK && textOK;
   });
 
-  GROUPED = groupByInstitution(pool);
-
-  const insts = Object.keys(GROUPED).sort(byAlpha);
-  if (!insts.length) {
+  if (!pool.length) {
     mount.innerHTML = `<div class="section"><div class="section-head"><h2>No results</h2></div></div>`;
     return;
   }
 
-  insts.forEach(inst => {
-    const sec = sectionTpl(inst, GROUPED[inst]);
-    mount.appendChild(sec);
+  const grouped = {};
+  pool.forEach(it => {
+    if (!grouped[it.inst]) grouped[it.inst] = [];
+    grouped[it.inst].push(it);
+  });
+
+  Object.keys(grouped).sort(byAlpha).forEach(inst => {
+    mount.appendChild(sectionTpl(inst, grouped[inst]));
   });
 }
 
-function buildInstitutionFilter() {
-  const sel = document.getElementById("institutionFilter");
-  sel.innerHTML = `<option value="">All</option>`;
-  Array.from(INSTITUTIONS).sort(byAlpha).forEach(name => {
-    const opt = document.createElement("option");
-    opt.value = name; opt.textContent = name;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener("change", render);
-}
-
-function wireSearch() {
-  const input = document.getElementById("searchInput");
-  input.addEventListener("input", () => {
-    SEARCH_TEXT = input.value || "";
-    render();
-  });
-}
-
-// ---------- load ----------
+// ---------- Load ----------
 async function loadAll() {
   const mount = document.getElementById("results");
-  mount.innerHTML = `<div class="section"><div class="section-head"><h2>Harvesting university OAI feeds…</h2></div></div>`;
-
-  // Fetch sequentially (gentle on endpoints). Set batches=1 for speed.
+  mount.innerHTML = `<div class="section"><div class="section-head"><h2>Harvesting feeds...</h2></div></div>`;
   const items = [];
+
   for (const src of OAI_SOURCES) {
     try {
       const got = await harvestInstitution(src, 1);
+      got.forEach(i => INSTITUTIONS.add(i.inst));
       items.push(...got);
     } catch (e) {
-      console.warn(`Failed ${src.inst}:`, e.message);
+      console.warn(`Failed ${src.inst}: ${e.message}`);
     }
   }
 
   ALL_ITEMS = items;
-  ALL_ITEMS.forEach(i => INSTITUTIONS.add(i.inst));
-
-  buildInstitutionFilter();
-  wireSearch();
+  buildFilters();
   render();
 }
 
