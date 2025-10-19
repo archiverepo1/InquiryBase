@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>InquiryBase — Open Research Atlas</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>InquiryBase - Open Research Atlas</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="hero">
@@ -28,12 +28,11 @@
         </select>
       </label>
       <label>Search:
-        <input id="searchInput" type="text" placeholder="Search titles, keywords, or descriptions…">
+        <input id="searchInput" type="text" placeholder="Search titles or descriptions…">
       </label>
       <span class="note">Auto-harvested live • OAI + REST APIs</span>
     </div>
 
-    <!-- Dashboard summary panel -->
     <aside id="overview" class="overview hidden">
       <h3>📊 Data Overview</h3>
       <p><strong>Total:</strong> <span id="countTotal">0</span> datasets</p>
@@ -44,12 +43,15 @@
     </aside>
   </section>
 
-  <!-- Live progress box -->
-  <div id="progressBox">Initializing…</div>
-
   <main id="results" class="results">
     <div class="loading">Harvesting open data from Figshare and Zenodo…</div>
   </main>
+
+  <div id="pagination" class="pagination hidden">
+    <button id="prevPage">⟨ Prev</button>
+    <span id="pageInfo">Page 1 of 1</span>
+    <button id="nextPage">Next ⟩</button>
+  </div>
 
   <footer class="footer">
     <p>© 2025 InquiryBase • Powered by Figshare + Zenodo • Served via Cloudflare Worker</p>
