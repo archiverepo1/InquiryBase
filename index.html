@@ -3,69 +3,315 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase — Open Research Atlas</title>
+  <title>InquiryBase — Research Data Discovery Platform</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ===== HERO ===== -->
-  <header class="hero">
-    <canvas id="heroBg"></canvas>
-    <div class="hero-text">
-      <h1 id="homeBtn">InquiryBase</h1>
-      <p>Explore open research datasets harvested live from Figshare & Zenodo.</p>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-logo">
+        <i class="fas fa-database"></i>
+        <span>InquiryBase</span>
+      </div>
+      <div class="nav-links">
+        <a href="#home" class="nav-link active">Home</a>
+        <a href="#about" class="nav-link">About</a>
+        <a href="#sources" class="nav-link">Sources</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero" id="home">
+    <div class="hero-content">
+      <h1>Discover Research Data</h1>
+      <p>Explore millions of datasets, articles, and theses from global repositories</p>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-number" id="totalRecords">0</span>
+          <span class="stat-label">Total Records</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number" id="activeSources">0</span>
+          <span class="stat-label">Active Sources</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number" id="harvestedToday">0</span>
+          <span class="stat-label">Harvested Today</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-background">
+      <div class="floating-shape shape-1"></div>
+      <div class="floating-shape shape-2"></div>
+      <div class="floating-shape shape-3"></div>
     </div>
   </header>
 
-  <!-- ===== FILTERS ===== -->
-  <section class="controls">
-    <div class="filters">
-      <label>Institution:
-        <select id="institutionFilter"><option value="">All</option></select>
-      </label>
-      <label>Source:
-        <select id="sourceFilter">
-          <option value="">All</option>
-          <option value="Figshare">Figshare</option>
-          <option value="Zenodo">Zenodo</option>
-        </select>
-      </label>
-      <label>Search:
-        <input id="searchInput" type="text" placeholder="Search titles, descriptions, or institutions…" />
-      </label>
-      <span class="note">Auto-harvested live • OAI + REST APIs</span>
-    </div>
+  <!-- Main Content -->
+  <main class="main-container">
+    <!-- Source Toggles -->
+    <section class="source-controls">
+      <div class="control-group">
+        <h3><i class="fas fa-plug"></i> Data Sources</h3>
+        <div class="toggle-grid">
+          <!-- Research Data -->
+          <div class="toggle-category">
+            <h4>Research Data</h4>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleZenodo" checked>
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Zenodo</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleFigshare" checked>
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Figshare</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleDryad">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Dryad</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleOSF">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">OSF</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleMendeley">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Mendeley</span>
+            </div>
+          </div>
 
-    <aside id="overview" class="overview hidden">
-      <h3>📊 Data Overview</h3>
-      <p><strong>Total:</strong> <span id="countTotal">0</span> datasets</p>
-      <p><strong>Figshare:</strong> <span id="countFigshare">0</span></p>
-      <p><strong>Zenodo:</strong> <span id="countZenodo">0</span></p>
-      <h4>Top Categories</h4>
-      <ul id="topCats"></ul>
-    </aside>
-  </section>
+          <!-- Articles -->
+          <div class="toggle-category">
+            <h4>Journal Articles</h4>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleUCT">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Open UCT</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleSUN">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">SUNScholar</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleUP">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">UP Repository</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleNWU">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">NWU Repository</span>
+            </div>
+          </div>
 
-  <!-- ===== RESULTS ===== -->
-  <main id="results" class="results">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Harvesting open data from Figshare and Zenodo…</div>
-    </div>
+          <!-- Theses -->
+          <div class="toggle-category">
+            <h4>Theses & Dissertations</h4>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleSUNTheses">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">SUN Theses</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleUPTheses">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">UP Theses</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleUKZNTheses">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">UKZN Theses</span>
+            </div>
+            <div class="toggle-item">
+              <label class="toggle">
+                <input type="checkbox" id="toggleUFSTheses">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">UFS Theses</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-actions">
+          <button class="btn btn-primary" id="selectAll">
+            <i class="fas fa-check-double"></i> Select All
+          </button>
+          <button class="btn btn-secondary" id="deselectAll">
+            <i class="fas fa-times"></i> Deselect All
+          </button>
+          <button class="btn btn-success" id="startHarvest">
+            <i class="fas fa-play"></i> Start Harvest
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search and Filters -->
+    <section class="search-section">
+      <div class="search-container">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" placeholder="Search titles, authors, keywords, abstracts, years, DOI...">
+          <button class="btn-search" id="searchButton">
+            <i class="fas fa-search"></i> Search
+          </button>
+        </div>
+
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Year Range:</label>
+            <select id="yearFrom">
+              <option value="">From</option>
+            </select>
+            <select id="yearTo">
+              <option value="">To</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Content Type:</label>
+            <select id="contentType">
+              <option value="all">All Types</option>
+              <option value="dataset">Datasets</option>
+              <option value="article">Articles</option>
+              <option value="thesis">Theses</option>
+              <option value="software">Software</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Sort By:</label>
+            <select id="sortBy">
+              <option value="relevance">Relevance</option>
+              <option value="date_desc">Newest First</option>
+              <option value="date_asc">Oldest First</option>
+              <option value="title">Title A-Z</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress and Status -->
+    <section class="status-section">
+      <div class="status-container">
+        <div class="status-item">
+          <span class="status-label">Harvest Status:</span>
+          <span class="status-value" id="harvestStatus">Ready</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Records Harvested:</span>
+          <span class="status-value" id="recordsHarvested">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Active Sources:</span>
+          <span class="status-value" id="activeSourceCount">0</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results Grid -->
+    <section class="results-section">
+      <div class="results-header">
+        <h3 id="resultsCount">0 Results</h3>
+        <div class="results-actions">
+          <button class="btn btn-outline" id="exportData">
+            <i class="fas fa-download"></i> Export Data
+          </button>
+          <button class="btn btn-outline" id="clearResults">
+            <i class="fas fa-trash"></i> Clear Results
+          </button>
+        </div>
+      </div>
+
+      <div id="resultsContainer" class="results-grid">
+        <div class="welcome-message">
+          <i class="fas fa-search fa-3x"></i>
+          <h3>Start Exploring Research Data</h3>
+          <p>Select data sources and start harvesting to discover research datasets, articles, and theses</p>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination">
+        <button class="pagination-btn" id="prevPage" disabled>
+          <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <span class="page-info" id="pageInfo">Page 1 of 1</span>
+        <button class="pagination-btn" id="nextPage" disabled>
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </section>
   </main>
 
-  <!-- ===== PAGINATION ===== -->
-  <div id="pagination" class="pagination hidden">
-    <button id="prevPage">⟨ Prev</button>
-    <span id="pageInfo">Page 1 of 1</span>
-    <button id="nextPage">Next ⟩</button>
-  </div>
-
-  <!-- ===== FOOTER ===== -->
+  <!-- Footer -->
   <footer class="footer">
-    <p>© 2025 InquiryBase • Powered by Figshare + Zenodo • Served via Cloudflare Worker</p>
-    <p>Developed by Vuyo Ngayeka</p>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>InquiryBase</h4>
+        <p>Advanced research data discovery platform harvesting from global repositories</p>
+      </div>
+      <div class="footer-section">
+        <h4>Sources</h4>
+        <ul>
+          <li>Zenodo</li>
+          <li>Figshare</li>
+          <li>Dryad</li>
+          <li>OSF</li>
+          <li>Mendeley Data</li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Connect</h4>
+        <div class="social-links">
+          <a href="#"><i class="fab fa-github"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 InquiryBase. Powered by multiple research repositories. Served via Cloudflare Workers.</p>
+      <p>Developed by Vuyo Ngayeka</p>
+    </div>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
