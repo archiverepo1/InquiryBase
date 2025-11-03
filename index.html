@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase — Research Data Discovery Platform</title>
+  <title>InquiryBase — Research Discovery</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -12,263 +12,198 @@
   <nav class="navbar">
     <div class="nav-container">
       <div class="nav-logo">
-        <i class="fas fa-database"></i>
+        <i class="fas fa-search"></i>
         <span>InquiryBase</span>
       </div>
       <div class="nav-links">
-        <a href="#home" class="nav-link active">Home</a>
+        <a href="#home" class="nav-link active">Search</a>
         <a href="#about" class="nav-link">About</a>
-        <a href="#sources" class="nav-link">Sources</a>
       </div>
     </div>
   </nav>
 
   <!-- Hero Section -->
-  <header class="hero" id="home">
+  <header class="hero">
     <div class="hero-content">
-      <h1>Discover Research Data</h1>
-      <p>Explore millions of datasets, articles, and theses from global repositories</p>
-      <div class="hero-stats">
-        <div class="stat">
-          <span class="stat-number" id="totalRecords">0</span>
-          <span class="stat-label">Total Records</span>
-        </div>
-        <div class="stat">
-          <span class="stat-number" id="activeSources">0</span>
-          <span class="stat-label">Active Sources</span>
-        </div>
-        <div class="stat">
-          <span class="stat-number" id="harvestedToday">0</span>
-          <span class="stat-label">Harvested Today</span>
-        </div>
-      </div>
-    </div>
-    <div class="hero-background">
-      <div class="floating-shape shape-1"></div>
-      <div class="floating-shape shape-2"></div>
-      <div class="floating-shape shape-3"></div>
+      <h1>Discover Research</h1>
+      <p>Search across millions of datasets, articles, and theses from global repositories</p>
     </div>
   </header>
 
-  <!-- Main Content -->
+  <!-- Main Search -->
   <main class="main-container">
-    <!-- Source Toggles -->
-    <section class="source-controls">
-      <div class="control-group">
-        <h3><i class="fas fa-plug"></i> Data Sources</h3>
-        <div class="toggle-grid">
-          <!-- Research Data -->
-          <div class="toggle-category">
-            <h4>Research Data</h4>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleZenodo" checked>
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">Zenodo</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleFigshare" checked>
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">Figshare</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleDryad">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">Dryad</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleOSF">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">OSF</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleMendeley">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">Mendeley</span>
-            </div>
-          </div>
-
-          <!-- Articles -->
-          <div class="toggle-category">
-            <h4>Journal Articles</h4>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleUCT">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">Open UCT</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleSUN">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">SUNScholar</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleUP">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">UP Repository</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleNWU">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">NWU Repository</span>
-            </div>
-          </div>
-
-          <!-- Theses -->
-          <div class="toggle-category">
-            <h4>Theses & Dissertations</h4>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleSUNTheses">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">SUN Theses</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleUPTheses">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">UP Theses</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleUKZNTheses">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">UKZN Theses</span>
-            </div>
-            <div class="toggle-item">
-              <label class="toggle">
-                <input type="checkbox" id="toggleUFSTheses">
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">UFS Theses</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="control-actions">
-          <button class="btn btn-primary" id="selectAll">
-            <i class="fas fa-check-double"></i> Select All
-          </button>
-          <button class="btn btn-secondary" id="deselectAll">
-            <i class="fas fa-times"></i> Deselect All
-          </button>
-          <button class="btn btn-success" id="startHarvest">
-            <i class="fas fa-play"></i> Start Harvest
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Search and Filters -->
+    <!-- Search Box -->
     <section class="search-section">
       <div class="search-container">
-        <div class="search-box">
-          <i class="fas fa-search"></i>
-          <input type="text" id="searchInput" placeholder="Search titles, authors, keywords, abstracts, years, DOI...">
-          <button class="btn-search" id="searchButton">
-            <i class="fas fa-search"></i> Search
+        <div class="search-box-large">
+          <div class="search-input-wrapper">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search research papers, datasets, theses, authors, keywords...">
+            <button class="btn-search-large" id="searchButton">
+              <i class="fas fa-search"></i>
+              Search
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Filter Buttons -->
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">
+            <i class="fas fa-layer-group"></i>
+            All Sources
+          </button>
+          <button class="filter-btn" data-filter="research">
+            <i class="fas fa-database"></i>
+            Research Data
+          </button>
+          <button class="filter-btn" data-filter="articles">
+            <i class="fas fa-file-alt"></i>
+            Journal Articles
+          </button>
+          <button class="filter-btn" data-filter="thesis">
+            <i class="fas fa-graduation-cap"></i>
+            Theses
           </button>
         </div>
 
-        <div class="filter-row">
-          <div class="filter-group">
-            <label>Year Range:</label>
-            <select id="yearFrom">
-              <option value="">From</option>
-            </select>
-            <select id="yearTo">
-              <option value="">To</option>
-            </select>
-          </div>
+        <!-- Advanced Options Toggle -->
+        <div class="advanced-toggle">
+          <button class="btn-text" id="toggleAdvanced">
+            <i class="fas fa-sliders-h"></i>
+            Advanced Filters
+          </button>
+        </div>
 
-          <div class="filter-group">
-            <label>Content Type:</label>
-            <select id="contentType">
-              <option value="all">All Types</option>
-              <option value="dataset">Datasets</option>
-              <option value="article">Articles</option>
-              <option value="thesis">Theses</option>
-              <option value="software">Software</option>
-            </select>
-          </div>
+        <!-- Advanced Filters (Initially Hidden) -->
+        <div class="advanced-filters hidden" id="advancedFilters">
+          <div class="filter-row">
+            <div class="filter-group">
+              <label>Year Range</label>
+              <div class="year-inputs">
+                <select id="yearFrom">
+                  <option value="">From Year</option>
+                </select>
+                <span>to</span>
+                <select id="yearTo">
+                  <option value="">To Year</option>
+                </select>
+              </div>
+            </div>
 
-          <div class="filter-group">
-            <label>Sort By:</label>
-            <select id="sortBy">
-              <option value="relevance">Relevance</option>
-              <option value="date_desc">Newest First</option>
-              <option value="date_asc">Oldest First</option>
-              <option value="title">Title A-Z</option>
-            </select>
+            <div class="filter-group">
+              <label>Content Type</label>
+              <select id="contentType">
+                <option value="all">All Types</option>
+                <option value="dataset">Datasets</option>
+                <option value="article">Articles</option>
+                <option value="thesis">Theses</option>
+                <option value="software">Software</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Sort By</label>
+              <select id="sortBy">
+                <option value="relevance">Relevance</option>
+                <option value="date_desc">Newest First</option>
+                <option value="date_asc">Oldest First</option>
+                <option value="title">Title A-Z</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Progress and Status -->
-    <section class="status-section">
-      <div class="status-container">
-        <div class="status-item">
-          <span class="status-label">Harvest Status:</span>
-          <span class="status-value" id="harvestStatus">Ready</span>
+    <!-- Source Management -->
+    <section class="source-management">
+      <div class="source-header">
+        <h3><i class="fas fa-plug"></i> Data Sources</h3>
+        <div class="source-actions">
+          <button class="btn btn-outline" id="manageSources">
+            <i class="fas fa-cog"></i> Manage Sources
+          </button>
         </div>
+      </div>
+
+      <!-- Source Grid -->
+      <div class="source-grid" id="sourceGrid">
+        <!-- Sources will be populated by JavaScript -->
+      </div>
+
+      <div class="harvest-controls">
+        <button class="btn btn-success btn-large" id="startHarvest">
+          <i class="fas fa-play"></i> Start Harvesting All Sources
+        </button>
+        <div class="harvest-info">
+          <span>Harvests data from all enabled sources</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Status Bar -->
+    <section class="status-bar">
+      <div class="status-items">
         <div class="status-item">
-          <span class="status-label">Records Harvested:</span>
-          <span class="status-value" id="recordsHarvested">0</span>
+          <span class="status-label">Total Records:</span>
+          <span class="status-value" id="totalRecords">0</span>
         </div>
         <div class="status-item">
           <span class="status-label">Active Sources:</span>
-          <span class="status-value" id="activeSourceCount">0</span>
+          <span class="status-value" id="activeSources">0</span>
         </div>
+        <div class="status-item">
+          <span class="status-label">Status:</span>
+          <span class="status-value" id="harvestStatus">Ready</span>
+        </div>
+      </div>
+      <div class="progress-container">
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill"></div>
         </div>
       </div>
     </section>
 
-    <!-- Results Grid -->
+    <!-- Results Section -->
     <section class="results-section">
       <div class="results-header">
-        <h3 id="resultsCount">0 Results</h3>
+        <h3 id="resultsCount">Start your search</h3>
         <div class="results-actions">
           <button class="btn btn-outline" id="exportData">
-            <i class="fas fa-download"></i> Export Data
+            <i class="fas fa-download"></i> Export
           </button>
           <button class="btn btn-outline" id="clearResults">
-            <i class="fas fa-trash"></i> Clear Results
+            <i class="fas fa-trash"></i> Clear
           </button>
         </div>
       </div>
 
-      <div id="resultsContainer" class="results-grid">
-        <div class="welcome-message">
-          <i class="fas fa-search fa-3x"></i>
-          <h3>Start Exploring Research Data</h3>
-          <p>Select data sources and start harvesting to discover research datasets, articles, and theses</p>
+      <div id="resultsContainer" class="results-container">
+        <div class="welcome-state">
+          <div class="welcome-icon">
+            <i class="fas fa-search fa-4x"></i>
+          </div>
+          <h3>Explore Research Data</h3>
+          <p>Use the search bar above to discover datasets, articles, and theses from global repositories</p>
+          <div class="welcome-features">
+            <div class="feature">
+              <i class="fas fa-database"></i>
+              <span>Research Data</span>
+            </div>
+            <div class="feature">
+              <i class="fas fa-file-alt"></i>
+              <span>Journal Articles</span>
+            </div>
+            <div class="feature">
+              <i class="fas fa-graduation-cap"></i>
+              <span>Theses & Dissertations</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Pagination -->
-      <div class="pagination" id="pagination">
+      <div class="pagination hidden" id="pagination">
         <button class="pagination-btn" id="prevPage" disabled>
           <i class="fas fa-chevron-left"></i> Previous
         </button>
@@ -285,30 +220,21 @@
     <div class="footer-content">
       <div class="footer-section">
         <h4>InquiryBase</h4>
-        <p>Advanced research data discovery platform harvesting from global repositories</p>
+        <p>Advanced research discovery platform</p>
       </div>
       <div class="footer-section">
         <h4>Sources</h4>
-        <ul>
-          <li>Zenodo</li>
-          <li>Figshare</li>
-          <li>Dryad</li>
-          <li>OSF</li>
-          <li>Mendeley Data</li>
-        </ul>
-      </div>
-      <div class="footer-section">
-        <h4>Connect</h4>
-        <div class="social-links">
-          <a href="#"><i class="fab fa-github"></i></a>
-          <a href="#"><i class="fab fa-twitter"></i></a>
-          <a href="#"><i class="fab fa-linkedin"></i></a>
+        <div class="source-tags">
+          <span class="source-tag">Zenodo</span>
+          <span class="source-tag">Figshare</span>
+          <span class="source-tag">Dryad</span>
+          <span class="source-tag">OSF</span>
+          <span class="source-tag">Mendeley</span>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2025 InquiryBase. Powered by multiple research repositories. Served via Cloudflare Workers.</p>
-      <p>Developed by Vuyo Ngayeka</p>
+      <p>&copy; 2025 InquiryBase. Powered by multiple research repositories.</p>
     </div>
   </footer>
 
