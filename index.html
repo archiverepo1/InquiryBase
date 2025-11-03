@@ -1,405 +1,552 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InquiryBase — Research Discovery</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q Data - Research Data Harvesting</title>
+    <style>
+        :root {
+            --primary-color: #0F204B;
+            --secondary-color: #A71930;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .search-section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        
+        .search-box {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        
+        .search-button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .search-button:hover {
+            background-color: #8a1426;
+        }
+        
+        .source-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .source-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .source-button:hover {
+            background-color: #1a2f6b;
+        }
+        
+        .advanced-toggle {
+            color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        
+        .advanced-search {
+            display: none;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            border-left: 3px solid var(--secondary-color);
+        }
+        
+        .advanced-search.active {
+            display: block;
+        }
+        
+        .advanced-search input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+        }
+        
+        .boolean-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .boolean-option {
+            background-color: white;
+            border: 1px solid var(--medium-gray);
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .boolean-option.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-section.active {
+            display: block;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+        
+        .results-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .harvest-button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .source-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .source-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .source-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .source-type {
+            color: var(--secondary-color);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .source-status {
+            display: inline-block;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .zotero-section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-top: 30px;
+        }
+        
+        .zotero-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .zotero-logo {
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .zotero-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .zotero-description {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .zotero-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .zotero-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .zotero-button:hover {
+            background-color: #1a2f6b;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            height: 5px;
+            background-color: var(--medium-gray);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background-color: var(--secondary-color);
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .harvest-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .source-buttons {
+                flex-wrap: wrap;
+            }
+            
+            .sources-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .zotero-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-  <!-- Navigation -->
-  <nav class="navbar">
-    <div class="nav-container">
-      <div class="nav-logo">
-        <i class="fas fa-search"></i>
-        <span>InquiryBase</span>
-      </div>
-      <div class="nav-links">
-        <a href="#home" class="nav-link active">Search</a>
-        <a href="#about" class="nav-link">About</a>
-      </div>
+    <header>
+        <div class="header-content">
+            <div class="logo">Q Data</div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <section class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
+                <button class="search-button">Search</button>
+            </div>
+            
+            <div class="source-buttons">
+                <button class="source-button" data-type="all">All Sources</button>
+                <button class="source-button" data-type="research">Research Data</button>
+                <button class="source-button" data-type="articles">Journal Articles</button>
+                <button class="source-button" data-type="theses">Theses</button>
+            </div>
+            
+            <div class="advanced-toggle">Advanced Filters</div>
+            
+            <div class="advanced-search">
+                <div class="boolean-options">
+                    <div class="boolean-option active" data-operator="AND">AND</div>
+                    <div class="boolean-option" data-operator="OR">OR</div>
+                    <div class="boolean-option" data-operator="NOT">NOT</div>
+                </div>
+                <input type="text" placeholder="Title keywords...">
+                <input type="text" placeholder="Author name...">
+                <input type="text" placeholder="Date range (YYYY-YYYY)...">
+                <input type="text" placeholder="Subject area...">
+                <button class="search-button" style="border-radius: 4px; margin-top: 10px;">Apply Filters</button>
+            </div>
+        </section>
+        
+        <section class="results-section">
+            <div class="results-header">
+                <div class="results-title">Harvested Results</div>
+                <button class="harvest-button">Harvest All</button>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+            <div class="harvest-status">Ready to harvest</div>
+            
+            <div class="sources-grid">
+                <!-- Research Data Sources -->
+                <div class="source-card" data-type="research">
+                    <div class="source-name">Zenodo</div>
+                    <div class="source-type">RESEARCH</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <div class="source-card" data-type="research">
+                    <div class="source-name">OSF</div>
+                    <div class="source-type">RESEARCH</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <div class="source-card" data-type="research">
+                    <div class="source-name">Figshare</div>
+                    <div class="source-type">RESEARCH</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <div class="source-card" data-type="research">
+                    <div class="source-name">Mendeley Data</div>
+                    <div class="source-type">RESEARCH</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <div class="source-card" data-type="research">
+                    <div class="source-name">Dryad</div>
+                    <div class="source-type">RESEARCH</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <!-- Journal Articles Sources -->
+                <div class="source-card" data-type="articles">
+                    <div class="source-name">Open UCT</div>
+                    <div class="source-type">ARTICLES</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <div class="source-card" data-type="articles">
+                    <div class="source-name">SUNScholar</div>
+                    <div class="source-type">ARTICLES</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+                
+                <div class="source-card" data-type="articles">
+                    <div class="source-name">UP Repository</div>
+                    <div class="source-type">ARTICLES</div>
+                    <div class="source-status">Ready to harvest</div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="zotero-section">
+            <div class="zotero-header">
+                <div class="zotero-logo">Z</div>
+                <div class="zotero-title">Your Referencing Manager: Zotero</div>
+            </div>
+            <div class="zotero-description">
+                Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research. 
+                Save sources directly from your browser with a single click, then organize them into collections using tags.
+            </div>
+            <div class="zotero-buttons">
+                <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
+                <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
+                <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
+            </div>
+        </section>
+        
+        <div class="footer">
+            Q Data Research Platform &copy; 2023
+        </div>
     </div>
-  </nav>
-
-  <!-- Hero Section -->
-  <header class="hero">
-    <div class="hero-content">
-      <h1>Discover Research</h1>
-      <p>Search across millions of datasets, articles, and theses from global repositories</p>
-    </div>
-  </header>
-
-  <!-- Main Search -->
-  <main class="main-container">
-    <!-- Search Box -->
-    <section class="search-section">
-      <div class="search-container">
-        <div class="search-box-large">
-          <div class="search-input-wrapper">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" id="searchInput" placeholder="Search research papers, datasets, theses, authors, keywords...">
-            <button class="btn-search-large" id="searchButton">
-              <i class="fas fa-search"></i>
-              Search
-            </button>
-          </div>
-        </div>
-
-        <!-- Quick Filter Buttons -->
-        <div class="filter-buttons">
-          <button class="filter-btn active" data-filter="all">
-            <i class="fas fa-layer-group"></i>
-            All Sources
-          </button>
-          <button class="filter-btn" data-filter="research">
-            <i class="fas fa-database"></i>
-            Research Data
-          </button>
-          <button class="filter-btn" data-filter="articles">
-            <i class="fas fa-file-alt"></i>
-            Journal Articles
-          </button>
-          <button class="filter-btn" data-filter="thesis">
-            <i class="fas fa-graduation-cap"></i>
-            Theses
-          </button>
-        </div>
-
-        <!-- Advanced Options Toggle -->
-        <div class="advanced-toggle">
-          <button class="btn-text" id="toggleAdvanced">
-            <i class="fas fa-sliders-h"></i>
-            Advanced Filters
-          </button>
-        </div>
-
-        <!-- Advanced Filters (Initially Hidden) -->
-        <div class="advanced-filters hidden" id="advancedFilters">
-          <div class="filter-row">
-            <div class="filter-group">
-              <label>Year Range</label>
-              <div class="year-inputs">
-                <select id="yearFrom">
-                  <option value="">From Year</option>
-                </select>
-                <span>to</span>
-                <select id="yearTo">
-                  <option value="">To Year</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="filter-group">
-              <label>Content Type</label>
-              <select id="contentType">
-                <option value="all">All Types</option>
-                <option value="dataset">Datasets</option>
-                <option value="article">Articles</option>
-                <option value="thesis">Theses</option>
-                <option value="software">Software</option>
-              </select>
-            </div>
-
-            <div class="filter-group">
-              <label>Sort By</label>
-              <select id="sortBy">
-                <option value="relevance">Relevance</option>
-                <option value="date_desc">Newest First</option>
-                <option value="date_asc">Oldest First</option>
-                <option value="title">Title A-Z</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Source Management -->
-    <section class="source-management">
-      <div class="source-header">
-        <h3><i class="fas fa-plug"></i> Data Sources</h3>
-        <div class="source-actions">
-          <button class="btn btn-outline" id="manageSources">
-            <i class="fas fa-cog"></i> Manage Sources
-          </button>
-        </div>
-      </div>
-
-      <!-- Source Grid -->
-      <div class="source-grid" id="sourceGrid">
-        <!-- Research Data Category -->
-        <div class="source-category">
-          <h4>Research Data</h4>
-          <div class="source-category-grid">
-            <div class="source-card active">
-              <div class="source-header-row">
-                <span class="source-name">Zenodo</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="zenodo" checked>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">research</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card active">
-              <div class="source-header-row">
-                <span class="source-name">Figshare</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="figshare" checked>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">research</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">Dryad</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="dryad">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">research</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">OSF</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="osf">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">research</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">Mendeley Data</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="mendeley">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">research</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Journal Articles Category -->
-        <div class="source-category">
-          <h4>Journal Articles</h4>
-          <div class="source-category-grid">
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">Open UCT</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="uct">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">articles</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">SUNScholar</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="sun">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">articles</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">UP Repository</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="up">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">articles</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">NWU Repository</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="nwu">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">articles</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Theses Category -->
-        <div class="source-category">
-          <h4>Theses & Dissertations</h4>
-          <div class="source-category-grid">
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">SUN Theses</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="sun-theses">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">thesis</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">UP Theses</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="up-theses">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">thesis</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">UKZN Theses</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="ukzn-theses">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">thesis</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-            <div class="source-card">
-              <div class="source-header-row">
-                <span class="source-name">UFS Theses</span>
-                <label class="source-toggle">
-                  <input type="checkbox" class="source-toggle-input" data-source-id="ufs-theses">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="source-type">thesis</div>
-              <div class="source-stats">Ready to harvest</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="harvest-controls">
-        <button class="btn btn-success btn-large" id="startHarvest">
-          <i class="fas fa-play"></i> Start Harvesting All Sources
-        </button>
-        <div class="harvest-info">
-          <span>Harvests data from all enabled sources</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Status Bar -->
-    <section class="status-bar">
-      <div class="status-items">
-        <div class="status-item">
-          <span class="status-label">Total Records:</span>
-          <span class="status-value" id="totalRecords">0</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Active Sources:</span>
-          <span class="status-value" id="activeSources">0</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Status:</span>
-          <span class="status-value" id="harvestStatus">Ready</span>
-        </div>
-      </div>
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Results Section -->
-    <section class="results-section">
-      <div class="results-header">
-        <h3 id="resultsCount">Start your search</h3>
-        <div class="results-actions">
-          <button class="btn btn-outline" id="exportData">
-            <i class="fas fa-download"></i> Export
-          </button>
-          <button class="btn btn-outline" id="clearResults">
-            <i class="fas fa-trash"></i> Clear
-          </button>
-        </div>
-      </div>
-
-      <div id="resultsContainer" class="results-container">
-        <div class="welcome-state">
-          <div class="welcome-icon">
-            <i class="fas fa-search fa-4x"></i>
-          </div>
-          <h3>Explore Research Data</h3>
-          <p>Use the search bar above to discover datasets, articles, and theses from global repositories</p>
-          <div class="welcome-features">
-            <div class="feature">
-              <i class="fas fa-database"></i>
-              <span>Research Data</span>
-            </div>
-            <div class="feature">
-              <i class="fas fa-file-alt"></i>
-              <span>Journal Articles</span>
-            </div>
-            <div class="feature">
-              <i class="fas fa-graduation-cap"></i>
-              <span>Theses & Dissertations</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pagination -->
-      <div class="pagination hidden" id="pagination">
-        <button class="pagination-btn" id="prevPage" disabled>
-          <i class="fas fa-chevron-left"></i> Previous
-        </button>
-        <span class="page-info" id="pageInfo">Page 1 of 1</span>
-        <button class="pagination-btn" id="nextPage" disabled>
-          Next <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="footer-content">
-      <div class="footer-section">
-        <h4>InquiryBase</h4>
-        <p>Advanced research discovery platform</p>
-      </div>
-      <div class="footer-section">
-        <h4>Sources</h4>
-        <div class="source-tags">
-          <span class="source-tag">Zenodo</span>
-          <span class="source-tag">Figshare</span>
-          <span class="source-tag">Dryad</span>
-          <span class="source-tag">OSF</span>
-          <span class="source-tag">Mendeley</span>
-        </div>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <p>&copy; 2025 InquiryBase. Powered by multiple research repositories.</p>
-    </div>
-  </footer>
-
-  <script src="app.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const searchInput = document.querySelector('.search-input');
+            const searchButton = document.querySelector('.search-button');
+            const sourceButtons = document.querySelectorAll('.source-button');
+            const advancedToggle = document.querySelector('.advanced-toggle');
+            const advancedSearch = document.querySelector('.advanced-search');
+            const booleanOptions = document.querySelectorAll('.boolean-option');
+            const resultsSection = document.querySelector('.results-section');
+            const harvestButton = document.querySelector('.harvest-button');
+            const sourceCards = document.querySelectorAll('.source-card');
+            const progressBar = document.querySelector('.progress');
+            const harvestStatus = document.querySelector('.harvest-status');
+            
+            // Advanced filters toggle
+            advancedToggle.addEventListener('click', function() {
+                advancedSearch.classList.toggle('active');
+            });
+            
+            // Boolean search options
+            booleanOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    booleanOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // Search functionality
+            searchButton.addEventListener('click', performSearch);
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            // Source buttons functionality
+            sourceButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    filterSources(type);
+                    startHarvest(type);
+                });
+            });
+            
+            // Harvest all button
+            harvestButton.addEventListener('click', function() {
+                startHarvest('all');
+            });
+            
+            // Function to perform search
+            function performSearch() {
+                const query = searchInput.value.trim();
+                if (query) {
+                    resultsSection.classList.add('active');
+                    filterSources('all');
+                    startHarvest('search');
+                }
+            }
+            
+            // Function to filter sources by type
+            function filterSources(type) {
+                sourceCards.forEach(card => {
+                    if (type === 'all' || card.getAttribute('data-type') === type) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Function to simulate harvesting process
+            function startHarvest(type) {
+                resultsSection.classList.add('active');
+                harvestStatus.textContent = 'Harvesting data...';
+                
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        harvestStatus.textContent = 'Harvest complete!';
+                        
+                        // Show a success message after a short delay
+                        setTimeout(() => {
+                            alert(`Successfully harvested ${type === 'all' ? 'all sources' : type} data!`);
+                        }, 500);
+                    }
+                    progressBar.style.width = `${progress}%`;
+                }, 200);
+            }
+        });
+    </script>
 </body>
 </html>
