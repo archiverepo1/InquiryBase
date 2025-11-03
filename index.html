@@ -3,99 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Research Data Harvester</title>
+    <title>Q Data - Research Data Harvesting</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Zotero integration -->
     <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
     <link rel="schema.citation" href="http://purl.org/spar/cito/">
 </head>
 <body>
+    <header>
+        <div class="header-content">
+            <div class="logo-container">
+                <div class="logo">
+                    <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo">
+                </div>
+                <div class="title">Q Data Research Hub</div>
+            </div>
+        </div>
+    </header>
+    
     <div class="container">
-        <header>
-            <h1>Research Data Harvester</h1>
-            <div class="controls">
-                <button id="harvestBtn" class="btn btn-primary">Ready to harvest</button>
-                <button id="stopBtn" class="btn btn-secondary">Stop Harvesting</button>
-                <button id="expandBtn" class="btn btn-outline">Expand Search</button>
+        <section class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search by keyword, title, or author...">
+                <button class="search-button" id="searchBtn">Search</button>
             </div>
-        </header>
-
-        <main>
-            <div class="search-section">
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Discover datasets, articles, and theses from global repositories...">
-                    <button id="searchBtn" class="btn btn-primary">Search</button>
-                </div>
+            
+            <div class="source-buttons">
+                <button class="source-button active" data-type="all">All Sources</button>
+                <button class="source-button" data-type="research">Research Data</button>
+                <button class="source-button" data-type="articles">Journal Articles</button>
+                <button class="source-button" data-type="theses">Theses</button>
             </div>
-
-            <!-- Filters Section (hidden by default) -->
-            <div id="filtersSection" class="filters-section" style="display: none;">
-                <div class="filters-header">
-                    <h3>Filters</h3>
-                    <button id="clearFilters" class="btn btn-link">Clear all</button>
+            
+            <div class="advanced-toggle" id="advancedToggle">Advanced Filters</div>
+            
+            <div class="advanced-search" id="advancedFilters">
+                <div class="boolean-options">
+                    <div class="boolean-option active" data-operator="AND">AND</div>
+                    <div class="boolean-option" data-operator="OR">OR</div>
+                    <div class="boolean-option" data-operator="NOT">NOT</div>
                 </div>
-                <div class="filters-grid">
-                    <div class="filter-group">
-                        <label>Content Type</label>
-                        <select id="typeFilter" multiple class="filter-select">
-                            <option value="dataset">Research Data</option>
-                            <option value="article">Journal Articles</option>
-                            <option value="thesis">Theses & Dissertations</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Year</label>
-                        <select id="yearFilter" multiple class="filter-select">
-                            <!-- Years will be populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Authors</label>
-                        <select id="authorFilter" multiple class="filter-select">
-                            <!-- Authors will be populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Relevance</label>
-                        <select id="relevanceFilter" class="filter-select">
-                            <option value="most-relevant">Most Relevant</option>
-                            <option value="most-recent">Most Recent</option>
-                            <option value="most-cited">Most Cited</option>
-                        </select>
-                    </div>
+                <input type="text" id="titleFilter" placeholder="Title keywords...">
+                <input type="text" id="authorFilter" placeholder="Author name...">
+                <input type="text" id="dateFilter" placeholder="Date range (YYYY-YYYY)...">
+                <input type="text" id="subjectFilter" placeholder="Subject area...">
+                <button class="search-button" id="applyFilters">Apply Filters</button>
+            </div>
+        </section>
+        
+        <section class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div class="results-title">Harvested Results</div>
+                <div class="results-controls">
+                    <button class="harvest-button" id="harvestBtn">Ready to harvest</button>
+                    <button class="harvest-button stop" id="stopBtn" style="display: none;">Stop Harvesting</button>
+                    <button class="harvest-button expand" id="expandBtn">Expand Search</button>
                 </div>
             </div>
-
-            <!-- Results Section -->
-            <div id="resultsSection" class="results-section" style="display: none;">
-                <div class="results-header">
-                    <h3 id="resultsCount">Search Results</h3>
-                    <div class="results-actions">
-                        <button id="exportZotero" class="btn btn-outline">Export to Zotero</button>
-                        <button id="selectAll" class="btn btn-link">Select All</button>
-                    </div>
+            
+            <!-- Results Filters -->
+            <div class="results-filters" id="resultsFilters" style="display: none;">
+                <div class="filter-group">
+                    <label>Content Type:</label>
+                    <select id="contentTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="research">Research Data</option>
+                        <option value="articles">Journal Articles</option>
+                        <option value="theses">Theses</option>
+                    </select>
                 </div>
-                <div id="resultsContainer" class="results-container">
-                    <!-- Results will be populated here -->
+                <div class="filter-group">
+                    <label>Year:</label>
+                    <select id="yearFilter">
+                        <option value="all">All Years</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
                 </div>
-                <div class="pagination">
-                    <button id="prevPage" class="btn btn-outline">Previous</button>
-                    <span id="pageInfo">Page 1 of 1</span>
-                    <button id="nextPage" class="btn btn-outline">Next</button>
+                <div class="filter-group">
+                    <label>Author:</label>
+                    <select id="authorResultsFilter">
+                        <option value="all">All Authors</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
                 </div>
+                <div class="filter-group">
+                    <label>Sort by:</label>
+                    <select id="sortFilter">
+                        <option value="relevance">Most Relevant</option>
+                        <option value="date">Most Recent</option>
+                        <option value="title">Title A-Z</option>
+                    </select>
+                </div>
+                <button class="zotero-export" id="zoteroExport">Export to Zotero</button>
             </div>
-
-            <!-- Loading State -->
-            <div id="loadingSection" class="loading-section" style="display: none;">
-                <div class="spinner"></div>
-                <p>Searching repositories...</p>
+            
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
             </div>
-        </main>
+            <div class="harvest-status" id="harvestStatus">Ready to harvest</div>
+            
+            <div class="results-container" id="resultsContainer">
+                <!-- Results will be populated here -->
+            </div>
+            
+            <div class="pagination" id="pagination" style="display: none;">
+                <button id="prevPage">Previous</button>
+                <span id="pageInfo">Page 1 of 1</span>
+                <button id="nextPage">Next</button>
+            </div>
+        </section>
+        
+        <section class="zotero-section">
+            <div class="zotero-header">
+                <div class="zotero-logo">Z</div>
+                <div class="zotero-title">Your Referencing Manager: Zotero</div>
+            </div>
+            <div class="zotero-description">
+                Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research. 
+                Save sources directly from your browser with a single click, then organize them into collections using tags.
+            </div>
+            <div class="zotero-buttons">
+                <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
+                <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
+                <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
+            </div>
+        </section>
     </div>
-
-    <!-- Zotero translation server info -->
-    <meta name="citation_language" content="en">
-    <meta name="citation_title" content="Research Data Harvester">
+    
+    <div class="top-footer">
+        <div class="top-footer-content">
+            <div class="copyright">Q Data Research Platform © 2025</div>
+            <button class="email-button" id="emailBtn">Email Us</button>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        Research Data Harvesting System
+    </footer>
     
     <script src="script.js"></script>
 </body>
