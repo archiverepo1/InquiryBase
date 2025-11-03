@@ -5,7 +5,8 @@
 class InquiryBase {
     constructor() {
         // UPDATE THIS LINE WITH YOUR ACTUAL WORKER URL
-        this.proxy = "https://inquirybase.YOUR-SUBDOMAIN.workers.dev/?url=";
+        // Get your worker URL from Cloudflare dashboard
+        this.proxy = "https://inquirybase.your-subdomain.workers.dev/?url=";
         this.datasets = new Map();
         this.isHarvesting = false;
         this.currentPage = 1;
@@ -49,7 +50,7 @@ class InquiryBase {
     initializeApp() {
         this.initializeEventListeners();
         this.initializeYearFilters();
-        this.renderSourceGrid();
+        this.updateSourceCount();
         this.loadCachedData();
         this.updateUI();
         this.testWorkerConnection();
@@ -130,6 +131,7 @@ class InquiryBase {
         // Actions
         document.getElementById('exportData').addEventListener('click', () => this.exportData());
         document.getElementById('clearResults').addEventListener('click', () => this.clearResults());
+        document.getElementById('manageSources').addEventListener('click', () => this.manageSources());
     }
 
     setActiveFilter(filter) {
@@ -152,8 +154,10 @@ class InquiryBase {
         
         if (advancedFilters.classList.contains('hidden')) {
             icon.className = 'fas fa-sliders-h';
+            toggleBtn.innerHTML = '<i class="fas fa-sliders-h"></i> Advanced Filters';
         } else {
             icon.className = 'fas fa-times';
+            toggleBtn.innerHTML = '<i class="fas fa-times"></i> Hide Filters';
         }
     }
 
@@ -162,63 +166,61 @@ class InquiryBase {
         const yearFrom = document.getElementById('yearFrom');
         const yearTo = document.getElementById('yearTo');
 
+        // Clear existing options
+        yearFrom.innerHTML = '<option value="">From Year</option>';
+        yearTo.innerHTML = '<option value="">To Year</option>';
+
         for (let year = currentYear; year >= 1950; year--) {
             yearFrom.innerHTML += `<option value="${year}">${year}</option>`;
             yearTo.innerHTML += `<option value="${year}">${year}</option>`;
         }
     }
 
-    renderSourceGrid() {
-        const grid = document.getElementById('sourceGrid');
-        const categories = {
-            research: 'Research Data',
-            articles: 'Journal Articles', 
-            thesis: 'Theses & Dissertations'
-        };
-
-        let html = '';
-        
-        Object.entries(categories).forEach(([category, title]) => {
-            const categorySources = this.sources.filter(s => s.category === category);
-            
-            html += `
-                <div class="source-category">
-                    <h4>${title}</h4>
-                    <div class="source-category-grid">
-                        ${categorySources.map(source => `
-                            <div class="source-card ${source.enabled ? 'active' : ''}">
-                                <div class="source-header-row">
-                                    <span class="source-name">${source.name}</span>
-                                    <label class="source-toggle">
-                                        <input type="checkbox" class="source-toggle-input" 
-                                               data-source-id="${source.id}" 
-                                               ${source.enabled ? 'checked' : ''}>
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                                <div class="source-type">${source.type}</div>
-                                <div class="source-stats">Ready to harvest</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        });
-
-        grid.innerHTML = html;
-    }
-
     toggleSource(sourceId, enabled) {
         const source = this.sources.find(s => s.id === sourceId);
         if (source) {
             source.enabled = enabled;
+            
+            // Update card appearance
+            const sourceCard = document.querySelector(`[data-source-id="${sourceId}"]`).closest('.source-card');
+            if (sourceCard) {
+                sourceCard.classList.toggle('active', enabled);
+            }
+            
             this.updateSourceCount();
+            this.saveToCache();
         }
     }
 
     updateSourceCount() {
         const activeSources = this.sources.filter(s => s.enabled).length;
         document.getElementById('activeSources').textContent = activeSources;
+    }
+
+    manageSources() {
+        // Simple select all/none functionality
+        const allEnabled = this.sources.every(s => s.enabled);
+        
+        this.sources.forEach(source => {
+            source.enabled = !allEnabled;
+            const checkbox = document.querySelector(`[data-source-id="${source.id}"]`);
+            if (checkbox) {
+                checkbox.checked = !allEnabled;
+            }
+            const sourceCard = document.querySelector(`[data-source-id="${source.id}"]`).closest('.source-card');
+            if (sourceCard) {
+                sourceCard.classList.toggle('active', !allEnabled);
+            }
+        });
+        
+        this.updateSourceCount();
+        this.saveToCache();
+        
+        // Update button text
+        const manageBtn = document.getElementById('manageSources');
+        manageBtn.innerHTML = allEnabled 
+            ? '<i class="fas fa-cog"></i> Enable All Sources' 
+            : '<i class="fas fa-cog"></i> Disable All Sources';
     }
 
     async startHarvesting() {
@@ -256,8 +258,12 @@ class InquiryBase {
 
                 this.updateUI();
                 this.saveToCache();
+                
+                // Small delay to avoid rate limiting
+                await this.delay(1000);
             } catch (error) {
                 console.error(`Failed to harvest ${source.name}:`, error);
+                this.updateHarvestStatus(`Error harvesting ${source.name}`, progress);
             }
         }
 
@@ -269,9 +275,81 @@ class InquiryBase {
     async harvestSource(source) {
         console.log(`Harvesting from ${source.name}...`);
         
-        // This would call the actual harvesting methods
-        // For now, return empty array as placeholder
-        return [];
+        try {
+            if (source.id === 'zenodo') {
+                return await this.harvestZenodo();
+            }
+            // Add other source harvesting methods here
+            // For now, return mock data for demonstration
+            return this.generateMockData(source);
+        } catch (error) {
+            console.error(`Error harvesting ${source.name}:`, error);
+            return [];
+        }
+    }
+
+    async harvestZenodo() {
+        const items = [];
+        try {
+            const url = 'https://zenodo.org/api/records?size=50&sort=mostrecent';
+            const response = await fetch(this.proxy + encodeURIComponent(url));
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            
+            data.hits?.hits?.forEach(item => {
+                const metadata = item.metadata || {};
+                items.push({
+                    id: item.id,
+                    title: metadata.title || 'Untitled',
+                    authors: metadata.creators?.map(c => c.name) || [],
+                    description: this.cleanDescription(metadata.description),
+                    keywords: [...(metadata.keywords || []), ...(metadata.subjects?.map(s => s.term) || [])],
+                    year: new Date(metadata.publication_date || Date.now()).getFullYear(),
+                    doi: metadata.doi,
+                    url: item.links?.html,
+                    source: 'Zenodo',
+                    type: 'research',
+                    content_type: metadata.resource_type?.title || 'Dataset'
+                });
+            });
+            
+            console.log(`✅ Harvested ${items.length} items from Zenodo`);
+        } catch (error) {
+            console.error('Error fetching Zenodo:', error);
+        }
+        
+        return items;
+    }
+
+    generateMockData(source) {
+        // Generate mock data for demonstration
+        const mockItems = [];
+        const types = {
+            research: ['Dataset', 'Software', 'Collection'],
+            articles: ['Research Article', 'Review Paper', 'Conference Paper'],
+            thesis: ['PhD Thesis', 'Master Thesis', 'Dissertation']
+        };
+        
+        for (let i = 0; i < 5; i++) {
+            mockItems.push({
+                id: `${source.id}-${i}-${Date.now()}`,
+                title: `Sample ${source.type} from ${source.name} - ${i + 1}`,
+                authors: ['Researcher A', 'Researcher B', 'Researcher C'],
+                description: `This is a sample ${source.type} item harvested from ${source.name}. It contains research data and metadata for demonstration purposes.`,
+                keywords: ['sample', 'research', 'data', 'demonstration'],
+                year: 2023 + (i % 3),
+                doi: `10.1234/sample-${source.id}-${i}`,
+                url: `https://example.com/${source.id}/${i}`,
+                source: source.name,
+                type: source.type,
+                content_type: types[source.type]?.[i % types[source.type].length] || 'Research'
+            });
+        }
+        
+        console.log(`✅ Generated ${mockItems.length} mock items from ${source.name}`);
+        return mockItems;
     }
 
     // Search functionality
@@ -510,6 +588,16 @@ class InquiryBase {
         this.updateSourceCount();
     }
 
+    cleanDescription(description) {
+        if (!description) return 'No description available';
+        // Remove HTML tags and limit length
+        return description.replace(/<[^>]*>/g, '').substring(0, 200) + '...';
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     // Data management
     saveToCache() {
         const data = {
@@ -528,7 +616,18 @@ class InquiryBase {
                 this.datasets = new Map(data.datasets);
                 this.sources = data.sources || this.sources;
                 this.updateUI();
-                this.renderSourceGrid();
+                
+                // Update UI to reflect loaded sources
+                this.sources.forEach(source => {
+                    const checkbox = document.querySelector(`[data-source-id="${source.id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = source.enabled;
+                    }
+                    const sourceCard = document.querySelector(`[data-source-id="${source.id}"]`)?.closest('.source-card');
+                    if (sourceCard) {
+                        sourceCard.classList.toggle('active', source.enabled);
+                    }
+                });
             }
         } catch (error) {
             console.error('Error loading cached data:', error);
@@ -569,11 +668,26 @@ class InquiryBase {
     downloadItem(itemId) {
         console.log('Download item:', itemId);
         // Implementation for item download
+        alert('Download functionality would be implemented here');
     }
 
     viewItem(itemId) {
         console.log('View item:', itemId);
-        // Implementation for viewing item in original source
+        // Find the item and open its URL
+        let targetItem = null;
+        for (const [type, items] of this.datasets) {
+            const item = items.find(i => i.id === itemId);
+            if (item) {
+                targetItem = item;
+                break;
+            }
+        }
+        
+        if (targetItem && targetItem.url) {
+            window.open(targetItem.url, '_blank');
+        } else {
+            alert('No URL available for this item');
+        }
     }
 }
 
