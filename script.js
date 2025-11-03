@@ -1,5 +1,5 @@
 // ============================================
-// InquiryBase v10.0 — Production Ready
+// InquiryBase v11.0 — Clean Modern Interface
 // ============================================
 
 class InquiryBase {
@@ -10,6 +10,7 @@ class InquiryBase {
         this.currentPage = 1;
         this.pageSize = 12;
         this.searchTerm = '';
+        this.currentFilter = 'all';
         this.filters = {
             yearFrom: '',
             yearTo: '',
@@ -17,26 +18,59 @@ class InquiryBase {
             sortBy: 'relevance'
         };
         
+        this.sources = this.initializeSources();
         this.initializeApp();
+    }
+
+    initializeSources() {
+        return [
+            // Research Data
+            { id: 'zenodo', name: 'Zenodo', type: 'research', enabled: true, category: 'research' },
+            { id: 'figshare', name: 'Figshare', type: 'research', enabled: true, category: 'research' },
+            { id: 'dryad', name: 'Dryad', type: 'research', enabled: false, category: 'research' },
+            { id: 'osf', name: 'OSF', type: 'research', enabled: false, category: 'research' },
+            { id: 'mendeley', name: 'Mendeley Data', type: 'research', enabled: false, category: 'research' },
+            
+            // Journal Articles
+            { id: 'uct', name: 'Open UCT', type: 'articles', enabled: false, category: 'articles' },
+            { id: 'sun', name: 'SUNScholar', type: 'articles', enabled: false, category: 'articles' },
+            { id: 'up', name: 'UP Repository', type: 'articles', enabled: false, category: 'articles' },
+            { id: 'nwu', name: 'NWU Repository', type: 'articles', enabled: false, category: 'articles' },
+            
+            // Theses
+            { id: 'sun-theses', name: 'SUN Theses', type: 'thesis', enabled: false, category: 'thesis' },
+            { id: 'up-theses', name: 'UP Theses', type: 'thesis', enabled: false, category: 'thesis' },
+            { id: 'ukzn-theses', name: 'UKZN Theses', type: 'thesis', enabled: false, category: 'thesis' },
+            { id: 'ufs-theses', name: 'UFS Theses', type: 'thesis', enabled: false, category: 'thesis' }
+        ];
     }
 
     initializeApp() {
         this.initializeEventListeners();
         this.initializeYearFilters();
+        this.renderSourceGrid();
         this.loadCachedData();
         this.updateUI();
     }
 
     initializeEventListeners() {
-        // Source toggles
-        document.getElementById('selectAll').addEventListener('click', () => this.toggleAllSources(true));
-        document.getElementById('deselectAll').addEventListener('click', () => this.toggleAllSources(false));
-        document.getElementById('startHarvest').addEventListener('click', () => this.startHarvesting());
-
-        // Search and filters
+        // Search
         document.getElementById('searchButton').addEventListener('click', () => this.performSearch());
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.performSearch();
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const filter = e.currentTarget.dataset.filter;
+                this.setActiveFilter(filter);
+            });
+        });
+
+        // Advanced filters
+        document.getElementById('toggleAdvanced').addEventListener('click', () => {
+            this.toggleAdvancedFilters();
         });
 
         // Filter changes
@@ -57,6 +91,17 @@ class InquiryBase {
             this.performSearch();
         });
 
+        // Harvest control
+        document.getElementById('startHarvest').addEventListener('click', () => this.startHarvesting());
+
+        // Source toggles
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('source-toggle-input')) {
+                const sourceId = e.target.dataset.sourceId;
+                this.toggleSource(sourceId, e.target.checked);
+            }
+        });
+
         // Pagination
         document.getElementById('prevPage').addEventListener('click', () => this.previousPage());
         document.getElementById('nextPage').addEventListener('click', () => this.nextPage());
@@ -64,11 +109,31 @@ class InquiryBase {
         // Actions
         document.getElementById('exportData').addEventListener('click', () => this.exportData());
         document.getElementById('clearResults').addEventListener('click', () => this.clearResults());
+    }
 
-        // Individual source toggles
-        document.querySelectorAll('.toggle input').forEach(toggle => {
-            toggle.addEventListener('change', () => this.updateSourceCount());
+    setActiveFilter(filter) {
+        this.currentFilter = filter;
+        
+        // Update button states
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
         });
+
+        this.performSearch();
+    }
+
+    toggleAdvancedFilters() {
+        const advancedFilters = document.getElementById('advancedFilters');
+        advancedFilters.classList.toggle('hidden');
+        
+        const toggleBtn = document.getElementById('toggleAdvanced');
+        const icon = toggleBtn.querySelector('i');
+        
+        if (advancedFilters.classList.contains('hidden')) {
+            icon.className = 'fas fa-sliders-h';
+        } else {
+            icon.className = 'fas fa-times';
+        }
     }
 
     initializeYearFilters() {
@@ -82,16 +147,56 @@ class InquiryBase {
         }
     }
 
-    toggleAllSources(enable) {
-        document.querySelectorAll('.toggle input').forEach(toggle => {
-            toggle.checked = enable;
+    renderSourceGrid() {
+        const grid = document.getElementById('sourceGrid');
+        const categories = {
+            research: 'Research Data',
+            articles: 'Journal Articles', 
+            thesis: 'Theses & Dissertations'
+        };
+
+        let html = '';
+        
+        Object.entries(categories).forEach(([category, title]) => {
+            const categorySources = this.sources.filter(s => s.category === category);
+            
+            html += `
+                <div class="source-category">
+                    <h4>${title}</h4>
+                    <div class="source-category-grid">
+                        ${categorySources.map(source => `
+                            <div class="source-card ${source.enabled ? 'active' : ''}">
+                                <div class="source-header-row">
+                                    <span class="source-name">${source.name}</span>
+                                    <label class="source-toggle">
+                                        <input type="checkbox" class="source-toggle-input" 
+                                               data-source-id="${source.id}" 
+                                               ${source.enabled ? 'checked' : ''}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="source-type">${source.type}</div>
+                                <div class="source-stats">Ready to harvest</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         });
-        this.updateSourceCount();
+
+        grid.innerHTML = html;
+    }
+
+    toggleSource(sourceId, enabled) {
+        const source = this.sources.find(s => s.id === sourceId);
+        if (source) {
+            source.enabled = enabled;
+            this.updateSourceCount();
+        }
     }
 
     updateSourceCount() {
-        const activeSources = document.querySelectorAll('.toggle input:checked').length;
-        document.getElementById('activeSourceCount').textContent = activeSources;
+        const activeSources = this.sources.filter(s => s.enabled).length;
         document.getElementById('activeSources').textContent = activeSources;
     }
 
@@ -101,9 +206,9 @@ class InquiryBase {
             return;
         }
 
-        const selectedSources = this.getSelectedSources();
+        const selectedSources = this.sources.filter(s => s.enabled);
         if (selectedSources.length === 0) {
-            alert('Please select at least one data source');
+            alert('Please enable at least one data source');
             return;
         }
 
@@ -140,178 +245,12 @@ class InquiryBase {
         this.performSearch();
     }
 
-    getSelectedSources() {
-        const sources = [];
-        const sourceConfig = this.getSourceConfig();
-
-        document.querySelectorAll('.toggle input:checked').forEach(toggle => {
-            const sourceId = toggle.id.replace('toggle', '');
-            const source = sourceConfig[sourceId];
-            if (source) {
-                sources.push(source);
-            }
-        });
-
-        return sources;
-    }
-
-    getSourceConfig() {
-        return {
-            Zenodo: {
-                name: 'Zenodo',
-                type: 'research',
-                harvest: () => this.harvestZenodo()
-            },
-            Figshare: {
-                name: 'Figshare',
-                type: 'research', 
-                harvest: () => this.harvestFigshare()
-            },
-            Dryad: {
-                name: 'Dryad',
-                type: 'research',
-                harvest: () => this.harvestDryad()
-            },
-            OSF: {
-                name: 'OSF',
-                type: 'research',
-                harvest: () => this.harvestOSF()
-            },
-            Mendeley: {
-                name: 'Mendeley',
-                type: 'research',
-                harvest: () => this.harvestMendeley()
-            },
-            UCT: {
-                name: 'Open UCT Articles',
-                type: 'articles',
-                harvest: () => this.harvestDSpace('https://open.uct.ac.za')
-            },
-            SUN: {
-                name: 'SUNScholar Articles', 
-                type: 'articles',
-                harvest: () => this.harvestDSpace('https://scholar.sun.ac.za')
-            },
-            UP: {
-                name: 'UP Repository Articles',
-                type: 'articles',
-                harvest: () => this.harvestDSpace('https://repository.up.ac.za')
-            },
-            NWU: {
-                name: 'NWU Repository Articles',
-                type: 'articles',
-                harvest: () => this.harvestDSpace('https://repository.nwu.ac.za')
-            },
-            SUNTheses: {
-                name: 'SUNScholar Theses',
-                type: 'thesis',
-                harvest: () => this.harvestTheses('https://scholar.sun.ac.za')
-            },
-            UPTheses: {
-                name: 'UP Theses',
-                type: 'thesis',
-                harvest: () => this.harvestTheses('https://repository.up.ac.za')
-            },
-            UKZNTheses: {
-                name: 'UKZN Theses',
-                type: 'thesis',
-                harvest: () => this.harvestTheses('https://researchspace.ukzn.ac.za')
-            },
-            UFSTheses: {
-                name: 'UFS Theses',
-                type: 'thesis',
-                harvest: () => this.harvestTheses('https://scholar.ufs.ac.za')
-            }
-        };
-    }
-
     async harvestSource(source) {
         console.log(`Harvesting from ${source.name}...`);
-        return await source.harvest();
-    }
-
-    // Harvesting implementations with comprehensive data collection
-    async harvestZenodo() {
-        const items = [];
-        let url = 'https://zenodo.org/api/records?size=200&sort=mostrecent';
-        let page = 0;
-
-        while (url && page < 10) { // Limit to 10 pages for demo
-            page++;
-            try {
-                const response = await fetch(this.proxy + encodeURIComponent(url));
-                const data = await response.json();
-
-                data.hits?.hits?.forEach(item => {
-                    const metadata = item.metadata || {};
-                    items.push({
-                        id: item.id,
-                        title: metadata.title || 'Untitled',
-                        authors: metadata.creators?.map(c => c.name) || [],
-                        description: this.cleanDescription(metadata.description),
-                        keywords: [...(metadata.keywords || []), ...(metadata.subjects?.map(s => s.term) || [])],
-                        year: new Date(metadata.publication_date).getFullYear(),
-                        doi: metadata.doi,
-                        url: item.links.html,
-                        source: 'Zenodo',
-                        type: 'research',
-                        content_type: metadata.resource_type?.title || 'Dataset',
-                        publisher: 'Zenodo',
-                        language: metadata.language,
-                        license: metadata.license?.id
-                    });
-                });
-
-                url = data.links?.next;
-                if (!url) break;
-                
-                // Update progress
-                this.updateHarvestStatus(`Zenodo: Page ${page} (${items.length} items)`, null);
-                await this.delay(500); // Rate limiting
-            } catch (error) {
-                console.error('Error fetching Zenodo:', error);
-                break;
-            }
-        }
-
-        return items;
-    }
-
-    async harvestFigshare() {
-        const items = [];
-        // Implementation for Figshare harvesting
-        // This would include pagination through all available articles
-        return items;
-    }
-
-    async harvestDryad() {
-        const items = [];
-        // Implementation for Dryad harvesting
-        return items;
-    }
-
-    async harvestOSF() {
-        const items = [];
-        // Implementation for OSF harvesting  
-        return items;
-    }
-
-    async harvestMendeley() {
-        const items = [];
-        // Implementation for Mendeley harvesting
-        return items;
-    }
-
-    async harvestDSpace(baseUrl) {
-        const items = [];
-        // Implementation for DSpace article harvesting
-        return items;
-    }
-
-    async harvestTheses(baseUrl) {
-        const items = [];
-        // Implementation for thesis harvesting
-        return items;
+        
+        // This would call the actual harvesting methods
+        // For now, return empty array as placeholder
+        return [];
     }
 
     // Search functionality
@@ -328,6 +267,11 @@ class InquiryBase {
         }
 
         return allItems.filter(item => {
+            // Category filter
+            if (this.currentFilter !== 'all' && item.type !== this.currentFilter) {
+                return false;
+            }
+
             // Text search
             if (this.searchTerm) {
                 const searchableText = [
@@ -374,12 +318,25 @@ class InquiryBase {
         const pageItems = items.slice(startIndex, startIndex + this.pageSize);
 
         // Update results count
-        document.getElementById('resultsCount').textContent = `${totalItems.toLocaleString()} Results`;
+        const resultsCount = document.getElementById('resultsCount');
+        if (totalItems === 0 && !this.searchTerm) {
+            resultsCount.textContent = 'Start your search';
+        } else {
+            resultsCount.textContent = `${totalItems.toLocaleString()} Results`;
+        }
 
         if (totalItems === 0) {
-            container.innerHTML = this.getNoResultsHTML();
+            if (this.searchTerm) {
+                container.innerHTML = this.getNoResultsHTML();
+            } else {
+                container.innerHTML = this.getWelcomeHTML();
+            }
         } else {
-            container.innerHTML = pageItems.map(item => this.createResultCard(item)).join('');
+            container.innerHTML = `
+                <div class="results-grid">
+                    ${pageItems.map(item => this.createResultCard(item)).join('')}
+                </div>
+            `;
         }
 
         this.updatePagination(totalPages);
@@ -392,7 +349,7 @@ class InquiryBase {
                          item.type === 'articles' ? 'Article' : 'Thesis';
 
         return `
-            <div class="result-card" onclick="app.viewItemDetails('${item.id}')">
+            <div class="result-card">
                 <div class="card-header">
                     <span class="card-badge ${badgeClass}">${badgeText}</span>
                     <span class="card-source">${item.source}</span>
@@ -413,10 +370,10 @@ class InquiryBase {
                         <span>${item.content_type || 'Research'}</span>
                     </div>
                     <div class="card-actions">
-                        <button class="card-action" onclick="event.stopPropagation(); app.downloadItem('${item.id}')">
+                        <button class="card-action" onclick="app.downloadItem('${item.id}')">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button class="card-action" onclick="event.stopPropagation(); app.viewItem('${item.id}')">
+                        <button class="card-action" onclick="app.viewItem('${item.id}')">
                             <i class="fas fa-external-link-alt"></i>
                         </button>
                     </div>
@@ -425,26 +382,73 @@ class InquiryBase {
         `;
     }
 
+    getWelcomeHTML() {
+        return `
+            <div class="welcome-state">
+                <div class="welcome-icon">
+                    <i class="fas fa-search fa-4x"></i>
+                </div>
+                <h3>Explore Research Data</h3>
+                <p>Use the search bar above to discover datasets, articles, and theses from global repositories</p>
+                <div class="welcome-features">
+                    <div class="feature">
+                        <i class="fas fa-database"></i>
+                        <span>Research Data</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Journal Articles</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Theses & Dissertations</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     getNoResultsHTML() {
         return `
-            <div class="welcome-message">
-                <i class="fas fa-search fa-3x"></i>
+            <div class="welcome-state">
+                <div class="welcome-icon">
+                    <i class="fas fa-search fa-4x"></i>
+                </div>
                 <h3>No Results Found</h3>
                 <p>Try adjusting your search terms or filters</p>
+                <div class="welcome-features">
+                    <div class="feature">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Check your spelling</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-filter"></i>
+                        <span>Try different filters</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-database"></i>
+                        <span>Harvest more data</span>
+                    </div>
+                </div>
             </div>
         `;
     }
 
     updatePagination(totalPages) {
+        const pagination = document.getElementById('pagination');
         const prevBtn = document.getElementById('prevPage');
         const nextBtn = document.getElementById('nextPage');
         const pageInfo = document.getElementById('pageInfo');
 
+        if (totalPages <= 1) {
+            pagination.classList.add('hidden');
+        } else {
+            pagination.classList.remove('hidden');
+        }
+
         prevBtn.disabled = this.currentPage === 1;
         nextBtn.disabled = this.currentPage === totalPages || totalPages === 0;
         pageInfo.textContent = `Page ${this.currentPage} of ${totalPages}`;
-
-        document.getElementById('pagination').style.display = totalPages <= 1 ? 'none' : 'flex';
     }
 
     previousPage() {
@@ -472,13 +476,7 @@ class InquiryBase {
             document.getElementById('progressFill').style.width = `${progress}%`;
         }
 
-        // Update records count
-        let totalRecords = 0;
-        for (const [type, items] of this.datasets) {
-            totalRecords += items.length;
-        }
-        document.getElementById('recordsHarvested').textContent = totalRecords.toLocaleString();
-        document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
+        this.updateUI();
     }
 
     updateUI() {
@@ -488,24 +486,14 @@ class InquiryBase {
         }
         
         document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
-        document.getElementById('harvestedToday').textContent = totalRecords.toLocaleString();
         this.updateSourceCount();
-    }
-
-    cleanDescription(description) {
-        if (!description) return '';
-        // Remove HTML tags and limit length
-        return description.replace(/<[^>]*>/g, '').substring(0, 300) + '...';
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // Data management
     saveToCache() {
         const data = {
             datasets: Array.from(this.datasets.entries()),
+            sources: this.sources,
             timestamp: new Date().toISOString()
         };
         localStorage.setItem('inquiryBaseData', JSON.stringify(data));
@@ -517,20 +505,13 @@ class InquiryBase {
             if (cached) {
                 const data = JSON.parse(cached);
                 this.datasets = new Map(data.datasets);
+                this.sources = data.sources || this.sources;
                 this.updateUI();
-                console.log('Loaded cached data:', this.getTotalRecords());
+                this.renderSourceGrid();
             }
         } catch (error) {
             console.error('Error loading cached data:', error);
         }
-    }
-
-    getTotalRecords() {
-        let total = 0;
-        for (const [type, items] of this.datasets) {
-            total += items.length;
-        }
-        return total;
     }
 
     exportData() {
@@ -564,34 +545,16 @@ class InquiryBase {
         }
     }
 
-    viewItemDetails(itemId) {
-        // Implementation for item detail view
-        console.log('View details for:', itemId);
-    }
-
     downloadItem(itemId) {
-        // Implementation for item download
         console.log('Download item:', itemId);
+        // Implementation for item download
     }
 
     viewItem(itemId) {
-        // Implementation for viewing item in original source
         console.log('View item:', itemId);
+        // Implementation for viewing item in original source
     }
 }
 
 // Initialize the application
 const app = new InquiryBase();
-
-// Service Worker for offline functionality (optional)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}
