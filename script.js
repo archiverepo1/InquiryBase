@@ -4,7 +4,8 @@
 
 class InquiryBase {
     constructor() {
-        this.proxy = "https://inquirybase.archiverepo1.workers.dev/?url=";
+        // UPDATE THIS LINE WITH YOUR ACTUAL WORKER URL
+        this.proxy = "https://inquirybase.YOUR-SUBDOMAIN.workers.dev/?url=";
         this.datasets = new Map();
         this.isHarvesting = false;
         this.currentPage = 1;
@@ -51,6 +52,26 @@ class InquiryBase {
         this.renderSourceGrid();
         this.loadCachedData();
         this.updateUI();
+        this.testWorkerConnection();
+    }
+
+    async testWorkerConnection() {
+        try {
+            const testUrl = 'https://zenodo.org/api/records';
+            console.log('Testing worker connection to:', this.proxy + encodeURIComponent(testUrl));
+            const response = await fetch(this.proxy + encodeURIComponent(testUrl));
+            
+            if (response.ok) {
+                console.log('✅ Worker connection successful');
+                return true;
+            } else {
+                console.error('❌ Worker returned error:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Worker connection failed:', error);
+            return false;
+        }
     }
 
     initializeEventListeners() {
