@@ -1,335 +1,552 @@
-class ResearchHub {
+// InquiryBase v11.0 — Clean Modern Interface
+// ============================================
+
+class InquiryBase {
     constructor() {
+        // UPDATE THIS LINE WITH YOUR ACTUAL WORKER URL
+        // Get your worker URL from Cloudflare dashboard
+        this.proxy = "https://inquirybase.your-subdomain.workers.dev/?url=";
+        this.datasets = new Map();
+        this.isHarvesting = false;
         this.currentPage = 1;
-        this.pageSize = 10;
-        this.totalResults = 0;
-        this.searchResults = [];
-        this.filteredResults = [];
-        this.currentSourceType = 'all';
+        this.pageSize = 12;
+        this.searchTerm = '';
+        this.currentFilter = 'all';
         this.filters = {
-            year: 'all',
-            author: 'all',
+            yearFrom: '',
+            yearTo: '',
             contentType: 'all',
             sortBy: 'relevance'
         };
         
+        this.sources = this.initializeSources();
+        this.initializeApp();
+    }
+
+    initializeSources() {
+        return [
+            // Research Data
+            { id: 'zenodo', name: 'Zenodo', type: 'research', enabled: true, category: 'research' },
+            { id: 'figshare', name: 'Figshare', type: 'research', enabled: true, category: 'research' },
+            { id: 'dryad', name: 'Dryad', type: 'research', enabled: false, category: 'research' },
+            { id: 'osf', name: 'OSF', type: 'research', enabled: false, category: 'research' },
+            { id: 'mendeley', name: 'Mendeley Data', type: 'research', enabled: false, category: 'research' },
+            
+            // Journal Articles
+            { id: 'uct', name: 'Open UCT', type: 'articles', enabled: false, category: 'articles' },
+            { id: 'sun', name: 'SUNScholar', type: 'articles', enabled: false, category: 'articles' },
+            { id: 'up', name: 'UP Repository', type: 'articles', enabled: false, category: 'articles' },
+            { id: 'nwu', name: 'NWU Repository', type: 'articles', enabled: false, category: 'articles' },
+            
+            // Theses
+            { id: 'sun-theses', name: 'SUN Theses', type: 'thesis', enabled: false, category: 'thesis' },
+            { id: 'up-theses', name: 'UP Theses', type: 'thesis', enabled: false, category: 'thesis' },
+            { id: 'ukzn-theses', name: 'UKZN Theses', type: 'thesis', enabled: false, category: 'thesis' },
+            { id: 'ufs-theses', name: 'UFS Theses', type: 'thesis', enabled: false, category: 'thesis' }
+        ];
+    }
+
+    initializeApp() {
         this.initializeEventListeners();
-        this.initializeYearFilter();
+        this.initializeYearFilters();
+        this.updateSourceCount();
+        this.loadCachedData();
+        this.updateUI();
+        this.testWorkerConnection();
+    }
+
+    async testWorkerConnection() {
+        try {
+            const testUrl = 'https://zenodo.org/api/records';
+            console.log('Testing worker connection to:', this.proxy + encodeURIComponent(testUrl));
+            const response = await fetch(this.proxy + encodeURIComponent(testUrl));
+            
+            if (response.ok) {
+                console.log('✅ Worker connection successful');
+                return true;
+            } else {
+                console.error('❌ Worker returned error:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Worker connection failed:', error);
+            return false;
+        }
     }
 
     initializeEventListeners() {
-        // Search functionality
+        // Search
         document.getElementById('searchButton').addEventListener('click', () => this.performSearch());
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.performSearch();
         });
 
-        // Source tabs
-        document.querySelectorAll('.tab-button').forEach(btn => {
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.currentSourceType = e.target.dataset.type;
-                if (this.searchResults.length > 0) {
-                    this.applyFilters();
-                }
+                const filter = e.currentTarget.dataset.filter;
+                this.setActiveFilter(filter);
             });
         });
 
         // Advanced filters
-        document.getElementById('advancedToggle').addEventListener('click', () => {
-            document.getElementById('advancedFilters').classList.toggle('active');
+        document.getElementById('toggleAdvanced').addEventListener('click', () => {
+            this.toggleAdvancedFilters();
         });
 
-        // Boolean operators
-        document.querySelectorAll('.bool-operator').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.bool-operator').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-            });
+        // Filter changes
+        document.getElementById('yearFrom').addEventListener('change', (e) => {
+            this.filters.yearFrom = e.target.value;
+            this.performSearch();
+        });
+        document.getElementById('yearTo').addEventListener('change', (e) => {
+            this.filters.yearTo = e.target.value;
+            this.performSearch();
+        });
+        document.getElementById('contentType').addEventListener('change', (e) => {
+            this.filters.contentType = e.target.value;
+            this.performSearch();
+        });
+        document.getElementById('sortBy').addEventListener('change', (e) => {
+            this.filters.sortBy = e.target.value;
+            this.performSearch();
         });
 
-        // Harvest controls
-        document.getElementById('readyHarvest').addEventListener('click', () => this.startHarvesting());
-        document.getElementById('expandSearch').addEventListener('click', () => this.expandSearch());
+        // Harvest control
+        document.getElementById('startHarvest').addEventListener('click', () => this.startHarvesting());
 
-        // Email button
-        document.getElementById('emailButton').addEventListener('click', () => {
-            window.location.href = 'mailto:contact@dallaresearch.com?subject=Research%20Hub%20Inquiry';
-        });
-
-        // Results modal
-        document.getElementById('closeModal').addEventListener('click', () => this.closeResultsModal());
-        document.getElementById('resultsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'resultsModal') {
-                this.closeResultsModal();
+        // Source toggles
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('source-toggle-input')) {
+                const sourceId = e.target.dataset.sourceId;
+                this.toggleSource(sourceId, e.target.checked);
             }
         });
-
-        // Results filters
-        document.getElementById('contentTypeFilter').addEventListener('change', (e) => {
-            this.filters.contentType = e.target.value;
-            this.applyFilters();
-        });
-
-        document.getElementById('yearFilter').addEventListener('change', (e) => {
-            this.filters.year = e.target.value;
-            this.applyFilters();
-        });
-
-        document.getElementById('authorFilter').addEventListener('change', (e) => {
-            this.filters.author = e.target.value;
-            this.applyFilters();
-        });
-
-        document.getElementById('sortFilter').addEventListener('change', (e) => {
-            this.filters.sortBy = e.target.value;
-            this.applyFilters();
-        });
-
-        // Zotero export
-        document.getElementById('exportZotero').addEventListener('click', () => this.exportToZotero());
 
         // Pagination
         document.getElementById('prevPage').addEventListener('click', () => this.previousPage());
         document.getElementById('nextPage').addEventListener('click', () => this.nextPage());
+
+        // Actions
+        document.getElementById('exportData').addEventListener('click', () => this.exportData());
+        document.getElementById('clearResults').addEventListener('click', () => this.clearResults());
+        document.getElementById('manageSources').addEventListener('click', () => this.manageSources());
     }
 
-    initializeYearFilter() {
-        const yearFilter = document.getElementById('yearFilter');
-        const currentYear = new Date().getFullYear();
+    setActiveFilter(filter) {
+        this.currentFilter = filter;
         
-        for (let year = currentYear; year >= 2000; year--) {
-            const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            yearFilter.appendChild(option);
+        // Update button states
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+
+        this.performSearch();
+    }
+
+    toggleAdvancedFilters() {
+        const advancedFilters = document.getElementById('advancedFilters');
+        advancedFilters.classList.toggle('hidden');
+        
+        const toggleBtn = document.getElementById('toggleAdvanced');
+        const icon = toggleBtn.querySelector('i');
+        
+        if (advancedFilters.classList.contains('hidden')) {
+            icon.className = 'fas fa-sliders-h';
+            toggleBtn.innerHTML = '<i class="fas fa-sliders-h"></i> Advanced Filters';
+        } else {
+            icon.className = 'fas fa-times';
+            toggleBtn.innerHTML = '<i class="fas fa-times"></i> Hide Filters';
         }
     }
 
-    async performSearch() {
-        const query = document.getElementById('searchInput').value.trim();
-        if (!query) {
-            alert('Please enter a search query');
+    initializeYearFilters() {
+        const currentYear = new Date().getFullYear();
+        const yearFrom = document.getElementById('yearFrom');
+        const yearTo = document.getElementById('yearTo');
+
+        // Clear existing options
+        yearFrom.innerHTML = '<option value="">From Year</option>';
+        yearTo.innerHTML = '<option value="">To Year</option>';
+
+        for (let year = currentYear; year >= 1950; year--) {
+            yearFrom.innerHTML += `<option value="${year}">${year}</option>`;
+            yearTo.innerHTML += `<option value="${year}">${year}</option>`;
+        }
+    }
+
+    toggleSource(sourceId, enabled) {
+        const source = this.sources.find(s => s.id === sourceId);
+        if (source) {
+            source.enabled = enabled;
+            
+            // Update card appearance
+            const sourceCard = document.querySelector(`[data-source-id="${sourceId}"]`).closest('.source-card');
+            if (sourceCard) {
+                sourceCard.classList.toggle('active', enabled);
+            }
+            
+            this.updateSourceCount();
+            this.saveToCache();
+        }
+    }
+
+    updateSourceCount() {
+        const activeSources = this.sources.filter(s => s.enabled).length;
+        document.getElementById('activeSources').textContent = activeSources;
+    }
+
+    manageSources() {
+        // Simple select all/none functionality
+        const allEnabled = this.sources.every(s => s.enabled);
+        
+        this.sources.forEach(source => {
+            source.enabled = !allEnabled;
+            const checkbox = document.querySelector(`[data-source-id="${source.id}"]`);
+            if (checkbox) {
+                checkbox.checked = !allEnabled;
+            }
+            const sourceCard = document.querySelector(`[data-source-id="${source.id}"]`).closest('.source-card');
+            if (sourceCard) {
+                sourceCard.classList.toggle('active', !allEnabled);
+            }
+        });
+        
+        this.updateSourceCount();
+        this.saveToCache();
+        
+        // Update button text
+        const manageBtn = document.getElementById('manageSources');
+        manageBtn.innerHTML = allEnabled 
+            ? '<i class="fas fa-cog"></i> Enable All Sources' 
+            : '<i class="fas fa-cog"></i> Disable All Sources';
+    }
+
+    async startHarvesting() {
+        if (this.isHarvesting) {
+            alert('Harvesting is already in progress');
             return;
         }
 
-        this.showLoading();
+        const selectedSources = this.sources.filter(s => s.enabled);
+        if (selectedSources.length === 0) {
+            alert('Please enable at least one data source');
+            return;
+        }
+
+        this.isHarvesting = true;
+        this.updateHarvestStatus('Starting harvest...', 0);
+
+        let totalHarvested = 0;
+        const totalSources = selectedSources.length;
+
+        for (let i = 0; i < selectedSources.length; i++) {
+            const source = selectedSources[i];
+            const progress = ((i / totalSources) * 100).toFixed(0);
+            this.updateHarvestStatus(`Harvesting ${source.name}...`, progress);
+
+            try {
+                const items = await this.harvestSource(source);
+                totalHarvested += items.length;
+                
+                // Store in datasets
+                if (!this.datasets.has(source.type)) {
+                    this.datasets.set(source.type, []);
+                }
+                this.datasets.get(source.type).push(...items);
+
+                this.updateUI();
+                this.saveToCache();
+                
+                // Small delay to avoid rate limiting
+                await this.delay(1000);
+            } catch (error) {
+                console.error(`Failed to harvest ${source.name}:`, error);
+                this.updateHarvestStatus(`Error harvesting ${source.name}`, progress);
+            }
+        }
+
+        this.isHarvesting = false;
+        this.updateHarvestStatus('Harvest completed!', 100);
+        this.performSearch();
+    }
+
+    async harvestSource(source) {
+        console.log(`Harvesting from ${source.name}...`);
         
         try {
-            const results = await this.simulateSearch(query);
-            this.searchResults = results;
-            this.openResultsModal();
-            this.applyFilters();
-            
+            if (source.id === 'zenodo') {
+                return await this.harvestZenodo();
+            }
+            // Add other source harvesting methods here
+            // For now, return mock data for demonstration
+            return this.generateMockData(source);
         } catch (error) {
-            console.error('Search failed:', error);
-            alert('Search failed. Please try again.');
-        } finally {
-            this.hideLoading();
+            console.error(`Error harvesting ${source.name}:`, error);
+            return [];
         }
     }
 
-    async simulateSearch(query) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Generate mock search results
-        const mockResults = [];
-        const sources = ['Zenodo', 'Figshare', 'PubMed', 'IEEE Xplore', 'arXiv'];
-        const types = ['research', 'articles', 'theses'];
-        const authors = [
-            'Smith, J.', 'Johnson, M.', 'Williams, D.', 'Brown, S.',
-            'Davis, M.', 'Miller, J.', 'Wilson, C.', 'Anderson, R.'
-        ];
-
-        for (let i = 1; i <= 35; i++) {
-            const type = types[Math.floor(Math.random() * types.length)];
-            const year = 2018 + Math.floor(Math.random() * 7);
+    async harvestZenodo() {
+        const items = [];
+        try {
+            const url = 'https://zenodo.org/api/records?size=50&sort=mostrecent';
+            const response = await fetch(this.proxy + encodeURIComponent(url));
             
-            mockResults.push({
-                id: `result-${i}`,
-                title: `Research on ${query}: ${this.getTypeDescription(type)} Study ${i}`,
-                authors: this.getRandomAuthors(authors),
-                abstract: `This study examines various aspects of ${query} using advanced research methodologies. The findings contribute significantly to the field and provide insights for future research directions.`,
-                year: year,
-                type: type,
-                source: sources[Math.floor(Math.random() * sources.length)],
-                keywords: [query, 'research', 'analysis', 'study', type, 'academic'],
-                doi: `10.1234/research.${i}`,
-                url: `https://example.com/research/${i}`
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            
+            data.hits?.hits?.forEach(item => {
+                const metadata = item.metadata || {};
+                items.push({
+                    id: item.id,
+                    title: metadata.title || 'Untitled',
+                    authors: metadata.creators?.map(c => c.name) || [],
+                    description: this.cleanDescription(metadata.description),
+                    keywords: [...(metadata.keywords || []), ...(metadata.subjects?.map(s => s.term) || [])],
+                    year: new Date(metadata.publication_date || Date.now()).getFullYear(),
+                    doi: metadata.doi,
+                    url: item.links?.html,
+                    source: 'Zenodo',
+                    type: 'research',
+                    content_type: metadata.resource_type?.title || 'Dataset'
+                });
+            });
+            
+            console.log(`✅ Harvested ${items.length} items from Zenodo`);
+        } catch (error) {
+            console.error('Error fetching Zenodo:', error);
+        }
+        
+        return items;
+    }
+
+    generateMockData(source) {
+        // Generate mock data for demonstration
+        const mockItems = [];
+        const types = {
+            research: ['Dataset', 'Software', 'Collection'],
+            articles: ['Research Article', 'Review Paper', 'Conference Paper'],
+            thesis: ['PhD Thesis', 'Master Thesis', 'Dissertation']
+        };
+        
+        for (let i = 0; i < 5; i++) {
+            mockItems.push({
+                id: `${source.id}-${i}-${Date.now()}`,
+                title: `Sample ${source.type} from ${source.name} - ${i + 1}`,
+                authors: ['Researcher A', 'Researcher B', 'Researcher C'],
+                description: `This is a sample ${source.type} item harvested from ${source.name}. It contains research data and metadata for demonstration purposes.`,
+                keywords: ['sample', 'research', 'data', 'demonstration'],
+                year: 2023 + (i % 3),
+                doi: `10.1234/sample-${source.id}-${i}`,
+                url: `https://example.com/${source.id}/${i}`,
+                source: source.name,
+                type: source.type,
+                content_type: types[source.type]?.[i % types[source.type].length] || 'Research'
             });
         }
-
-        return mockResults;
+        
+        console.log(`✅ Generated ${mockItems.length} mock items from ${source.name}`);
+        return mockItems;
     }
 
-    getTypeDescription(type) {
-        const descriptions = {
-            'research': 'Data-Driven',
-            'articles': 'Comprehensive',
-            'theses': 'Academic'
-        };
-        return descriptions[type] || 'Research';
-    }
-
-    getRandomAuthors(authorsList) {
-        const count = 1 + Math.floor(Math.random() * 3);
-        const shuffled = [...authorsList].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, count);
-    }
-
-    openResultsModal() {
-        document.getElementById('resultsModal').classList.add('active');
-    }
-
-    closeResultsModal() {
-        document.getElementById('resultsModal').classList.remove('active');
-    }
-
-    applyFilters() {
-        let filtered = [...this.searchResults];
-
-        // Apply source type filter
-        if (this.currentSourceType !== 'all') {
-            filtered = filtered.filter(item => item.type === this.currentSourceType);
-        }
-
-        // Apply content type filter
-        if (this.filters.contentType !== 'all') {
-            filtered = filtered.filter(item => item.type === this.filters.contentType);
-        }
-
-        // Apply year filter
-        if (this.filters.year !== 'all') {
-            filtered = filtered.filter(item => item.year === parseInt(this.filters.year));
-        }
-
-        // Apply author filter
-        if (this.filters.author !== 'all') {
-            filtered = filtered.filter(item => 
-                item.authors.some(author => 
-                    author.toLowerCase().includes(this.filters.author.toLowerCase())
-                )
-            );
-        }
-
-        // Apply sorting
-        filtered = this.sortResults(filtered, this.filters.sortBy);
-
-        this.filteredResults = filtered;
-        this.totalResults = filtered.length;
+    // Search functionality
+    performSearch() {
+        this.searchTerm = document.getElementById('searchInput').value.toLowerCase();
         this.currentPage = 1;
         this.displayResults();
-        this.updateFiltersUI();
     }
 
-    sortResults(results, sortBy) {
-        switch (sortBy) {
-            case 'date':
-                return results.sort((a, b) => b.year - a.year);
-            case 'relevance':
-            default:
-                return results;
+    getFilteredItems() {
+        let allItems = [];
+        for (const [type, items] of this.datasets) {
+            allItems = allItems.concat(items);
         }
-    }
 
-    updateFiltersUI() {
-        // Update author filter options
-        const authorFilter = document.getElementById('authorFilter');
-        const authors = [...new Set(this.searchResults.flatMap(item => item.authors))].slice(0, 15);
-        
-        const currentValue = authorFilter.value;
-        authorFilter.innerHTML = '<option value="all">All Authors</option>';
-        
-        authors.forEach(author => {
-            const option = document.createElement('option');
-            option.value = author;
-            option.textContent = author;
-            authorFilter.appendChild(option);
+        return allItems.filter(item => {
+            // Category filter
+            if (this.currentFilter !== 'all' && item.type !== this.currentFilter) {
+                return false;
+            }
+
+            // Text search
+            if (this.searchTerm) {
+                const searchableText = [
+                    item.title,
+                    item.description,
+                    item.authors?.join(' '),
+                    item.keywords?.join(' '),
+                    item.doi,
+                    item.publisher,
+                    item.source
+                ].join(' ').toLowerCase();
+
+                if (!searchableText.includes(this.searchTerm)) {
+                    return false;
+                }
+            }
+
+            // Year filter
+            if (this.filters.yearFrom && item.year < parseInt(this.filters.yearFrom)) {
+                return false;
+            }
+            if (this.filters.yearTo && item.year > parseInt(this.filters.yearTo)) {
+                return false;
+            }
+
+            // Content type filter
+            if (this.filters.contentType !== 'all') {
+                if (this.filters.contentType === 'dataset' && item.type !== 'research') return false;
+                if (this.filters.contentType === 'article' && item.type !== 'articles') return false;
+                if (this.filters.contentType === 'thesis' && item.type !== 'thesis') return false;
+                if (this.filters.contentType === 'software' && item.content_type !== 'Software') return false;
+            }
+
+            return true;
         });
-        
-        if (authors.includes(currentValue)) {
-            authorFilter.value = currentValue;
-        }
     }
 
     displayResults() {
         const container = document.getElementById('resultsContainer');
+        const items = this.getFilteredItems();
+        const totalItems = items.length;
+        const totalPages = Math.ceil(totalItems / this.pageSize);
         const startIndex = (this.currentPage - 1) * this.pageSize;
-        const endIndex = startIndex + this.pageSize;
-        const pageResults = this.filteredResults.slice(startIndex, endIndex);
+        const pageItems = items.slice(startIndex, startIndex + this.pageSize);
 
-        if (pageResults.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #6c757d;">
-                    <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
-                    <h4 style="margin-bottom: 8px;">No results found</h4>
-                    <p>Try adjusting your search criteria or filters</p>
-                </div>
-            `;
-            document.getElementById('pagination').style.display = 'none';
-            return;
+        // Update results count
+        const resultsCount = document.getElementById('resultsCount');
+        if (totalItems === 0 && !this.searchTerm) {
+            resultsCount.textContent = 'Start your search';
+        } else {
+            resultsCount.textContent = `${totalItems.toLocaleString()} Results`;
         }
 
-        container.innerHTML = pageResults.map(result => this.createResultHTML(result)).join('');
-        this.updatePagination();
-        document.getElementById('pagination').style.display = 'flex';
+        if (totalItems === 0) {
+            if (this.searchTerm) {
+                container.innerHTML = this.getNoResultsHTML();
+            } else {
+                container.innerHTML = this.getWelcomeHTML();
+            }
+        } else {
+            container.innerHTML = `
+                <div class="results-grid">
+                    ${pageItems.map(item => this.createResultCard(item)).join('')}
+                </div>
+            `;
+        }
+
+        this.updatePagination(totalPages);
+        this.updateUI();
     }
 
-    createResultHTML(result) {
-        const typeLabel = result.type === 'research' ? 'Research Data' : 
-                         result.type === 'articles' ? 'Journal Article' : 'Thesis';
+    createResultCard(item) {
+        const badgeClass = `badge-${item.type}`;
+        const badgeText = item.type === 'research' ? 'Dataset' : 
+                         item.type === 'articles' ? 'Article' : 'Thesis';
 
         return `
-            <div class="result-item" data-id="${result.id}">
-                <div class="zotero-meta">
-                    ${this.generateZoteroMetadata(result)}
+            <div class="result-card">
+                <div class="card-header">
+                    <span class="card-badge ${badgeClass}">${badgeText}</span>
+                    <span class="card-source">${item.source}</span>
                 </div>
-                <div class="result-header">
-                    <div>
-                        <h3 class="result-title">${result.title}</h3>
-                        <div class="result-meta">
-                            <span class="result-authors">${result.authors.join(', ')}</span> • 
-                            <span>${result.year}</span> • 
-                            <span>${result.source}</span>
-                        </div>
+                <h3 class="card-title">${item.title}</h3>
+                <div class="card-authors">${item.authors?.slice(0, 3).join(', ') || 'Unknown authors'}</div>
+                <p class="card-description">${item.description || 'No description available'}</p>
+                ${item.keywords && item.keywords.length > 0 ? `
+                    <div class="card-keywords">
+                        ${item.keywords.slice(0, 5).map(keyword => 
+                            `<span class="keyword-tag">${keyword}</span>`
+                        ).join('')}
                     </div>
-                    <span class="result-type">${typeLabel}</span>
-                </div>
-                <p class="result-abstract">${result.abstract}</p>
-                <div class="result-keywords">
-                    ${result.keywords.map(keyword => `<span class="keyword">${keyword}</span>`).join('')}
-                </div>
-                <div class="result-actions">
-                    <span class="result-source">Source: ${result.source}</span>
-                    <div class="action-buttons">
-                        <button class="action-btn" onclick="app.viewItem('${result.id}')">View</button>
-                        <button class="action-btn primary" onclick="app.saveToZotero('${result.id}')">Save to Zotero</button>
+                ` : ''}
+                <div class="card-footer">
+                    <div class="card-meta">
+                        <span>${item.year || 'Unknown year'}</span>
+                        <span>${item.content_type || 'Research'}</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="card-action" onclick="app.downloadItem('${item.id}')">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="card-action" onclick="app.viewItem('${item.id}')">
+                            <i class="fas fa-external-link-alt"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    generateZoteroMetadata(result) {
+    getWelcomeHTML() {
         return `
-            <span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3A${result.type === 'articles' ? 'journal' : 'book'}&amp;rft.title=${encodeURIComponent(result.title)}&amp;rft.date=${result.year}&amp;rft.aulast=${encodeURIComponent(result.authors[0] || '')}"></span>
-            <meta name="citation_title" content="${result.title}">
-            ${result.authors.map(author => `<meta name="citation_author" content="${author}">`).join('')}
-            <meta name="citation_publication_date" content="${result.year}">
-            <meta name="citation_abstract" content="${result.abstract}">
-            <meta name="citation_type" content="${result.type}">
-            <meta name="citation_doi" content="${result.doi}">
-            <meta name="citation_pdf_url" content="${result.url}">
+            <div class="welcome-state">
+                <div class="welcome-icon">
+                    <i class="fas fa-search fa-4x"></i>
+                </div>
+                <h3>Explore Research Data</h3>
+                <p>Use the search bar above to discover datasets, articles, and theses from global repositories</p>
+                <div class="welcome-features">
+                    <div class="feature">
+                        <i class="fas fa-database"></i>
+                        <span>Research Data</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Journal Articles</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Theses & Dissertations</span>
+                    </div>
+                </div>
+            </div>
         `;
     }
 
-    updatePagination() {
-        const totalPages = Math.ceil(this.totalResults / this.pageSize);
-        document.getElementById('pageInfo').textContent = `Page ${this.currentPage} of ${totalPages}`;
-        document.getElementById('prevPage').disabled = this.currentPage === 1;
-        document.getElementById('nextPage').disabled = this.currentPage === totalPages;
+    getNoResultsHTML() {
+        return `
+            <div class="welcome-state">
+                <div class="welcome-icon">
+                    <i class="fas fa-search fa-4x"></i>
+                </div>
+                <h3>No Results Found</h3>
+                <p>Try adjusting your search terms or filters</p>
+                <div class="welcome-features">
+                    <div class="feature">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Check your spelling</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-filter"></i>
+                        <span>Try different filters</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-database"></i>
+                        <span>Harvest more data</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    updatePagination(totalPages) {
+        const pagination = document.getElementById('pagination');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+
+        if (totalPages <= 1) {
+            pagination.classList.add('hidden');
+        } else {
+            pagination.classList.remove('hidden');
+        }
+
+        prevBtn.disabled = this.currentPage === 1;
+        nextBtn.disabled = this.currentPage === totalPages || totalPages === 0;
+        pageInfo.textContent = `Page ${this.currentPage} of ${totalPages}`;
     }
 
     previousPage() {
@@ -340,121 +557,138 @@ class ResearchHub {
     }
 
     nextPage() {
-        const totalPages = Math.ceil(this.totalResults / this.pageSize);
+        const totalItems = this.getFilteredItems().length;
+        const totalPages = Math.ceil(totalItems / this.pageSize);
+        
         if (this.currentPage < totalPages) {
             this.currentPage++;
             this.displayResults();
         }
     }
 
-    startHarvesting() {
-        alert('Harvesting process started. This would connect to research repositories and gather data.');
-        // In a real implementation, this would trigger the harvesting process
+    // Utility methods
+    updateHarvestStatus(message, progress) {
+        document.getElementById('harvestStatus').textContent = message;
+        
+        if (progress !== null) {
+            document.getElementById('progressFill').style.width = `${progress}%`;
+        }
+
+        this.updateUI();
     }
 
-    expandSearch() {
-        alert('Expanding search to include additional research repositories and databases.');
-        // In a real implementation, this would broaden the search scope
+    updateUI() {
+        let totalRecords = 0;
+        for (const [type, items] of this.datasets) {
+            totalRecords += items.length;
+        }
+        
+        document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
+        this.updateSourceCount();
     }
 
-    viewItem(itemId) {
-        const item = this.searchResults.find(r => r.id === itemId);
-        if (item && item.url) {
-            window.open(item.url, '_blank');
-        } else {
-            alert('Item URL not available');
+    cleanDescription(description) {
+        if (!description) return 'No description available';
+        // Remove HTML tags and limit length
+        return description.replace(/<[^>]*>/g, '').substring(0, 200) + '...';
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Data management
+    saveToCache() {
+        const data = {
+            datasets: Array.from(this.datasets.entries()),
+            sources: this.sources,
+            timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('inquiryBaseData', JSON.stringify(data));
+    }
+
+    loadCachedData() {
+        try {
+            const cached = localStorage.getItem('inquiryBaseData');
+            if (cached) {
+                const data = JSON.parse(cached);
+                this.datasets = new Map(data.datasets);
+                this.sources = data.sources || this.sources;
+                this.updateUI();
+                
+                // Update UI to reflect loaded sources
+                this.sources.forEach(source => {
+                    const checkbox = document.querySelector(`[data-source-id="${source.id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = source.enabled;
+                    }
+                    const sourceCard = document.querySelector(`[data-source-id="${source.id}"]`)?.closest('.source-card');
+                    if (sourceCard) {
+                        sourceCard.classList.toggle('active', source.enabled);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading cached data:', error);
         }
     }
 
-    saveToZotero(itemId) {
-        const item = this.searchResults.find(r => r.id === itemId);
-        if (!item) return;
-
-        const risContent = this.generateRIS([item]);
-        const blob = new Blob([risContent], { type: 'application/x-research-info-systems' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${item.title.substring(0, 50)}.ris`.replace(/[^a-z0-9]/gi, '_');
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        alert('Item saved as RIS file. You can import this into Zotero.');
-    }
-
-    exportToZotero() {
-        if (this.filteredResults.length === 0) {
-            alert('No results to export');
+    exportData() {
+        const allItems = this.getFilteredItems();
+        if (allItems.length === 0) {
+            alert('No data to export');
             return;
         }
 
-        const risContent = this.generateRIS(this.filteredResults);
-        const blob = new Blob([risContent], { type: 'application/x-research-info-systems' });
+        const dataStr = JSON.stringify(allItems, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `researchhub-export-${new Date().toISOString().split('T')[0]}.ris`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `inquirybase-export-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
         URL.revokeObjectURL(url);
-        
-        alert(`Exported ${this.filteredResults.length} items to RIS file for Zotero import.`);
     }
 
-    generateRIS(items) {
-        let risContent = '';
-        
-        items.forEach(item => {
-            risContent += 'TY  - ' + this.getRISType(item.type) + '\n';
-            risContent += 'TI  - ' + item.title + '\n';
-            
-            item.authors.forEach(author => {
-                risContent += 'AU  - ' + author + '\n';
-            });
-            
-            risContent += 'PY  - ' + item.year + '\n';
-            risContent += 'AB  - ' + (item.abstract || 'No abstract available') + '\n';
-            
-            if (item.doi) {
-                risContent += 'DO  - ' + item.doi + '\n';
+    clearResults() {
+        if (confirm('Are you sure you want to clear all results?')) {
+            this.datasets.clear();
+            localStorage.removeItem('inquiryBaseData');
+            this.currentPage = 1;
+            this.searchTerm = '';
+            document.getElementById('searchInput').value = '';
+            this.updateUI();
+            this.displayResults();
+        }
+    }
+
+    downloadItem(itemId) {
+        console.log('Download item:', itemId);
+        // Implementation for item download
+        alert('Download functionality would be implemented here');
+    }
+
+    viewItem(itemId) {
+        console.log('View item:', itemId);
+        // Find the item and open its URL
+        let targetItem = null;
+        for (const [type, items] of this.datasets) {
+            const item = items.find(i => i.id === itemId);
+            if (item) {
+                targetItem = item;
+                break;
             }
-            
-            if (item.url) {
-                risContent += 'UR  - ' + item.url + '\n';
-            }
-            
-            risContent += 'ER  - \n\n';
-        });
+        }
         
-        return risContent;
-    }
-
-    getRISType(type) {
-        const typeMap = {
-            'articles': 'JOUR',
-            'research': 'DATA',
-            'theses': 'THES'
-        };
-        return typeMap[type] || 'GEN';
-    }
-
-    showLoading() {
-        const searchBtn = document.getElementById('searchButton');
-        const originalText = searchBtn.textContent;
-        searchBtn.textContent = 'Searching...';
-        searchBtn.disabled = true;
-        searchBtn.dataset.originalText = originalText;
-    }
-
-    hideLoading() {
-        const searchBtn = document.getElementById('searchButton');
-        searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
-        searchBtn.disabled = false;
+        if (targetItem && targetItem.url) {
+            window.open(targetItem.url, '_blank');
+        } else {
+            alert('No URL available for this item');
+        }
     }
 }
 
 // Initialize the application
-const app = new ResearchHub();
+const app = new InquiryBase();
