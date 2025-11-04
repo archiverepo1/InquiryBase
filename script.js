@@ -1,12 +1,10 @@
 class QDataResearchHub {
     constructor() {
-        this.isHarvesting = false;
         this.currentPage = 1;
         this.pageSize = 10;
         this.totalResults = 0;
         this.searchResults = [];
         this.filteredResults = [];
-        this.selectedItems = new Set();
         this.currentSourceType = 'all';
         this.filters = {
             year: 'all',
@@ -32,30 +30,29 @@ class QDataResearchHub {
                 document.querySelectorAll('.source-button').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 this.currentSourceType = e.target.dataset.type;
-                this.applyFilters();
+                if (this.searchResults.length > 0) {
+                    this.applyFilters();
+                }
             });
         });
 
-        // Advanced filters
+        // Advanced filters toggle
         document.getElementById('advancedToggle').addEventListener('click', () => {
-            document.getElementById('advancedFilters').classList.toggle('active');
+            // For now, just show a message. In a real app, this would show advanced search options.
+            alert('Advanced filters would open additional search options');
         });
 
-        document.querySelectorAll('.boolean-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                document.querySelectorAll('.boolean-option').forEach(o => o.classList.remove('active'));
-                e.target.classList.add('active');
-            });
+        // Results modal
+        document.getElementById('closeResults').addEventListener('click', () => {
+            this.closeResultsModal();
         });
 
-        document.getElementById('applyFilters').addEventListener('click', () => {
-            this.applyAdvancedFilters();
+        // Close modal when clicking outside
+        document.getElementById('resultsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'resultsModal') {
+                this.closeResultsModal();
+            }
         });
-
-        // Harvest controls
-        document.getElementById('harvestBtn').addEventListener('click', () => this.startHarvesting());
-        document.getElementById('stopBtn').addEventListener('click', () => this.stopHarvesting());
-        document.getElementById('expandBtn').addEventListener('click', () => this.expandSearch());
 
         // Results filters
         document.getElementById('contentTypeFilter').addEventListener('change', (e) => {
@@ -68,7 +65,7 @@ class QDataResearchHub {
             this.applyFilters();
         });
 
-        document.getElementById('authorResultsFilter').addEventListener('change', (e) => {
+        document.getElementById('authorFilter').addEventListener('change', (e) => {
             this.filters.author = e.target.value;
             this.applyFilters();
         });
@@ -95,7 +92,7 @@ class QDataResearchHub {
         const yearFilter = document.getElementById('yearFilter');
         const currentYear = new Date().getFullYear();
         
-        for (let year = currentYear; year >= 1950; year--) {
+        for (let year = currentYear; year >= 2000; year--) {
             const option = document.createElement('option');
             option.value = year;
             option.textContent = year;
@@ -113,13 +110,11 @@ class QDataResearchHub {
         this.showLoading();
         
         try {
-            // Simulate API call - replace with actual API endpoint
+            // Simulate API call
             const results = await this.simulateSearch(query);
             this.searchResults = results;
+            this.openResultsModal();
             this.applyFilters();
-            
-            document.getElementById('resultsSection').classList.add('active');
-            document.getElementById('resultsFilters').style.display = 'flex';
             
         } catch (error) {
             console.error('Search failed:', error);
@@ -133,7 +128,7 @@ class QDataResearchHub {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Generate mock data
+        // Generate mock data matching the search query
         const mockResults = [];
         const sources = ['Zenodo', 'Figshare', 'Open UCT', 'SUNScholar', 'UP Repository'];
         const types = ['research', 'articles', 'theses'];
@@ -142,19 +137,19 @@ class QDataResearchHub {
             'Davis, Michael', 'Miller, Jennifer', 'Wilson, Christopher'
         ];
 
-        for (let i = 1; i <= 50; i++) {
+        for (let i = 1; i <= 25; i++) {
             const type = types[Math.floor(Math.random() * types.length)];
             const year = 2015 + Math.floor(Math.random() * 10);
             
             mockResults.push({
                 id: `result-${i}`,
-                title: `${query} Research Paper ${i} - ${this.capitalizeFirstLetter(type)}`,
+                title: `${query} Research ${this.capitalizeFirstLetter(type)} ${i}`,
                 authors: this.getRandomAuthors(authors),
-                abstract: `This is a sample abstract for research about ${query}. This paper discusses important findings in the field and provides valuable insights.`,
+                abstract: `This research paper explores various aspects of ${query}. The study provides comprehensive analysis and findings that contribute to the field. The methodology includes both qualitative and quantitative approaches.`,
                 year: year,
                 type: type,
                 source: sources[Math.floor(Math.random() * sources.length)],
-                keywords: [query, 'research', 'data', 'analysis', 'study'],
+                keywords: [query, 'research', 'data', 'analysis', 'study', type],
                 doi: `10.1234/example.${i}`,
                 url: `https://example.com/paper/${i}`
             });
@@ -171,6 +166,14 @@ class QDataResearchHub {
 
     capitalizeFirstLetter(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    openResultsModal() {
+        document.getElementById('resultsModal').classList.add('active');
+    }
+
+    closeResultsModal() {
+        document.getElementById('resultsModal').classList.remove('active');
     }
 
     applyFilters() {
@@ -218,16 +221,15 @@ class QDataResearchHub {
                 return results.sort((a, b) => a.title.localeCompare(b.title));
             case 'relevance':
             default:
-                return results; // Default order (as returned by API)
+                return results; // Default order
         }
     }
 
     updateFiltersUI() {
         // Update author filter options
-        const authorFilter = document.getElementById('authorResultsFilter');
+        const authorFilter = document.getElementById('authorFilter');
         const authors = [...new Set(this.searchResults.flatMap(item => item.authors))].slice(0, 20);
         
-        // Keep current selection
         const currentValue = authorFilter.value;
         authorFilter.innerHTML = '<option value="all">All Authors</option>';
         
@@ -238,7 +240,6 @@ class QDataResearchHub {
             authorFilter.appendChild(option);
         });
         
-        // Restore selection if still valid
         if (authors.includes(currentValue)) {
             authorFilter.value = currentValue;
         }
@@ -251,7 +252,13 @@ class QDataResearchHub {
         const pageResults = this.filteredResults.slice(startIndex, endIndex);
 
         if (pageResults.length === 0) {
-            container.innerHTML = '<div class="no-results">No results found. Try adjusting your search criteria.</div>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <h4>No results found</h4>
+                    <p>Try adjusting your search criteria or filters</p>
+                </div>
+            `;
             document.getElementById('pagination').style.display = 'none';
             return;
         }
@@ -297,7 +304,6 @@ class QDataResearchHub {
     }
 
     generateZoteroMetadata(result) {
-        // Generate COinS and other metadata for Zotero detection
         return `
             <span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3A${result.type === 'articles' ? 'journal' : 'book'}&amp;rft.title=${encodeURIComponent(result.title)}&amp;rft.date=${result.year}&amp;rft.aulast=${encodeURIComponent(result.authors[0] || '')}"></span>
             <meta name="citation_title" content="${result.title}">
@@ -329,102 +335,6 @@ class QDataResearchHub {
         if (this.currentPage < totalPages) {
             this.currentPage++;
             this.displayResults();
-        }
-    }
-
-    async startHarvesting() {
-        if (this.isHarvesting) return;
-        
-        this.isHarvesting = true;
-        document.getElementById('harvestBtn').style.display = 'none';
-        document.getElementById('stopBtn').style.display = 'inline-block';
-        
-        this.updateHarvestStatus('Harvesting data...', 0);
-        
-        // Simulate harvesting process
-        let progress = 0;
-        const interval = setInterval(() => {
-            if (!this.isHarvesting) {
-                clearInterval(interval);
-                return;
-            }
-            
-            progress += Math.random() * 10;
-            if (progress >= 100) {
-                progress = 100;
-                clearInterval(interval);
-                this.harvestingComplete();
-            }
-            this.updateHarvestStatus('Harvesting data...', progress);
-        }, 500);
-    }
-
-    stopHarvesting() {
-        this.isHarvesting = false;
-        document.getElementById('harvestBtn').style.display = 'inline-block';
-        document.getElementById('stopBtn').style.display = 'none';
-        this.updateHarvestStatus('Harvest stopped', 0);
-    }
-
-    harvestingComplete() {
-        this.isHarvesting = false;
-        document.getElementById('harvestBtn').style.display = 'inline-block';
-        document.getElementById('stopBtn').style.display = 'none';
-        this.updateHarvestStatus('Harvest complete!', 100);
-        
-        // Add some mock harvested data
-        this.addHarvestedData();
-    }
-
-    addHarvestedData() {
-        // Add some additional mock data to simulate harvested results
-        const newData = [
-            {
-                id: `harvested-${Date.now()}-1`,
-                title: 'Harvested Research Dataset',
-                authors: ['Research Team A'],
-                abstract: 'This dataset was harvested from external repositories and contains valuable research data.',
-                year: 2024,
-                type: 'research',
-                source: 'Zenodo',
-                keywords: ['harvested', 'dataset', 'research'],
-                doi: '10.1234/harvested.1',
-                url: 'https://zenodo.org/record/example'
-            }
-        ];
-        
-        this.searchResults = [...newData, ...this.searchResults];
-        this.applyFilters();
-    }
-
-    expandSearch() {
-        alert('Expanding search to include additional repositories...');
-        // Implementation for expanding search scope
-    }
-
-    updateHarvestStatus(message, progress) {
-        document.getElementById('harvestStatus').textContent = message;
-        document.getElementById('progressBar').style.width = `${progress}%`;
-    }
-
-    showLoading() {
-        document.getElementById('harvestStatus').textContent = 'Searching...';
-        document.getElementById('progressBar').style.width = '30%';
-    }
-
-    hideLoading() {
-        document.getElementById('progressBar').style.width = '0%';
-    }
-
-    applyAdvancedFilters() {
-        // Apply advanced search filters
-        const titleFilter = document.getElementById('titleFilter').value;
-        const authorFilter = document.getElementById('authorFilter').value;
-        const dateFilter = document.getElementById('dateFilter').value;
-        
-        if (titleFilter || authorFilter || dateFilter) {
-            alert('Advanced filters applied. This would refine your search criteria.');
-            // In a real implementation, this would modify the search query
         }
     }
 
@@ -490,7 +400,7 @@ class QDataResearchHub {
             });
             
             risContent += 'PY  - ' + item.year + '\n';
-            risContent += 'AB  - ' + item.abstract + '\n';
+            risContent += 'AB  - ' + (item.abstract || 'No abstract available') + '\n';
             
             if (item.doi) {
                 risContent += 'DO  - ' + item.doi + '\n';
@@ -513,6 +423,23 @@ class QDataResearchHub {
             'theses': 'THES'
         };
         return typeMap[type] || 'GEN';
+    }
+
+    showLoading() {
+        // Simple loading indicator
+        const searchBtn = document.getElementById('searchBtn');
+        const originalText = searchBtn.textContent;
+        searchBtn.textContent = 'Searching...';
+        searchBtn.disabled = true;
+        
+        // Store original text to restore later
+        searchBtn.dataset.originalText = originalText;
+    }
+
+    hideLoading() {
+        const searchBtn = document.getElementById('searchBtn');
+        searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
+        searchBtn.disabled = false;
     }
 }
 
