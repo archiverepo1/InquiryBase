@@ -3,55 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q Data Research Hub</title>
+    <title>RESEARCHHUB - Dalla Research Hub</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Zotero integration -->
     <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
     <link rel="schema.citation" href="http://purl.org/spar/cito/">
 </head>
 <body>
-    <div class="main-container">
-        <!-- Header Section -->
+    <div class="container">
+        <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <div class="logo-container">
-                    <div class="logo">
-                        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo">
-                    </div>
-                    <h1 class="title">Q Data Research Hub</h1>
-                </div>
+                <h1 class="main-title">RESEARCHHUB</h1>
+                <h2 class="subtitle">Dalla Research Hub</h2>
             </div>
         </header>
 
         <!-- Main Content -->
-        <main class="content">
+        <main class="main-content">
             <!-- Search Section -->
             <section class="search-section">
                 <div class="search-container">
                     <div class="search-box">
-                        <input type="text" class="search-input" id="searchInput" placeholder="Search by keyword, title, or author...">
-                        <button class="search-button" id="searchBtn">Search</button>
+                        <input type="text" class="search-input" id="searchInput" placeholder="Research by keyword, title, or author...">
+                        <button class="search-button" id="searchButton">Search</button>
                     </div>
                     
-                    <div class="source-buttons">
-                        <button class="source-button active" data-type="all">All Sources</button>
-                        <button class="source-button" data-type="research">Research Data</button>
-                        <button class="source-button" data-type="articles">Journal Articles</button>
-                        <button class="source-button" data-type="theses">Theses</button>
+                    <div class="source-tabs">
+                        <button class="tab-button active" data-type="all">All Sources</button>
+                        <button class="tab-button" data-type="research">Research Data</button>
+                        <button class="tab-button" data-type="articles">Journal Articles</button>
+                        <button class="tab-button" data-type="theses">Theses</button>
                     </div>
                     
-                    <div class="advanced-toggle" id="advancedToggle">
+                    <div class="advanced-filters-toggle" id="advancedToggle">
                         Advanced Filters
+                    </div>
+                    
+                    <div class="advanced-filters" id="advancedFilters">
+                        <div class="boolean-operators">
+                            <button class="bool-operator active">AND</button>
+                            <button class="bool-operator">OR</button>
+                            <button class="bool-operator">NOT</button>
+                        </div>
+                        <div class="filter-inputs">
+                            <input type="text" placeholder="Title keywords...">
+                            <input type="text" placeholder="Author name...">
+                            <input type="text" placeholder="Date range (YYYY-YYYY)...">
+                            <input type="text" placeholder="Subject area...">
+                        </div>
+                        <button class="apply-filters-button">Apply Filters</button>
                     </div>
                 </div>
             </section>
 
-            <!-- Horizontal Line -->
+            <!-- Divider -->
+            <div class="divider"></div>
+
+            <!-- Harvest Section -->
+            <section class="harvest-section">
+                <div class="harvest-header">
+                    <h3 class="harvest-title">Universidad Estadia</h3>
+                    <div class="harvest-controls">
+                        <button class="harvest-btn ready" id="readyHarvest">Ready to harvest</button>
+                        <button class="harvest-btn expand" id="expandSearch">Expand Search</button>
+                    </div>
+                </div>
+                <div class="harvest-status">
+                    Ready to harvest
+                </div>
+            </section>
+
+            <!-- Divider -->
             <div class="divider"></div>
 
             <!-- Zotero Section -->
             <section class="zotero-section">
-                <h2 class="zotero-title">Your Referencing Manager: Zotero</h2>
+                <h3 class="zotero-title">Your Referencing Manager: Zotero</h3>
                 <p class="zotero-description">
                     Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research. 
                     Save sources directly from your browser with a single click, then organize them into collections using tags.
@@ -67,68 +95,63 @@
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-content">
-                <div class="copyright">Q Data Research Platform © 2025</div>
-                <button class="email-button" id="emailBtn">Email Us</button>
+                <div class="copyright">© Dalla Research Platform © 2025</div>
+                <button class="email-button" id="emailButton">Email Us</button>
+            </div>
+            <div class="footer-bottom">
+                Research Data Harvesting System
             </div>
         </footer>
+    </div>
 
-        <!-- Results Modal (Hidden by default) -->
-        <div class="results-modal" id="resultsModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Search Results</h3>
-                    <button class="close-button" id="closeResults">&times;</button>
+    <!-- Results Modal -->
+    <div class="results-modal" id="resultsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Search Results</h3>
+                <button class="close-button" id="closeModal">&times;</button>
+            </div>
+            
+            <div class="results-filters">
+                <div class="filter-group">
+                    <label>Content Type:</label>
+                    <select id="contentTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="research">Research Data</option>
+                        <option value="articles">Journal Articles</option>
+                        <option value="theses">Theses</option>
+                    </select>
                 </div>
-                
-                <!-- Results Filters -->
-                <div class="results-filters">
-                    <div class="filter-group">
-                        <label>Content Type:</label>
-                        <select id="contentTypeFilter">
-                            <option value="all">All Types</option>
-                            <option value="research">Research Data</option>
-                            <option value="articles">Journal Articles</option>
-                            <option value="theses">Theses</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Year:</label>
-                        <select id="yearFilter">
-                            <option value="all">All Years</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Author:</label>
-                        <select id="authorFilter">
-                            <option value="all">All Authors</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Sort by:</label>
-                        <select id="sortFilter">
-                            <option value="relevance">Most Relevant</option>
-                            <option value="date">Most Recent</option>
-                            <option value="title">Title A-Z</option>
-                        </select>
-                    </div>
-                    <button class="zotero-export" id="zoteroExport">Export to Zotero</button>
+                <div class="filter-group">
+                    <label>Year:</label>
+                    <select id="yearFilter">
+                        <option value="all">All Years</option>
+                    </select>
                 </div>
+                <div class="filter-group">
+                    <label>Author:</label>
+                    <select id="authorFilter">
+                        <option value="all">All Authors</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Sort by:</label>
+                    <select id="sortFilter">
+                        <option value="relevance">Most Relevant</option>
+                        <option value="date">Most Recent</option>
+                    </select>
+                </div>
+                <button class="zotero-export" id="exportZotero">Export to Zotero</button>
+            </div>
 
-                <!-- Results Container -->
-                <div class="results-container" id="resultsContainer">
-                    <div class="empty-state">
-                        <div class="empty-icon">🔍</div>
-                        <h4>No results yet</h4>
-                        <p>Perform a search to see results here</p>
-                    </div>
-                </div>
+            <div class="results-container" id="resultsContainer">
+                <!-- Results will be populated here -->
+            </div>
 
-                <!-- Pagination -->
-                <div class="pagination" id="pagination">
-                    <button id="prevPage" disabled>Previous</button>
-                    <span id="pageInfo">Page 1 of 1</span>
-                    <button id="nextPage" disabled>Next</button>
-                </div>
+            <div class="pagination" id="pagination">
+                <button id="prevPage">Previous</button>
+                <span id="pageInfo">Page 1 of 1</span>
+                <button id="nextPage">Next</button>
             </div>
         </div>
     </div>
