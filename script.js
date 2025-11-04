@@ -1,4 +1,4 @@
-class QDataResearchHub {
+class ResearchHub {
     constructor() {
         this.currentPage = 1;
         this.pageSize = 10;
@@ -19,15 +19,15 @@ class QDataResearchHub {
 
     initializeEventListeners() {
         // Search functionality
-        document.getElementById('searchBtn').addEventListener('click', () => this.performSearch());
+        document.getElementById('searchButton').addEventListener('click', () => this.performSearch());
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.performSearch();
         });
 
-        // Source buttons
-        document.querySelectorAll('.source-button').forEach(btn => {
+        // Source tabs
+        document.querySelectorAll('.tab-button').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.source-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 this.currentSourceType = e.target.dataset.type;
                 if (this.searchResults.length > 0) {
@@ -36,18 +36,30 @@ class QDataResearchHub {
             });
         });
 
-        // Advanced filters toggle
+        // Advanced filters
         document.getElementById('advancedToggle').addEventListener('click', () => {
-            // For now, just show a message. In a real app, this would show advanced search options.
-            alert('Advanced filters would open additional search options');
+            document.getElementById('advancedFilters').classList.toggle('active');
+        });
+
+        // Boolean operators
+        document.querySelectorAll('.bool-operator').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.bool-operator').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        });
+
+        // Harvest controls
+        document.getElementById('readyHarvest').addEventListener('click', () => this.startHarvesting());
+        document.getElementById('expandSearch').addEventListener('click', () => this.expandSearch());
+
+        // Email button
+        document.getElementById('emailButton').addEventListener('click', () => {
+            window.location.href = 'mailto:contact@dallaresearch.com?subject=Research%20Hub%20Inquiry';
         });
 
         // Results modal
-        document.getElementById('closeResults').addEventListener('click', () => {
-            this.closeResultsModal();
-        });
-
-        // Close modal when clicking outside
+        document.getElementById('closeModal').addEventListener('click', () => this.closeResultsModal());
         document.getElementById('resultsModal').addEventListener('click', (e) => {
             if (e.target.id === 'resultsModal') {
                 this.closeResultsModal();
@@ -76,16 +88,11 @@ class QDataResearchHub {
         });
 
         // Zotero export
-        document.getElementById('zoteroExport').addEventListener('click', () => this.exportToZotero());
+        document.getElementById('exportZotero').addEventListener('click', () => this.exportToZotero());
 
         // Pagination
         document.getElementById('prevPage').addEventListener('click', () => this.previousPage());
         document.getElementById('nextPage').addEventListener('click', () => this.nextPage());
-
-        // Email button
-        document.getElementById('emailBtn').addEventListener('click', () => {
-            window.location.href = 'mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry';
-        });
     }
 
     initializeYearFilter() {
@@ -110,7 +117,6 @@ class QDataResearchHub {
         this.showLoading();
         
         try {
-            // Simulate API call
             const results = await this.simulateSearch(query);
             this.searchResults = results;
             this.openResultsModal();
@@ -126,46 +132,51 @@ class QDataResearchHub {
 
     async simulateSearch(query) {
         // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Generate mock data matching the search query
+        // Generate mock search results
         const mockResults = [];
-        const sources = ['Zenodo', 'Figshare', 'Open UCT', 'SUNScholar', 'UP Repository'];
+        const sources = ['Zenodo', 'Figshare', 'PubMed', 'IEEE Xplore', 'arXiv'];
         const types = ['research', 'articles', 'theses'];
         const authors = [
-            'Smith, John', 'Johnson, Mary', 'Williams, David', 'Brown, Sarah',
-            'Davis, Michael', 'Miller, Jennifer', 'Wilson, Christopher'
+            'Smith, J.', 'Johnson, M.', 'Williams, D.', 'Brown, S.',
+            'Davis, M.', 'Miller, J.', 'Wilson, C.', 'Anderson, R.'
         ];
 
-        for (let i = 1; i <= 25; i++) {
+        for (let i = 1; i <= 35; i++) {
             const type = types[Math.floor(Math.random() * types.length)];
-            const year = 2015 + Math.floor(Math.random() * 10);
+            const year = 2018 + Math.floor(Math.random() * 7);
             
             mockResults.push({
                 id: `result-${i}`,
-                title: `${query} Research ${this.capitalizeFirstLetter(type)} ${i}`,
+                title: `Research on ${query}: ${this.getTypeDescription(type)} Study ${i}`,
                 authors: this.getRandomAuthors(authors),
-                abstract: `This research paper explores various aspects of ${query}. The study provides comprehensive analysis and findings that contribute to the field. The methodology includes both qualitative and quantitative approaches.`,
+                abstract: `This study examines various aspects of ${query} using advanced research methodologies. The findings contribute significantly to the field and provide insights for future research directions.`,
                 year: year,
                 type: type,
                 source: sources[Math.floor(Math.random() * sources.length)],
-                keywords: [query, 'research', 'data', 'analysis', 'study', type],
-                doi: `10.1234/example.${i}`,
-                url: `https://example.com/paper/${i}`
+                keywords: [query, 'research', 'analysis', 'study', type, 'academic'],
+                doi: `10.1234/research.${i}`,
+                url: `https://example.com/research/${i}`
             });
         }
 
         return mockResults;
     }
 
+    getTypeDescription(type) {
+        const descriptions = {
+            'research': 'Data-Driven',
+            'articles': 'Comprehensive',
+            'theses': 'Academic'
+        };
+        return descriptions[type] || 'Research';
+    }
+
     getRandomAuthors(authorsList) {
         const count = 1 + Math.floor(Math.random() * 3);
         const shuffled = [...authorsList].sort(() => 0.5 - Math.random());
         return shuffled.slice(0, count);
-    }
-
-    capitalizeFirstLetter(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
     openResultsModal() {
@@ -217,18 +228,16 @@ class QDataResearchHub {
         switch (sortBy) {
             case 'date':
                 return results.sort((a, b) => b.year - a.year);
-            case 'title':
-                return results.sort((a, b) => a.title.localeCompare(b.title));
             case 'relevance':
             default:
-                return results; // Default order
+                return results;
         }
     }
 
     updateFiltersUI() {
         // Update author filter options
         const authorFilter = document.getElementById('authorFilter');
-        const authors = [...new Set(this.searchResults.flatMap(item => item.authors))].slice(0, 20);
+        const authors = [...new Set(this.searchResults.flatMap(item => item.authors))].slice(0, 15);
         
         const currentValue = authorFilter.value;
         authorFilter.innerHTML = '<option value="all">All Authors</option>';
@@ -253,9 +262,9 @@ class QDataResearchHub {
 
         if (pageResults.length === 0) {
             container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">🔍</div>
-                    <h4>No results found</h4>
+                <div style="text-align: center; padding: 40px; color: #6c757d;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+                    <h4 style="margin-bottom: 8px;">No results found</h4>
                     <p>Try adjusting your search criteria or filters</p>
                 </div>
             `;
@@ -295,7 +304,7 @@ class QDataResearchHub {
                 <div class="result-actions">
                     <span class="result-source">Source: ${result.source}</span>
                     <div class="action-buttons">
-                        <button class="action-btn secondary" onclick="app.viewItem('${result.id}')">View</button>
+                        <button class="action-btn" onclick="app.viewItem('${result.id}')">View</button>
                         <button class="action-btn primary" onclick="app.saveToZotero('${result.id}')">Save to Zotero</button>
                     </div>
                 </div>
@@ -338,6 +347,16 @@ class QDataResearchHub {
         }
     }
 
+    startHarvesting() {
+        alert('Harvesting process started. This would connect to research repositories and gather data.');
+        // In a real implementation, this would trigger the harvesting process
+    }
+
+    expandSearch() {
+        alert('Expanding search to include additional research repositories and databases.');
+        // In a real implementation, this would broaden the search scope
+    }
+
     viewItem(itemId) {
         const item = this.searchResults.find(r => r.id === itemId);
         if (item && item.url) {
@@ -351,10 +370,7 @@ class QDataResearchHub {
         const item = this.searchResults.find(r => r.id === itemId);
         if (!item) return;
 
-        // Generate RIS format for Zotero
         const risContent = this.generateRIS([item]);
-        
-        // Create download
         const blob = new Blob([risContent], { type: 'application/x-research-info-systems' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -379,7 +395,7 @@ class QDataResearchHub {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `qdata-export-${new Date().toISOString().split('T')[0]}.ris`;
+        a.download = `researchhub-export-${new Date().toISOString().split('T')[0]}.ris`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -426,22 +442,19 @@ class QDataResearchHub {
     }
 
     showLoading() {
-        // Simple loading indicator
-        const searchBtn = document.getElementById('searchBtn');
+        const searchBtn = document.getElementById('searchButton');
         const originalText = searchBtn.textContent;
         searchBtn.textContent = 'Searching...';
         searchBtn.disabled = true;
-        
-        // Store original text to restore later
         searchBtn.dataset.originalText = originalText;
     }
 
     hideLoading() {
-        const searchBtn = document.getElementById('searchBtn');
+        const searchBtn = document.getElementById('searchButton');
         searchBtn.textContent = searchBtn.dataset.originalText || 'Search';
         searchBtn.disabled = false;
     }
 }
 
 // Initialize the application
-const app = new QDataResearchHub();
+const app = new ResearchHub();
