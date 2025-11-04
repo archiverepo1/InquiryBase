@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Q Data - Research Data Harvesting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary-color: #0F204B;
@@ -13,6 +14,8 @@
             --dark-gray: #333;
             --search-button-color: #8B8D8E;
             --footer-color: #A7A8AA;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
         }
         
         * {
@@ -32,7 +35,7 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
             flex: 1;
@@ -49,7 +52,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 0 20px;
         }
@@ -94,7 +97,7 @@
             justify-content: center;
             align-items: center;
             gap: 30px;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 0 20px;
         }
@@ -160,6 +163,7 @@
             display: flex;
             gap: 15px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .source-button {
@@ -175,6 +179,10 @@
         
         .source-button:hover {
             background-color: #1a2f6b;
+        }
+        
+        .source-button.active {
+            background-color: var(--secondary-color);
         }
         
         .advanced-toggle {
@@ -258,6 +266,193 @@
             font-size: 14px;
         }
         
+        .filters-container {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        .filters-container.active {
+            display: block;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--dark-gray);
+        }
+        
+        .filter-group select, .filter-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-in-results {
+            display: flex;
+            margin-top: 15px;
+        }
+        
+        .search-in-results input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px 0 0 4px;
+            font-size: 14px;
+        }
+        
+        .search-in-results button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .data-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .data-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .card-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-type {
+            background-color: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .card-source {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .card-body {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            color: var(--dark-gray);
+        }
+        
+        .card-authors {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+        
+        .card-description {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            flex-grow: 1;
+        }
+        
+        .card-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .keyword-tag {
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        
+        .card-footer {
+            padding: 15px 20px;
+            background-color: #f9f9f9;
+            border-top: 1px solid var(--medium-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .card-action {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+        
+        .card-action:hover {
+            color: var(--secondary-color);
+        }
+        
         .sources-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -339,6 +534,7 @@
         .zotero-buttons {
             display: flex;
             gap: 15px;
+            flex-wrap: wrap;
         }
         
         .zotero-button {
@@ -386,12 +582,24 @@
             color: #666;
         }
         
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .no-results i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #ccc;
+        }
+        
         @media (max-width: 768px) {
             .source-buttons {
                 flex-wrap: wrap;
             }
             
-            .sources-grid {
+            .sources-grid, .data-cards-container {
                 grid-template-columns: 1fr;
             }
             
@@ -403,6 +611,10 @@
                 flex-direction: column;
                 gap: 10px;
                 text-align: center;
+            }
+            
+            .filter-row {
+                flex-direction: column;
             }
         }
     </style>
@@ -427,7 +639,7 @@
             </div>
             
             <div class="source-buttons">
-                <button class="source-button" data-type="all">All Sources</button>
+                <button class="source-button active" data-type="all">All Sources</button>
                 <button class="source-button" data-type="research">Research Data</button>
                 <button class="source-button" data-type="articles">Journal Articles</button>
                 <button class="source-button" data-type="theses">Theses</button>
@@ -459,6 +671,48 @@
                 <div class="progress"></div>
             </div>
             <div class="harvest-status">Ready to harvest</div>
+            
+            <!-- Filters Container - Only shown when data is harvested -->
+            <div class="filters-container">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="yearFilter">Year</label>
+                        <select id="yearFilter">
+                            <option value="">All Years</option>
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="keywordFilter">Keywords</label>
+                        <input type="text" id="keywordFilter" placeholder="Enter keywords...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="relevanceFilter">Sort By</label>
+                        <select id="relevanceFilter">
+                            <option value="relevance">Relevance</option>
+                            <option value="year">Year (Newest)</option>
+                            <option value="year_asc">Year (Oldest)</option>
+                            <option value="title">Title</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="countryFilter">Country</label>
+                        <select id="countryFilter">
+                            <option value="">All Countries</option>
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                <div class="search-in-results">
+                    <input type="text" id="searchInResults" placeholder="Search within harvested data...">
+                    <button id="searchInResultsButton">Search</button>
+                </div>
+            </div>
+            
+            <!-- Data Cards Container -->
+            <div class="data-cards-container" id="dataCardsContainer">
+                <!-- Data cards will be inserted here by JavaScript -->
+            </div>
             
             <div class="sources-grid">
                 <!-- Research Data Sources -->
@@ -556,6 +810,21 @@
             const progressBar = document.querySelector('.progress');
             const harvestStatus = document.querySelector('.harvest-status');
             const emailButton = document.querySelector('.email-button');
+            const filtersContainer = document.querySelector('.filters-container');
+            const dataCardsContainer = document.getElementById('dataCardsContainer');
+            const yearFilter = document.getElementById('yearFilter');
+            const keywordFilter = document.getElementById('keywordFilter');
+            const relevanceFilter = document.getElementById('relevanceFilter');
+            const countryFilter = document.getElementById('countryFilter');
+            const searchInResults = document.getElementById('searchInResults');
+            const searchInResultsButton = document.getElementById('searchInResultsButton');
+            
+            // Harvested data storage
+            let harvestedData = [];
+            let filteredData = [];
+            
+            // Initialize filters
+            initializeFilters();
             
             // Email button functionality
             emailButton.addEventListener('click', function() {
@@ -586,6 +855,8 @@
             // Source buttons functionality
             sourceButtons.forEach(button => {
                 button.addEventListener('click', function() {
+                    sourceButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
                     const type = this.getAttribute('data-type');
                     filterSources(type);
                     startHarvest(type);
@@ -597,13 +868,48 @@
                 startHarvest('all');
             });
             
+            // Filter change events
+            yearFilter.addEventListener('change', applyFilters);
+            keywordFilter.addEventListener('input', applyFilters);
+            relevanceFilter.addEventListener('change', applyFilters);
+            countryFilter.addEventListener('change', applyFilters);
+            
+            // Search within results
+            searchInResultsButton.addEventListener('click', searchWithinResults);
+            searchInResults.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchWithinResults();
+                }
+            });
+            
+            // Function to initialize filters
+            function initializeFilters() {
+                // Initialize year filter
+                const currentYear = new Date().getFullYear();
+                for (let year = currentYear; year >= 1980; year--) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearFilter.appendChild(option);
+                }
+                
+                // Initialize country filter with some common countries
+                const countries = ['South Africa', 'United States', 'United Kingdom', 'Germany', 'France', 'Canada', 'Australia', 'Japan', 'China', 'Brazil'];
+                countries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = country;
+                    option.textContent = country;
+                    countryFilter.appendChild(option);
+                });
+            }
+            
             // Function to perform search
             function performSearch() {
                 const query = searchInput.value.trim();
                 if (query) {
                     resultsSection.classList.add('active');
                     filterSources('all');
-                    startHarvest('search');
+                    startHarvest('search', query);
                 }
             }
             
@@ -619,7 +925,7 @@
             }
             
             // Function to simulate harvesting process
-            function startHarvest(type) {
+            function startHarvest(type, query = '') {
                 resultsSection.classList.add('active');
                 harvestStatus.textContent = 'Harvesting data...';
                 
@@ -631,6 +937,12 @@
                         clearInterval(interval);
                         harvestStatus.textContent = 'Harvest complete!';
                         
+                        // Generate mock data
+                        generateMockData(type, query);
+                        
+                        // Show filters
+                        filtersContainer.classList.add('active');
+                        
                         // Show a success message after a short delay
                         setTimeout(() => {
                             alert(`Successfully harvested ${type === 'all' ? 'all sources' : type} data!`);
@@ -638,6 +950,199 @@
                     }
                     progressBar.style.width = `${progress}%`;
                 }, 200);
+            }
+            
+            // Function to generate mock data for demonstration
+            function generateMockData(type, query = '') {
+                harvestedData = [];
+                
+                // Define sources based on type
+                let sources = [];
+                if (type === 'research' || type === 'all') {
+                    sources = sources.concat(['Zenodo', 'OSF', 'Figshare', 'Mendeley Data', 'Dryad']);
+                }
+                if (type === 'articles' || type === 'all') {
+                    sources = sources.concat(['Open UCT', 'SUNScholar', 'UP Repository']);
+                }
+                if (type === 'theses' || type === 'all') {
+                    sources = sources.concat(['SUNScholar Theses', 'UP Theses', 'UFS Theses']);
+                }
+                
+                // Generate mock data items
+                sources.forEach(source => {
+                    const itemCount = Math.floor(Math.random() * 5) + 3; // 3-7 items per source
+                    
+                    for (let i = 0; i < itemCount; i++) {
+                        const year = 2015 + Math.floor(Math.random() * 10);
+                        const authors = ['Researcher A', 'Researcher B', 'Researcher C'];
+                        const keywords = ['data', 'research', 'analysis', 'study', 'methodology'];
+                        
+                        // Add query-related keywords if there's a search
+                        if (query) {
+                            keywords.push(query.toLowerCase());
+                        }
+                        
+                        // Randomize some keywords
+                        const additionalKeywords = ['statistics', 'visualization', 'open science', 'reproducible'];
+                        for (let j = 0; j < 2; j++) {
+                            const randomIndex = Math.floor(Math.random() * additionalKeywords.length);
+                            if (!keywords.includes(additionalKeywords[randomIndex])) {
+                                keywords.push(additionalKeywords[randomIndex]);
+                            }
+                        }
+                        
+                        const countries = ['South Africa', 'United States', 'United Kingdom', 'Germany', 'France'];
+                        const country = countries[Math.floor(Math.random() * countries.length)];
+                        
+                        harvestedData.push({
+                            id: `${source.replace(/\s+/g, '-').toLowerCase()}-${i}`,
+                            title: `${query ? query + ' - ' : ''}Research ${source} Item ${i + 1}`,
+                            authors: authors,
+                            description: `This is a sample research item harvested from ${source}. It contains valuable research data and findings relevant to the field.`,
+                            keywords: keywords,
+                            year: year,
+                            source: source,
+                            type: getTypeFromSource(source),
+                            country: country,
+                            doi: `10.1234/${source.replace(/\s+/g, '-').toLowerCase()}.${i}`
+                        });
+                    }
+                });
+                
+                // Display the data
+                filteredData = [...harvestedData];
+                displayDataCards();
+            }
+            
+            // Helper function to determine type from source
+            function getTypeFromSource(source) {
+                if (source.includes('Zenodo') || source.includes('OSF') || source.includes('Figshare') || 
+                    source.includes('Mendeley') || source.includes('Dryad')) {
+                    return 'research';
+                } else if (source.includes('Theses')) {
+                    return 'theses';
+                } else {
+                    return 'articles';
+                }
+            }
+            
+            // Function to display data cards
+            function displayDataCards() {
+                dataCardsContainer.innerHTML = '';
+                
+                if (filteredData.length === 0) {
+                    dataCardsContainer.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-search"></i>
+                            <h3>No results found</h3>
+                            <p>Try adjusting your filters or search terms</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                filteredData.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'data-card';
+                    
+                    // Determine badge color based on type
+                    let badgeClass = 'research';
+                    if (item.type === 'articles') badgeClass = 'articles';
+                    if (item.type === 'theses') badgeClass = 'theses';
+                    
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="card-type">${item.type.toUpperCase()}</div>
+                            <div class="card-source">${item.source}</div>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="card-title">${item.title}</h3>
+                            <div class="card-authors">${item.authors.join(', ')}</div>
+                            <p class="card-description">${item.description}</p>
+                            <div class="card-keywords">
+                                ${item.keywords.slice(0, 4).map(keyword => 
+                                    `<span class="keyword-tag">${keyword}</span>`
+                                ).join('')}
+                                ${item.keywords.length > 4 ? `<span class="keyword-tag">+${item.keywords.length - 4} more</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-meta">
+                                <span><i class="far fa-calendar"></i> ${item.year}</span>
+                                <span><i class="fas fa-map-marker-alt"></i> ${item.country}</span>
+                            </div>
+                            <div class="card-actions">
+                                <button class="card-action" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="card-action" title="Download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button class="card-action" title="Save to Zotero">
+                                    <i class="fas fa-bookmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    dataCardsContainer.appendChild(card);
+                });
+            }
+            
+            // Function to apply filters
+            function applyFilters() {
+                filteredData = [...harvestedData];
+                
+                // Apply year filter
+                if (yearFilter.value) {
+                    filteredData = filteredData.filter(item => item.year == yearFilter.value);
+                }
+                
+                // Apply keyword filter
+                if (keywordFilter.value) {
+                    const keyword = keywordFilter.value.toLowerCase();
+                    filteredData = filteredData.filter(item => 
+                        item.keywords.some(k => k.toLowerCase().includes(keyword)) ||
+                        item.title.toLowerCase().includes(keyword) ||
+                        item.description.toLowerCase().includes(keyword)
+                    );
+                }
+                
+                // Apply country filter
+                if (countryFilter.value) {
+                    filteredData = filteredData.filter(item => item.country === countryFilter.value);
+                }
+                
+                // Apply sorting
+                const sortBy = relevanceFilter.value;
+                if (sortBy === 'year') {
+                    filteredData.sort((a, b) => b.year - a.year);
+                } else if (sortBy === 'year_asc') {
+                    filteredData.sort((a, b) => a.year - b.year);
+                } else if (sortBy === 'title') {
+                    filteredData.sort((a, b) => a.title.localeCompare(b.title));
+                }
+                // 'relevance' is the default order
+                
+                displayDataCards();
+            }
+            
+            // Function to search within harvested data
+            function searchWithinResults() {
+                const query = searchInResults.value.toLowerCase().trim();
+                
+                if (!query) {
+                    filteredData = [...harvestedData];
+                } else {
+                    filteredData = harvestedData.filter(item => 
+                        item.title.toLowerCase().includes(query) ||
+                        item.description.toLowerCase().includes(query) ||
+                        item.authors.some(author => author.toLowerCase().includes(query)) ||
+                        item.keywords.some(keyword => keyword.toLowerCase().includes(query))
+                    );
+                }
+                
+                displayDataCards();
             }
         });
     </script>
