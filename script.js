@@ -1,607 +1,484 @@
-// ==== CONFIG ====
-// Cloudflare Worker base (no trailing slash at the end here)
-const WORKER_BASE = 'https://inquirybase.archiverepo1.workers.dev';
+/* Q Data Harvester – Github JS (standalone)
+   - Harvests SA DSpace (OAI-PMH) for Articles/Theses
+   - Harvests Zenodo, Figshare, OSF for Research Data
+   - Uses Cloudflare Worker as CORS proxy
+*/
 
-// Verified running South African DSpace repositories (OAI-PMH)
-const REPOSITORIES = [
-  { id:'uct',   name:'Open UCT',                 type:'articles', oai:'https://open.uct.ac.za/oai/request',        handleBase:'https://open.uct.ac.za/handle/',             handlePrefixes:['11427'] },
-  { id:'sun',   name:'SUNScholar',               type:'articles', oai:'https://scholar.sun.ac.za/oai/request',     handleBase:'https://scholar.sun.ac.za/handle/',          handlePrefixes:['10019.1'] },
-  { id:'up',    name:'UPSpace',                  type:'articles', oai:'https://repository.up.ac.za/oai/request',   handleBase:'https://repository.up.ac.za/handle/',        handlePrefixes:['2263'] },
-  { id:'ufs',   name:'KovsieScholar',            type:'articles', oai:'https://scholar.ufs.ac.za/oai/request',     handleBase:'https://scholar.ufs.ac.za/handle/',          handlePrefixes:['11660'] },
-  { id:'unisa', name:'UNISA IR',                 type:'articles', oai:'https://uir.unisa.ac.za/oai/request',       handleBase:'https://uir.unisa.ac.za/handle/',            handlePrefixes:['10500'] },
-  { id:'spu',   name:'SPU OpenHub',              type:'articles', oai:'https://openhub.spu.ac.za/oai/request',     handleBase:'https://openhub.spu.ac.za/handle/',          handlePrefixes:['10394'] },
-  { id:'cut',   name:'CUTScholar',               type:'articles', oai:'https://cutscholar.cut.ac.za/oai/request',  handleBase:'https://cutscholar.cut.ac.za/handle/',       handlePrefixes:['11462'] },
-  { id:'dut',   name:'DUT OpenScholar',          type:'articles', oai:'https://openscholar.dut.ac.za/oai/request', handleBase:'https://openscholar.dut.ac.za/handle/',      handlePrefixes:['10321'] },
+const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
+
+// --------- Sources ---------
+const SOUTH_AFRICA_DSPACE = [
+  // Confirmed by you
+  { id: "uct",   name: "Open UCT",                   host: "open.uct.ac.za",           oai: "https://open.uct.ac.za/oai/request" },
+  { id: "sun",   name: "SUNScholar",                 host: "scholar.sun.ac.za",        oai: "https://scholar.sun.ac.za/oai/request" },
+  { id: "up",    name: "UP Repository",              host: "repository.up.ac.za",      oai: "https://repository.up.ac.za/oai/request" },
+  { id: "ufs",   name: "UFS Scholar",                host: "scholar.ufs.ac.za",        oai: "https://scholar.ufs.ac.za/oai/request" },
+  { id: "unisa", name: "UNISA DSpace",               host: "uir.unisa.ac.za",          oai: "https://uir.unisa.ac.za/oai/request" },
+  // Newly provided by you
+  { id: "spu",   name: "SPU OpenHub",                host: "openhub.spu.ac.za",        oai: "https://openhub.spu.ac.za/oai/request" },
+  { id: "cut",   name: "CUT Scholar",                host: "cutscholar.cut.ac.za",     oai: "https://cutscholar.cut.ac.za/oai/request" },
+  { id: "dut",   name: "DUT OpenScholar",            host: "openscholar.dut.ac.za",    oai: "https://openscholar.dut.ac.za/oai/request" },
+  // Widely used, currently live (common endpoints)
+  { id: "ukzn",  name: "UKZN ResearchSpace",         host: "researchspace.ukzn.ac.za", oai: "https://researchspace.ukzn.ac.za/oai/request" },
+  { id: "wits",  name: "Wits WIReDSpace",            host: "wiredspace.wits.ac.za",    oai: "https://wiredspace.wits.ac.za/oai/request" },
+  { id: "nwu",   name: "NWU Repository",             host: "repository.nwu.ac.za",     oai: "https://repository.nwu.ac.za/oai/request" },
+  { id: "uwc",   name: "UWC Repository",             host: "repository.uwc.ac.za",     oai: "https://repository.uwc.ac.za/oai/request" },
+  { id: "ul",    name: "ULSpace (Limpopo)",          host: "ulspace.ul.ac.za",         oai: "https://ulspace.ul.ac.za/oai/request" },
+  { id: "ufh",   name: "UFH Repository",             host: "dspace.ufh.ac.za",         oai: "https://dspace.ufh.ac.za/oai/request" },
 ];
 
-// How many records to pull (per repo) on a harvest click:
-const PAGE_SIZE = 50;        // OAI ListRecords chunk size (if supported by server)
-const MAX_RECORDS_PER_REPO = 150; // safety cap per source
+const RESEARCH_DATA_SOURCES = [
+  { id: "zenodo",  name: "Zenodo",  type: "research" },
+  { id: "figshare",name: "Figshare",type: "research" },
+  { id: "osf",     name: "OSF",     type: "research" }
+];
 
-// ==== DOM HOOKS ====
-const els = {};
-document.addEventListener('DOMContentLoaded', () => {
-  // Top controls
-  els.searchInput = document.querySelector('.search-input');
-  els.searchButton = document.querySelector('.search-button');
-  els.sourceButtons = document.querySelectorAll('.source-button');
-  els.advancedToggle = document.querySelector('.advanced-toggle');
-  els.advancedSearch = document.querySelector('.advanced-search');
-  els.booleanOptions = document.querySelectorAll('.boolean-option');
-  els.applyAdvanced = document.getElementById('applyAdvanced');
-
-  // Results & actions
-  els.resultsSection = document.querySelector('.results-section');
-  els.harvestButton = document.querySelector('.harvest-button');
-  els.clearButton = document.querySelector('.clear-button');
-  els.progressBar = document.querySelector('.progress');
-  els.harvestStatus = document.querySelector('.harvest-status');
-
-  // Filters & paging
-  els.yearFilter = document.getElementById('yearFilter');
-  els.sourceFilter = document.getElementById('sourceFilter');
-  els.typeFilter = document.getElementById('typeFilter');
-  els.sortFilter = document.getElementById('sortFilter');
-  els.searchInResults = document.getElementById('searchInResults');
-  els.searchInResultsButton = document.getElementById('searchInResultsButton');
-  els.resultsCount = document.getElementById('resultsCount');
-
-  els.pagination = document.getElementById('pagination');
-  els.firstPage = document.getElementById('firstPage');
-  els.prevPage = document.getElementById('prevPage');
-  els.nextPage = document.getElementById('nextPage');
-  els.lastPage = document.getElementById('lastPage');
-  els.pageInfo = document.getElementById('pageInfo');
-  els.resetFilters = document.querySelector('.reset-filters');
-
-  // Cards container
-  els.dataCardsContainer = document.getElementById('dataCardsContainer');
-
-  // State
-  stateInit();
-
-  // Listeners
-  wireEvents();
-
-  // Fill filters
-  initFilters();
-});
-
+// --------- State ---------
 const state = {
-  allData: [],
-  filteredData: [],
-  currentPage: 1,
+  all: [],
+  filtered: [],
+  page: 1,
   pageSize: 12,
   totalPages: 1,
   isHarvesting: false,
-  currentType: 'all',
+  currentType: "all"
 };
 
-// ==== State / UI wiring =====
-function stateInit() {
-  state.allData = [];
-  state.filteredData = [];
-  state.currentPage = 1;
-  state.totalPages = 1;
-  state.isHarvesting = false;
-  state.currentType = 'all';
-}
+// --------- Helpers ---------
+const el = (sel) => document.querySelector(sel);
+const els = (sel) => document.querySelectorAll(sel);
+function setProgress(p) { el("#progress").style.width = `${p}%`; }
+function setStatus(t) { el("#harvestStatus").textContent = t; }
 
-function wireEvents() {
-  // Advanced toggle
-  els.advancedToggle.addEventListener('click', () => els.advancedSearch.classList.toggle('active'));
-  els.booleanOptions.forEach(btn => btn.addEventListener('click', () => {
-    els.booleanOptions.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }));
-  if (els.applyAdvanced) {
-    els.applyAdvanced.addEventListener('click', () => applyFilters(true));
+function yearOptionsInit() {
+  const y = new Date().getFullYear();
+  const sel = el("#yearFilter");
+  for (let yr = y; yr >= 1980; yr--) {
+    const o = document.createElement("option");
+    o.value = String(yr);
+    o.textContent = String(yr);
+    sel.appendChild(o);
   }
-
-  // Search box
-  els.searchButton.addEventListener('click', performSearch);
-  els.searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
-
-  // Source buttons
-  els.sourceButtons.forEach(b => b.addEventListener('click', (e) => {
-    els.sourceButtons.forEach(x => x.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-    state.currentType = e.currentTarget.dataset.type || 'all';
-    applyFilters();
-  }));
-
-  // Harvest & clear
-  els.harvestButton.addEventListener('click', startHarvest);
-  els.clearButton.addEventListener('click', clearResults);
-
-  // Filters
-  els.yearFilter.addEventListener('change', applyFilters);
-  els.sourceFilter.addEventListener('change', applyFilters);
-  els.typeFilter.addEventListener('change', applyFilters);
-  els.sortFilter.addEventListener('change', applyFilters);
-  els.resetFilters.addEventListener('click', resetFilters);
-
-  // Search within results
-  els.searchInResultsButton.addEventListener('click', searchWithinResults);
-  els.searchInResults.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchWithinResults(); });
-
-  // Pagination
-  els.firstPage.addEventListener('click', () => goToPage(1));
-  els.prevPage.addEventListener('click', () => goToPage(state.currentPage - 1));
-  els.nextPage.addEventListener('click', () => goToPage(state.currentPage + 1));
-  els.lastPage.addEventListener('click', () => goToPage(state.totalPages));
-
-  // Card action delegation
-  els.dataCardsContainer.addEventListener('click', (e) => {
-    const btn = e.target.closest('.card-action');
-    if (!btn) return;
-    const card = btn.closest('.data-card');
-    if (!card) return;
-    const id = card.dataset.itemId;
-    const action = btn.dataset.action;
-    handleCardAction(action, id);
+}
+function sourceOptionsInit() {
+  const sel = el("#sourceFilter");
+  const names = [...SOUTH_AFRICA_DSPACE.map(s => s.name), ...RESEARCH_DATA_SOURCES.map(s=>s.name)];
+  names.forEach(n => {
+    const o = document.createElement("option");
+    o.value = n;
+    o.textContent = n;
+    sel.appendChild(o);
   });
 }
 
-function initFilters() {
-  const currentYear = new Date().getFullYear();
-  for (let y = currentYear; y >= 1980; y--) {
-    const o = document.createElement('option');
-    o.value = String(y);
-    o.textContent = y;
-    els.yearFilter.appendChild(o);
-  }
-  // Sources
-  const unique = REPOSITORIES.map(r => r.name);
-  unique.forEach(name => {
-    const o = document.createElement('option');
-    o.value = name;
-    o.textContent = name;
-    els.sourceFilter.appendChild(o);
-  });
-}
-
-// ==== Harvest logic (OAI-PMH oai_dc) ====
-async function startHarvest() {
-  if (state.isHarvesting) {
-    alert('Harvest is already running');
-    return;
-  }
-  state.isHarvesting = true;
-  els.resultsSection.classList.add('active');
-  els.harvestStatus.textContent = 'Starting harvest...';
-  setProgress(0);
-
+function saveLocal() {
   try {
-    // Clear previous
-    state.allData = [];
-    updateResultsDisplay();
-
-    const sources = getSourcesByType(state.currentType);
-    for (let i = 0; i < sources.length; i++) {
-      const s = sources[i];
-      els.harvestStatus.textContent = `Harvesting from ${s.name}...`;
-      setProgress(Math.round((i / sources.length) * 80));
-
-      const items = await harvestRepository(s);
-      state.allData = state.allData.concat(items);
-      updateResultsDisplay();
+    localStorage.setItem("qDataHarvest", JSON.stringify({ data: state.all, ts: Date.now() }));
+  } catch {}
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem("qDataHarvest");
+    if (!raw) return;
+    const { data } = JSON.parse(raw);
+    if (Array.isArray(data) && data.length) {
+      state.all = data;
+      state.filtered = data.slice();
+      el("#resultsSection").classList.add("active");
+      render();
     }
+  } catch {}
+}
 
-    els.harvestStatus.textContent = `Harvest complete! Collected ${state.allData.length} records.`;
-    setProgress(100);
-  } catch (err) {
-    console.error('Harvest error:', err);
-    els.harvestStatus.textContent = 'Harvest failed. Check console.';
+// Prefer a repo-local URL, then DOI, then Handle
+function pickBestUrl(identifiers = [], hostHint = "") {
+  const clean = (s) => (s || "").trim();
+  const urls = identifiers.map(clean).filter(Boolean);
+
+  // repo-local
+  const byHost = urls.find(u => u.startsWith("http") && hostHint && u.includes(hostHint));
+  if (byHost) return byHost;
+
+  // doi
+  const doi = urls.find(u => u.includes("doi.org")) || urls.find(u => /^10\./.test(u));
+  if (doi) return doi.startsWith("http") ? doi : `https://doi.org/${doi}`;
+
+  // handle
+  const handle = urls.find(u => u.includes("hdl.handle.net")) || urls.find(u => /^\d+\/\d+/.test(u));
+  if (handle) return handle.startsWith("http") ? handle : `https://hdl.handle.net/${handle}`;
+
+  // fall back to first http-like
+  const http = urls.find(u => u.startsWith("http"));
+  if (http) return http;
+
+  return "";
+}
+
+function xmlText(node, sel) {
+  const n = node.querySelector(sel);
+  return n ? n.textContent.trim() : "";
+}
+function xmlTexts(node, sel) {
+  return Array.from(node.querySelectorAll(sel)).map(n => n.textContent.trim()).filter(Boolean);
+}
+
+// --------- Harvesters ---------
+async function harvestAll() {
+  if (state.isHarvesting) return alert("Harvest already in progress");
+  state.isHarvesting = true;
+  el("#resultsSection").classList.add("active");
+  state.all = [];
+  setProgress(0); setStatus("Starting harvest...");
+
+  // Build source list by type
+  const wantType = state.currentType;
+  const dspaceList = (wantType === "all" || wantType === "articles" || wantType === "theses") ? SOUTH_AFRICA_DSPACE : [];
+  const dataList   = (wantType === "all" || wantType === "research") ? RESEARCH_DATA_SOURCES : [];
+  const sources = [...dspaceList, ...dataList];
+
+  let idx = 0;
+  for (const src of sources) {
+    idx++;
+    setStatus(`Harvesting: ${src.name}`);
+    setProgress(Math.min(90, Math.round((idx - 1) / Math.max(1, sources.length) * 90)));
+
+    try {
+      let recs = [];
+      if (src.oai) {
+        // DSpace OAI
+        recs = await harvestOAI(src, wantType);
+      } else {
+        // Research data platforms
+        recs = await harvestDataPlatforms(src);
+      }
+      state.all = state.all.concat(recs);
+      state.filtered = state.all.slice();
+      render();
+    } catch (e) {
+      console.warn(`Failed ${src.name}:`, e);
+    }
   }
+
+  setProgress(100);
+  setStatus(`Harvest complete! Collected ${state.all.length} records`);
+  saveLocal();
   state.isHarvesting = false;
 }
 
-function getSourcesByType(type) {
-  if (type === 'all') return REPOSITORIES;
-  // DSpace here all are "articles" or "theses" buckets; we keep "articles" default
-  return REPOSITORIES.filter(r => r.type === type);
-}
-
-async function harvestRepository(repo) {
+async function harvestOAI(source, wantType) {
+  // Fetch first page, then follow resumptionToken if present
+  const pageSize = 100; // XML page size
   const out = [];
-  let endpoint = `${repo.oai}?verb=ListRecords&metadataPrefix=oai_dc`;
-  let fetched = 0;
+  let url = `${source.oai}?verb=ListRecords&metadataPrefix=oai_dc`;
+  let guard = 0;
 
-  while (endpoint && fetched < MAX_RECORDS_PER_REPO) {
-    const url = buildProxyUrl(endpoint);
-    const res = await fetch(url, { headers: { 'Accept': 'application/xml' }});
-    if (!res.ok) throw new Error(`Fetch failed ${res.status} at ${repo.name}`);
-    const xmlText = await res.text();
-    const { records, resumptionToken } = parseOaiListRecords(xmlText, repo);
+  while (url && guard < 20) {
+    guard++;
 
-    out.push(...records);
-    fetched += records.length;
+    const proxyUrl = `${WORKER_URL}/api/proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    const text = await res.text();
 
-    if (resumptionToken && fetched < MAX_RECORDS_PER_REPO) {
-      endpoint = `${repo.oai}?verb=ListRecords&resumptionToken=${encodeURIComponent(resumptionToken)}`;
+    const xml = new DOMParser().parseFromString(text, "text/xml");
+    const recs = Array.from(xml.getElementsByTagName("record"));
+
+    recs.forEach(r => {
+      const meta = r.querySelector("metadata");
+      if (!meta) return;
+
+      const dc = meta.querySelector("dc\\:dc, dc");
+      if (!dc) return;
+
+      const title = xmlText(dc, "dc\\:title, title") || "Untitled";
+      const creators = xmlTexts(dc, "dc\\:creator, creator");
+      const desc = xmlText(dc, "dc\\:description, description");
+      const subjects = xmlTexts(dc, "dc\\:subject, subject");
+      const types = xmlTexts(dc, "dc\\:type, type").map(t => t.toLowerCase());
+      const dates = xmlTexts(dc, "dc\\:date, date");
+      const identifiers = xmlTexts(dc, "dc\\:identifier, identifier");
+      const year = (dates.join(" ").match(/\b(19|20)\d{2}\b/) || [])[0] || "";
+
+      // Filter by type if user clicked Articles/Theses
+      let logicalType = "articles";
+      if (types.some(t => t.includes("thesis"))) logicalType = "theses";
+      if (types.some(t => t.includes("article"))) logicalType = "articles";
+
+      if (wantType === "theses" && logicalType !== "theses") return;
+      if (wantType === "articles" && logicalType !== "articles") return;
+
+      const urlBest = pickBestUrl(identifiers, source.host);
+      const id = `${source.id}-${(Math.random()*1e9|0)}`;
+      out.push({
+        id,
+        title,
+        authors: creators.length ? creators : ["Unknown"],
+        description: desc || "No description available",
+        keywords: subjects.length ? subjects : ["dspace", "repository"],
+        year: year || "",
+        source: source.name,
+        type: logicalType,
+        identifier: urlBest.includes("doi.org") ? urlBest.replace(/^https?:\/\/doi\.org\//,'') : (identifiers[0] || ""),
+        identifierType: urlBest.includes("doi.org") ? "DOI" : (urlBest.includes("hdl.handle.net") ? "Handle" : "URL"),
+        url: urlBest,
+        downloadUrl: "" // DSpace often needs another call; open item page for download
+      });
+    });
+
+    // Next page via resumptionToken
+    const token = xmlText(xml, "resumptionToken");
+    if (token) {
+      url = `${source.oai}?verb=ListRecords&resumptionToken=${encodeURIComponent(token)}`;
       await delay(250);
     } else {
-      endpoint = null;
+      url = "";
     }
+
+    if (out.length >= pageSize * 5) break; // prevent runaway (500 items/source)
   }
+
   return out;
 }
 
-function buildProxyUrl(target) {
-  return `${WORKER_BASE}/api/proxy?url=${encodeURIComponent(target)}`;
-}
-
-function parseOaiListRecords(xmlText, repo) {
-  // Parse XML robustly (namespace-insensitive)
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(xmlText, 'application/xml');
-
-  const errorNode = xml.querySelector('error');
-  if (errorNode) {
-    console.warn('OAI error:', errorNode.textContent);
-    return { records: [], resumptionToken: null };
-  }
-
-  const recNodes = xml.getElementsByTagName('record');
-  const records = [];
-  for (let i = 0; i < recNodes.length; i++) {
-    const rec = recNodes[i];
-    const md = rec.getElementsByTagName('metadata')[0];
-    if (!md) continue;
-
-    // dc fields (oai_dc:dc)
-    const dc = md.getElementsByTagNameNS('*', 'dc')[0] || md.querySelector('dc');
-    if (!dc) continue;
-
-    const title = findFirst(dc, ['title']) || 'Untitled';
-    const creators = findAll(dc, ['creator']);
-    const description = truncate((findFirst(dc, ['description']) || '').replace(/\s+/g, ' ').trim(), 400);
-    const date = findFirst(dc, ['date']);
-    const year = extractYear(date);
-
-    const identifiers = findAll(dc, ['identifier']);
-    const { url, idType, idValue, downloadUrl } = pickBestIdentifier(identifiers, repo);
-
-    // Type: try subject/type else default "articles"
-    const dcType = (findFirst(dc, ['type']) || '').toLowerCase().includes('thes') ? 'theses' : 'articles';
-
-    records.push({
-      id: `${repo.id}-${hashId(url || idValue || title)}-${i}`,
-      title,
-      authors: creators.length ? creators : ['Unknown'],
-      description: description || `Record from ${repo.name}`,
-      keywords: [], // OAI-Dublin core sometimes provides subjects; you can add: findAll(dc, ['subject'])
-      year: year || '',
-      source: repo.name,
-      type: dcType,
-      identifier: idValue || '',
-      identifierType: idType || '',
-      url: url || '',
-      downloadUrl: downloadUrl || ''
-    });
-  }
-
-  const tokenNode = xml.getElementsByTagName('resumptionToken')[0];
-  const resumptionToken = tokenNode ? (tokenNode.textContent || '').trim() : null;
-
-  return { records, resumptionToken };
-}
-
-function findFirst(dcNode, localNames) {
-  for (const name of localNames) {
-    const el = dcNode.getElementsByTagNameNS('*', name)[0] || dcNode.getElementsByTagName(name)[0];
-    if (el && el.textContent) return el.textContent.trim();
-  }
-  return null;
-}
-function findAll(dcNode, localNames) {
-  const out = [];
-  for (const name of localNames) {
-    const list = dcNode.getElementsByTagNameNS('*', name);
-    if (list && list.length) {
-      for (let i = 0; i < list.length; i++) {
-        const t = (list[i].textContent || '').trim();
-        if (t) out.push(t);
-      }
+async function harvestDataPlatforms(source) {
+  switch (source.id) {
+    case "zenodo": {
+      const api = "https://zenodo.org/api/records?q=*&size=100&sort=mostrecent";
+      const data = await proxyJson(api);
+      const hits = data.hits?.hits || [];
+      return hits.map(it => ({
+        id: `zenodo-${it.id}`,
+        title: it.metadata?.title || "Untitled",
+        authors: (it.metadata?.creators || []).map(c => c.name),
+        description: stripHtml(it.metadata?.description || ""),
+        keywords: it.metadata?.keywords || [],
+        year: (it.metadata?.publication_date || "").slice(0,4),
+        source: "Zenodo",
+        type: "research",
+        identifier: it.metadata?.doi || "",
+        identifierType: it.metadata?.doi ? "DOI" : "URL",
+        url: it.links?.html || (it.metadata?.doi ? `https://doi.org/${it.metadata.doi}` : ""),
+        downloadUrl: it.links?.download || ""
+      }));
     }
-    const list2 = dcNode.getElementsByTagName(name);
-    if (list2 && list2.length) {
-      for (let i = 0; i < list2.length; i++) {
-        const t = (list2[i].textContent || '').trim();
-        if (t) out.push(t);
-      }
+    case "figshare": {
+      const api = "https://api.figshare.com/v2/articles?page_size=100&page=1";
+      const arr = await proxyJson(api);
+      return arr.map(it => ({
+        id: `figshare-${it.id}`,
+        title: it.title || "Untitled",
+        authors: (it.authors || []).map(a => a.full_name),
+        description: stripHtml(it.description || ""),
+        keywords: it.tags || [],
+        year: (it.published_date || "").slice(0,4),
+        source: "Figshare",
+        type: "research",
+        identifier: it.doi || "",
+        identifierType: it.doi ? "DOI" : "URL",
+        url: it.url_public_html || (it.doi ? `https://doi.org/${it.doi}` : ""),
+        downloadUrl: (it.files && it.files[0] && it.files[0].download_url) || ""
+      }));
     }
-  }
-  return out;
-}
-
-function extractYear(dateStr) {
-  if (!dateStr) return '';
-  const m = dateStr.match(/(19|20)\d{2}/);
-  return m ? m[0] : '';
-}
-
-function pickBestIdentifier(identifiers, repo) {
-  // Prefer DOI, then full http(s) links to item, then handle patterns, then repo handleBase + suffix
-  let doi = null;
-  let fullUrl = null;
-  let handleShort = null;
-
-  const doiRe = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/i;
-  const doiUrlRe = /^https?:\/\/(dx\.)?doi\.org\/(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)$/i;
-  const urlRe = /^https?:\/\/.+/i;
-
-  const handleFullRe = /^https?:\/\/hdl\.handle\.net\/(.+?)$/i;
-  const repoHandleFullRe = /^https?:\/\/[^\/]+\/handle\/(.+?)$/i; // direct repo handle URL
-  const handleShortRe = new RegExp(`^(${repo.handlePrefixes.map(escapeRegExp).join('|')})\\/\\d+`, 'i');
-
-  for (const id of identifiers) {
-    const s = id.trim();
-
-    // DOI URL
-    const durl = s.match(doiUrlRe);
-    if (durl) {
-      return { url: `https://doi.org/${durl[2]}`, idType: 'DOI', idValue: durl[2], downloadUrl: '' };
+    case "osf": {
+      const api = "https://api.osf.io/v2/nodes/?page[size]=100&fields[notes]=title,description,date_created,doi,tags";
+      const json = await proxyJson(api);
+      const arr = json.data || [];
+      return arr.map(it => ({
+        id: `osf-${it.id}`,
+        title: it.attributes?.title || "Untitled",
+        authors: ["Multiple contributors"],
+        description: stripHtml(it.attributes?.description || ""),
+        keywords: it.attributes?.tags || [],
+        year: (it.attributes?.date_created || "").slice(0,4),
+        source: "OSF",
+        type: "research",
+        identifier: it.attributes?.doi || "",
+        identifierType: it.attributes?.doi ? "DOI" : "URL",
+        url: it.links?.html || (it.attributes?.doi ? `https://doi.org/${it.attributes.doi}` : ""),
+        downloadUrl: ""
+      }));
     }
+    default: return [];
   }
-  for (const id of identifiers) {
-    const s = id.trim();
-
-    // DOI bare
-    if (doiRe.test(s)) {
-      doi = s;
-      return { url: `https://doi.org/${doi}`, idType: 'DOI', idValue: doi, downloadUrl: '' };
-    }
-  }
-  for (const id of identifiers) {
-    const s = id.trim();
-
-    // Full repo item URL (already a handle page)
-    const rfull = s.match(repoHandleFullRe);
-    if (rfull) {
-      return { url: s, idType: 'Handle', idValue: rfull[1], downloadUrl: '' };
-    }
-    const hfull = s.match(handleFullRe);
-    if (hfull) {
-      // convert to repository handle if possible (prefer local handle page)
-      const hv = hfull[1]; // e.g. 2263/12345
-      if (isKnownHandlePrefix(hv, repo)) {
-        return { url: repo.handleBase + hv, idType: 'Handle', idValue: hv, downloadUrl: '' };
-      }
-      // else keep hdl handle
-      return { url: `https://hdl.handle.net/${hv}`, idType: 'Handle', idValue: hv, downloadUrl: '' };
-    }
-  }
-  for (const id of identifiers) {
-    const s = id.trim();
-
-    // Plain short handle like "2263/12345"
-    if (handleShortRe.test(s)) {
-      handleShort = s;
-      return { url: repo.handleBase + handleShort, idType: 'Handle', idValue: handleShort, downloadUrl: '' };
-    }
-
-    // Any direct URL to an item
-    if (urlRe.test(s)) {
-      fullUrl = s;
-      // If it's a file link, keep it as download
-      const isBitstream = /bitstream|download/i.test(s);
-      return { url: fullUrl, idType: 'URL', idValue: fullUrl, downloadUrl: isBitstream ? fullUrl : '' };
-    }
-  }
-
-  // Fallback: nothing recognized
-  return { url: '', idType: '', idValue: '', downloadUrl: '' };
 }
 
-function isKnownHandlePrefix(handleValue, repo) {
-  // handleValue like "2263/12345"
-  const prefix = (handleValue.split('/')[0] || '').trim();
-  return repo.handlePrefixes.some(p => p.toLowerCase() === prefix.toLowerCase());
+// --------- Proxy helpers ---------
+async function proxyJson(url) {
+  const res = await fetch(`${WORKER_URL}/api/proxy?url=${encodeURIComponent(url)}`);
+  if (!res.ok) throw new Error(`Proxy ${res.status}`);
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  // Some endpoints may still return text; try to parse
+  const txt = await res.text();
+  try { return JSON.parse(txt); } catch { return {}; }
+}
+const delay = (ms)=>new Promise(r=>setTimeout(r,ms));
+const stripHtml = (s)=> (s||"").replace(/<[^>]+>/g,"").trim();
+
+// --------- UI, filters, rendering ---------
+function applyFilters() {
+  let data = state.all.slice();
+  const y = el("#yearFilter").value;
+  const src = el("#sourceFilter").value;
+  const typ = el("#typeFilter").value;
+  const sort = el("#sortFilter").value;
+
+  if (y) data = data.filter(d => String(d.year) === y);
+  if (src) data = data.filter(d => d.source === src);
+  if (typ) data = data.filter(d => d.type === typ);
+
+  if (sort === "year") data.sort((a,b)=>String(b.year).localeCompare(String(a.year)));
+  else if (sort === "year_asc") data.sort((a,b)=>String(a.year).localeCompare(String(b.year)));
+  else if (sort === "title") data.sort((a,b)=> (a.title||"").localeCompare(b.title||""));
+
+  state.filtered = data;
+  state.page = 1;
+  render();
 }
 
-function hashId(s) {
-  let h = 0, i, chr;
-  const str = s || (Math.random() + '');
-  for (i = 0; i < str.length; i++) {
-    chr = str.charCodeAt(i);
-    h = ((h << 5) - h) + chr;
-    h |= 0;
-  }
-  return Math.abs(h);
-}
+function render() {
+  const count = state.filtered.length;
+  el("#resultsCount").textContent = `${count.toLocaleString()} results`;
+  const total = Math.max(1, Math.ceil(count / state.pageSize));
+  state.totalPages = total;
 
-function truncate(s, n) {
-  if (!s) return '';
-  return s.length > n ? s.slice(0, n - 1) + '…' : s;
-}
-
-function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-function setProgress(pct) { els.progressBar.style.width = `${pct}%`; }
-
-// ==== Search & Filters & Display ====
-function performSearch() {
-  // Simple front-end filter over harvested data
-  const q = (els.searchInput.value || '').toLowerCase().trim();
-  if (!q) { applyFilters(); return; }
-
-  els.resultsSection.classList.add('active');
-  state.filteredData = state.allData.filter(item =>
-    item.title.toLowerCase().includes(q) ||
-    item.description.toLowerCase().includes(q) ||
-    (item.authors || []).some(a => a.toLowerCase().includes(q))
-  );
-  state.currentPage = 1;
-  updateResultsDisplay();
-}
-
-function applyFilters(fromAdvanced = false) {
-  let list = [...state.allData];
-
-  // Content type (articles/theses)
-  if (state.currentType !== 'all') {
-    list = list.filter(x => x.type === state.currentType);
-  }
-
-  // Sidebar filters
-  const y = els.yearFilter.value;
-  if (y) list = list.filter(x => String(x.year) === y);
-
-  const s = els.sourceFilter.value;
-  if (s) list = list.filter(x => x.source === s);
-
-  const t = els.typeFilter.value;
-  if (t) list = list.filter(x => x.type === t);
-
-  // Advanced (basic boolean simulation)
-  if (fromAdvanced) {
-    const titleKey = (document.getElementById('advTitle').value || '').toLowerCase().trim();
-    const authorKey = (document.getElementById('advAuthor').value || '').toLowerCase().trim();
-    const subjectKey = (document.getElementById('advSubject').value || '').toLowerCase().trim();
-    const op = document.querySelector('.boolean-option.active')?.dataset?.operator || 'AND';
-
-    list = list.filter(item => {
-      const hits = [];
-      if (titleKey) hits.push(item.title.toLowerCase().includes(titleKey));
-      if (authorKey) hits.push((item.authors || []).some(a => a.toLowerCase().includes(authorKey)));
-      if (subjectKey) hits.push((item.keywords || []).some(k => k.toLowerCase().includes(subjectKey)));
-      if (!hits.length) return true;
-      if (op === 'AND') return hits.every(Boolean);
-      if (op === 'OR')  return hits.some(Boolean);
-      if (op === 'NOT') return hits.every(v => !v);
-      return true;
-    });
-  }
-
-  // Sort
-  const sortBy = els.sortFilter.value;
-  if (sortBy === 'year') list.sort((a,b)=> (b.year||0)-(a.year||0));
-  else if (sortBy === 'year_asc') list.sort((a,b)=> (a.year||0)-(b.year||0));
-  else if (sortBy === 'title') list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-
-  state.filteredData = list;
-  state.currentPage = 1;
-  updateResultsDisplay();
-}
-
-function resetFilters() {
-  els.yearFilter.value = '';
-  els.sourceFilter.value = '';
-  els.typeFilter.value = '';
-  els.sortFilter.value = 'relevance';
-  els.searchInResults.value = '';
-  document.getElementById('advTitle').value = '';
-  document.getElementById('advAuthor').value = '';
-  document.getElementById('advDate').value = '';
-  document.getElementById('advSubject').value = '';
-  applyFilters();
-}
-
-function searchWithinResults() {
-  const q = (els.searchInResults.value || '').toLowerCase().trim();
-  if (!q) { state.filteredData = [...state.allData]; updateResultsDisplay(); return; }
-  state.filteredData = state.allData.filter(item =>
-    item.title.toLowerCase().includes(q) ||
-    item.description.toLowerCase().includes(q) ||
-    (item.authors || []).some(a => a.toLowerCase().includes(q))
-  );
-  state.currentPage = 1;
-  updateResultsDisplay();
-}
-
-function updateResultsDisplay() {
-  state.totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
-  els.resultsCount.textContent = `${state.filteredData.length.toLocaleString()} results`;
-  displayCurrentPage();
-  updatePaginationControls();
-}
-
-function displayCurrentPage() {
-  const start = (state.currentPage - 1) * state.pageSize;
-  const end = start + state.pageSize;
-  const pageData = state.filteredData.slice(start, end);
+  const start = (state.page - 1) * state.pageSize;
+  const pageData = state.filtered.slice(start, start + state.pageSize);
   renderCards(pageData);
+
+  el("#firstPage").disabled = state.page === 1;
+  el("#prevPage").disabled = state.page === 1;
+  el("#nextPage").disabled = state.page === total;
+  el("#lastPage").disabled = state.page === total;
+  el("#pageInfo").textContent = `Page ${state.page} of ${total}`;
 }
 
-function updatePaginationControls() {
-  els.firstPage.disabled = state.currentPage === 1;
-  els.prevPage.disabled = state.currentPage === 1;
-  els.nextPage.disabled = state.currentPage === state.totalPages;
-  els.lastPage.disabled = state.currentPage === state.totalPages;
-  els.pageInfo.textContent = `Page ${state.currentPage} of ${state.totalPages}`;
-  els.pagination.style.display = state.totalPages <= 1 ? 'none' : 'flex';
-}
+function renderCards(items) {
+  const box = el("#dataCardsContainer");
+  box.innerHTML = "";
 
-function goToPage(page) {
-  if (page < 1 || page > state.totalPages) return;
-  state.currentPage = page;
-  displayCurrentPage();
-  updatePaginationControls();
-}
-
-function renderCards(data) {
-  els.dataCardsContainer.innerHTML = '';
-  if (!data.length) {
-    els.dataCardsContainer.innerHTML = `
-      <div class="no-results">
-        <i class="fas fa-search"></i>
-        <h3>No results found</h3>
-        <p>Try adjusting your filters or harvest more data</p>
-      </div>`;
+  if (!items.length) {
+    box.innerHTML = `<div class="no-results"><i class="fas fa-search"></i><h3>No results found</h3><p>Try adjusting your filters or harvest more data</p></div>`;
     return;
   }
 
-  data.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'data-card';
-    card.dataset.itemId = item.id;
-    card.innerHTML = `
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "data-card";
+    div.dataset.itemId = item.id;
+    div.innerHTML = `
       <div class="card-header">
-        <div class="card-type">${(item.type || 'ARTICLES').toUpperCase()}</div>
-        <div class="card-source">${item.source || ''}</div>
+        <div class="card-type">${(item.type||"").toUpperCase()}</div>
+        <div class="card-source">${item.source||""}</div>
       </div>
       <div class="card-body">
-        <h3 class="card-title">${escapeHtml(item.title || 'Untitled')}</h3>
-        <div class="card-authors">${escapeHtml((item.authors || []).join(', ') || 'Unknown')}</div>
-        <p class="card-description">${escapeHtml(item.description || '')}</p>
-        <div class="card-keywords"></div>
+        <h3 class="card-title">${escapeHtml(item.title||"Untitled")}</h3>
+        <div class="card-authors">${Array.isArray(item.authors)? item.authors.join(", ") : (item.authors||"")}</div>
+        <p class="card-description">${escapeHtml(item.description||"")}</p>
+        <div class="card-keywords">
+          ${(item.keywords||[]).slice(0,4).map(k=>`<span class="keyword-tag">${escapeHtml(k)}</span>`).join("")}
+          ${(item.keywords||[]).length>4? `<span class="keyword-tag">+${(item.keywords||[]).length-4} more</span>`: ""}
+        </div>
       </div>
       <div class="card-footer">
         <div class="card-meta">
-          <span><i class="far fa-calendar"></i> ${item.year || ''}</span>
-          ${item.identifier ? `<span>${item.identifierType || 'ID'}: <a class="doi-link" href="${item.url || '#'}" target="_blank" rel="noopener">${escapeHtml(item.identifier)}</a></span>` : ''}
+          <span><i class="far fa-calendar"></i> ${item.year||""}</span>
+          <span>${item.identifierType||"ID"}: ${item.identifier ? `<a class="doi-link" href="${item.url||'#'}" target="_blank" rel="noopener">${escapeHtml(item.identifier)}</a>` : "-"}</span>
         </div>
         <div class="card-actions">
           <button class="card-action" data-action="view" title="View"><i class="fas fa-eye"></i></button>
           <button class="card-action" data-action="download" title="Download"><i class="fas fa-download"></i></button>
           <button class="card-action" data-action="zotero" title="Save to Zotero"><i class="fas fa-bookmark"></i></button>
         </div>
-      </div>
-    `;
-    els.dataCardsContainer.appendChild(card);
+      </div>`;
+    box.appendChild(div);
   });
 }
 
-function handleCardAction(action, id) {
-  const item = state.allData.find(x => x.id === id);
-  if (!item) return;
-  if (action === 'view') {
-    if (item.url) window.open(item.url, '_blank', 'noopener');
-    else alert('No URL available');
-  } else if (action === 'download') {
-    if (item.downloadUrl) window.open(item.downloadUrl, '_blank','noopener');
-    else if (item.url) window.open(item.url, '_blank','noopener');
-    else alert('No download URL available');
-  } else if (action === 'zotero') {
-    const target = item.url || (item.identifierType === 'DOI' ? `https://doi.org/${item.identifier}` : '');
-    if (!target) return alert('Nothing to save');
-    const z = `https://www.zotero.org/select/items?uri=${encodeURIComponent(target)}`;
-    window.open(z, '_blank', 'noopener');
-  }
-}
+function escapeHtml(s){return (s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]))}
 
-function escapeHtml(s){
-  return (s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-}
+// --------- Events ---------
+document.addEventListener("DOMContentLoaded", () => {
+  // buttons, inputs
+  el("#doSearch").addEventListener("click", () => {
+    state.currentType = "all";
+    harvestAll();
+  });
+
+  els(".source-button").forEach(b=>{
+    b.addEventListener("click", e=>{
+      els(".source-button").forEach(x=>x.classList.remove("active"));
+      e.currentTarget.classList.add("active");
+      state.currentType = e.currentTarget.dataset.type;
+      harvestAll();
+    });
+  });
+
+  el(".advanced-toggle").addEventListener("click", ()=> el("#advancedBox").classList.toggle("active"));
+  el("#applyFilters").addEventListener("click", applyFilters);
+
+  el("#harvestAll").addEventListener("click", harvestAll);
+  el("#clearResults").addEventListener("click", ()=>{
+    state.all = [];
+    state.filtered = [];
+    state.page = 1;
+    document.getElementById("dataCardsContainer").innerHTML = `
+      <div class="no-results">
+        <i class="fas fa-search"></i>
+        <h3>No data harvested yet</h3>
+        <p>Use the harvest button to collect research data</p>
+      </div>`;
+    el("#resultsCount").textContent = "0 results";
+    localStorage.removeItem("qDataHarvest");
+    render();
+  });
+
+  // filters
+  ["yearFilter","sourceFilter","typeFilter","sortFilter"].forEach(id => el(`#${id}`).addEventListener("change", applyFilters));
+  el("#resetFilters").addEventListener("click", ()=>{
+    ["yearFilter","sourceFilter","typeFilter"].forEach(id => el(`#${id}`).value = "");
+    el("#sortFilter").value = "relevance";
+    applyFilters();
+  });
+
+  el("#searchInResultsButton").addEventListener("click", ()=>{
+    const q = el("#searchInResults").value.trim().toLowerCase();
+    if (!q) { state.filtered = state.all.slice(); render(); return; }
+    state.filtered = state.all.filter(it =>
+      (it.title||"").toLowerCase().includes(q) ||
+      (it.description||"").toLowerCase().includes(q) ||
+      (Array.isArray(it.authors)? it.authors.join(" ").toLowerCase(): "").includes(q) ||
+      (it.keywords||[]).join(" ").toLowerCase().includes(q)
+    );
+    state.page = 1; render();
+  });
+
+  // pagination
+  el("#firstPage").addEventListener("click", ()=>{ state.page = 1; render(); });
+  el("#prevPage").addEventListener("click", ()=>{ if (state.page>1) { state.page--; render(); }});
+  el("#nextPage").addEventListener("click", ()=>{ if (state.page<state.totalPages) { state.page++; render(); }});
+  el("#lastPage").addEventListener("click", ()=>{ state.page = state.totalPages; render(); });
+
+  // card actions
+  el("#dataCardsContainer").addEventListener("click", (e)=>{
+    const btn = e.target.closest(".card-action"); if (!btn) return;
+    const card = btn.closest(".data-card"); if (!card) return;
+    const id = card.dataset.itemId;
+    const it = state.all.find(x=>x.id===id);
+    if (!it) return;
+
+    const action = btn.dataset.action;
+    if (action === "view") {
+      if (it.url) window.open(it.url, "_blank");
+      else alert("No URL available for this item");
+    } else if (action === "download") {
+      window.open(it.downloadUrl || it.url || "#", "_blank");
+    } else if (action === "zotero") {
+      const z = `https://www.zotero.org/select/items?uri=${encodeURIComponent(it.url || (it.identifier? `https://doi.org/${it.identifier}` : ""))}`;
+      window.open(z, "_blank");
+    }
+  });
+
+  yearOptionsInit();
+  sourceOptionsInit();
+  loadLocal();
+});
