@@ -12,30 +12,24 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
 body{background:var(--light-gray);color:var(--dark-gray);line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
 .container{max-width:1400px;margin:0 auto;padding:20px;flex:1}
+
+/* Header (logo left, Library centered) */
 header{background:var(--primary-color);color:#fff;padding:15px 0;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
-.header-content{display:flex;justify-content:center;align-items:center;max-width:1400px;margin:0 auto;padding:0 20px}
+.header-content{display:flex;justify-content:space-between;align-items:center;max-width:1400px;margin:0 auto;padding:0 20px;position:relative}
 .logo-container{display:flex;align-items:center;gap:15px}
-.logo{width:50px;height:50px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary-color)}
-.logo img{max-width:100%;max-height:100%;border-radius:8px}
-.title{font-size:24px;font-weight:700}
+.logo img{width:140px;height:auto;display:block}
+.title{position:absolute;left:50%;transform:translateX(-50%);font-size:24px;font-weight:700;color:#fff;letter-spacing:.5px}
 
-.top-footer{background:var(--primary-color);color:#fff;padding:15px 0}
-.top-footer-content{display:flex;justify-content:center;align-items:center;gap:30px;max-width:1400px;margin:0 auto;padding:0 20px}
-.copyright{font-size:14px;color:rgba(255,255,255,.9)}
-.email-button{background:var(--secondary-color);color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:14px;transition:background .3s}
-.email-button:hover{background:#8a1426}
-
+/* Search / Source UI */
 .search-section{background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.05);margin:20px 0 30px}
 .search-box{display:flex;margin-bottom:20px}
 .search-input{flex:1;padding:12px 15px;border:1px solid var(--medium-gray);border-radius:4px 0 0 4px;font-size:16px}
 .search-button{background:var(--search-button-color);color:#fff;border:none;padding:0 25px;border-radius:0 4px 4px 0;cursor:pointer;font-size:16px;transition:background .3s}
 .search-button:hover{background:#76787a}
-
 .source-buttons{display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap}
 .source-button{background:var(--primary-color);color:#fff;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;font-size:14px;transition:background .3s}
 .source-button:hover{background:#1a2f6b}
 .source-button.active{background:var(--secondary-color)}
-
 .advanced-toggle{color:var(--secondary-color);cursor:pointer;font-size:14px;margin-bottom:20px;display:inline-block}
 .advanced-search{display:none;background:#f9f9f9;padding:20px;border-radius:4px;margin-top:20px;border-left:3px solid var(--secondary-color)}
 .advanced-search.active{display:block}
@@ -44,15 +38,16 @@ header{background:var(--primary-color);color:#fff;padding:15px 0;box-shadow:0 2p
 .boolean-option{background:#fff;border:1px solid var(--medium-gray);padding:8px 15px;border-radius:4px;cursor:pointer}
 .boolean-option.active{background:var(--primary-color);color:#fff}
 
+/* Results + Filters + Cards */
 .results-section{display:none;margin-top:30px}
 .results-section.active{display:block}
 .results-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--medium-gray)}
 .results-title{font-size:20px;font-weight:600}
+.results-actions{display:flex;gap:10px}
 .harvest-button,.clear-button{background:var(--secondary-color);color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:14px;transition:background .3s}
 .clear-button{background:#e74c3c}
 .clear-button:hover{background:#c0392b}
 .harvest-button:hover{background:#8a1426}
-
 .results-content{display:flex;gap:25px;margin-top:20px}
 .filters-sidebar{width:280px;flex-shrink:0;background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:20px;height:fit-content}
 .filters-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid var(--medium-gray)}
@@ -64,7 +59,6 @@ header{background:var(--primary-color);color:#fff;padding:15px 0;box-shadow:0 2p
 .search-in-results{display:flex;margin-top:15px}
 .search-in-results input{flex:1;padding:8px 12px;border:1px solid var(--medium-gray);border-radius:4px 0 0 4px;font-size:13px}
 .search-in-results button{background:var(--primary-color);color:#fff;border:none;padding:0 15px;border-radius:0 4px 4px 0;cursor:pointer;font-size:13px}
-
 .results-main{flex:1}
 .data-cards-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:25px;margin-bottom:40px}
 .data-card{background:#fff;border-radius:8px;box-shadow:var(--card-shadow);overflow:hidden;transition:transform .3s,box-shadow .3s;display:flex;flex-direction:column;height:100%}
@@ -86,20 +80,37 @@ header{background:var(--primary-color);color:#fff;padding:15px 0;box-shadow:0 2p
 .card-action{background:none;border:none;color:var(--primary-color);cursor:pointer;font-size:16px;transition:color .3s;padding:5px;border-radius:3px}
 .card-action:hover{background:var(--light-gray);color:var(--secondary-color)}
 
-.footer{background:var(--footer-color);text-align:center;padding:20px 0;color:#333;font-size:14px}
+/* Progress + Empty state */
 .progress-bar{height:5px;background:var(--medium-gray);border-radius:5px;margin-top:20px;overflow:hidden}
 .progress{height:100%;background:var(--secondary-color);width:0%;transition:width .5s}
 .harvest-status{margin-top:10px;font-size:14px;color:#666}
 .no-results{text-align:center;padding:40px;color:#666;grid-column:1/-1}
 .no-results i{font-size:48px;margin-bottom:15px;color:#ccc}
 
+/* Pagination */
 .pagination{display:flex;justify-content:center;align-items:center;gap:10px;margin:20px 0}
 .pagination-button{background:var(--primary-color);color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;font-size:13px;transition:background .3s}
 .pagination-button:hover:not(:disabled){background:#1a2f6b}
 .pagination-button:disabled{background:var(--medium-gray);cursor:not-allowed}
 .page-info{font-size:13px;color:var(--dark-gray);margin:0 10px}
 
+/* Sozim footer */
+.sozim-footer{background:var(--primary-color);color:#fff;padding:50px 20px 20px;font-size:14px;line-height:1.7;margin-top:40px}
+.sozim-footer-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:40px;max-width:1400px;margin:0 auto}
+.footer-column h4{font-size:16px;font-weight:700;color:var(--secondary-color);margin-bottom:10px;text-transform:uppercase}
+.footer-column ul{list-style:none;padding:0}
+.footer-column ul li{margin-bottom:8px}
+.footer-column ul li a{color:#fff;text-decoration:none;transition:color .3s}
+.footer-column ul li a:hover{color:var(--secondary-color)}
+.footer-description{margin-top:10px;color:rgba(255,255,255,.9)}
+.footer-logo img{width:60px;height:auto;border-radius:8px;background:#fff;padding:4px}
+.footer-bottom{text-align:center;margin-top:40px;border-top:1px solid rgba(255,255,255,.2);padding-top:15px;font-size:13px;color:rgba(255,255,255,.8)}
+
+/* Responsive */
 @media (max-width:768px){
+  .header-content{flex-direction:column;text-align:center}
+  .title{position:static;transform:none;margin-top:10px}
+  .logo img{width:120px}
   .results-actions{flex-direction:column;width:100%}
   .harvest-button,.clear-button{width:100%;margin-bottom:5px}
   .results-content{flex-direction:column}
