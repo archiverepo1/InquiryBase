@@ -1,642 +1,607 @@
-/* Q Data – front-end harvester (standalone)
- * - Uses Cloudflare Worker proxy for CORS: https://inquirybase.archiverepo1.workers.dev/api/proxy?url=...
- * - Harvests: Zenodo, Figshare, OSF, Dryad, Mendeley Data (JSON)
- *             OpenUCT, SUNScholar, UP, UFS, UNISA (OAI-PMH oai_dc XML)
- * - Keeps the existing HTML structure intact.
- */
+// ==== CONFIG ====
+// Cloudflare Worker base (no trailing slash at the end here)
+const WORKER_BASE = 'https://inquirybase.archiverepo1.workers.dev';
 
-// ========= CONFIG =========
-const WORKER_URL = 'https://inquirybase.archiverepo1.workers.dev';
-const PROXY = (u) => `${WORKER_URL}/api/proxy?url=${encodeURIComponent(u)}`;
+// Verified running South African DSpace repositories (OAI-PMH)
+const REPOSITORIES = [
+  { id:'uct',   name:'Open UCT',                 type:'articles', oai:'https://open.uct.ac.za/oai/request',        handleBase:'https://open.uct.ac.za/handle/',             handlePrefixes:['11427'] },
+  { id:'sun',   name:'SUNScholar',               type:'articles', oai:'https://scholar.sun.ac.za/oai/request',     handleBase:'https://scholar.sun.ac.za/handle/',          handlePrefixes:['10019.1'] },
+  { id:'up',    name:'UPSpace',                  type:'articles', oai:'https://repository.up.ac.za/oai/request',   handleBase:'https://repository.up.ac.za/handle/',        handlePrefixes:['2263'] },
+  { id:'ufs',   name:'KovsieScholar',            type:'articles', oai:'https://scholar.ufs.ac.za/oai/request',     handleBase:'https://scholar.ufs.ac.za/handle/',          handlePrefixes:['11660'] },
+  { id:'unisa', name:'UNISA IR',                 type:'articles', oai:'https://uir.unisa.ac.za/oai/request',       handleBase:'https://uir.unisa.ac.za/handle/',            handlePrefixes:['10500'] },
+  { id:'spu',   name:'SPU OpenHub',              type:'articles', oai:'https://openhub.spu.ac.za/oai/request',     handleBase:'https://openhub.spu.ac.za/handle/',          handlePrefixes:['10394'] },
+  { id:'cut',   name:'CUTScholar',               type:'articles', oai:'https://cutscholar.cut.ac.za/oai/request',  handleBase:'https://cutscholar.cut.ac.za/handle/',       handlePrefixes:['11462'] },
+  { id:'dut',   name:'DUT OpenScholar',          type:'articles', oai:'https://openscholar.dut.ac.za/oai/request', handleBase:'https://openscholar.dut.ac.za/handle/',      handlePrefixes:['10321'] },
+];
 
-// Base URLs to resolve handle identifiers to institutional repository pages
-const HANDLE_PREFIX_MAP = {
-  'Open UCT':      'https://open.uct.ac.za/handle/11427/',
-  'SUNScholar':    'https://scholar.sun.ac.za/handle/10019.1/',
-  'UP Repository': 'https://repository.up.ac.za/handle/2263/',
-  'UFS Scholar':   'https://scholar.ufs.ac.za/handle/11660/',
-  'UNISA DSpace':  'https://uir.unisa.ac.za/handle/10500/'
+// How many records to pull (per repo) on a harvest click:
+const PAGE_SIZE = 50;        // OAI ListRecords chunk size (if supported by server)
+const MAX_RECORDS_PER_REPO = 150; // safety cap per source
+
+// ==== DOM HOOKS ====
+const els = {};
+document.addEventListener('DOMContentLoaded', () => {
+  // Top controls
+  els.searchInput = document.querySelector('.search-input');
+  els.searchButton = document.querySelector('.search-button');
+  els.sourceButtons = document.querySelectorAll('.source-button');
+  els.advancedToggle = document.querySelector('.advanced-toggle');
+  els.advancedSearch = document.querySelector('.advanced-search');
+  els.booleanOptions = document.querySelectorAll('.boolean-option');
+  els.applyAdvanced = document.getElementById('applyAdvanced');
+
+  // Results & actions
+  els.resultsSection = document.querySelector('.results-section');
+  els.harvestButton = document.querySelector('.harvest-button');
+  els.clearButton = document.querySelector('.clear-button');
+  els.progressBar = document.querySelector('.progress');
+  els.harvestStatus = document.querySelector('.harvest-status');
+
+  // Filters & paging
+  els.yearFilter = document.getElementById('yearFilter');
+  els.sourceFilter = document.getElementById('sourceFilter');
+  els.typeFilter = document.getElementById('typeFilter');
+  els.sortFilter = document.getElementById('sortFilter');
+  els.searchInResults = document.getElementById('searchInResults');
+  els.searchInResultsButton = document.getElementById('searchInResultsButton');
+  els.resultsCount = document.getElementById('resultsCount');
+
+  els.pagination = document.getElementById('pagination');
+  els.firstPage = document.getElementById('firstPage');
+  els.prevPage = document.getElementById('prevPage');
+  els.nextPage = document.getElementById('nextPage');
+  els.lastPage = document.getElementById('lastPage');
+  els.pageInfo = document.getElementById('pageInfo');
+  els.resetFilters = document.querySelector('.reset-filters');
+
+  // Cards container
+  els.dataCardsContainer = document.getElementById('dataCardsContainer');
+
+  // State
+  stateInit();
+
+  // Listeners
+  wireEvents();
+
+  // Fill filters
+  initFilters();
+});
+
+const state = {
+  allData: [],
+  filteredData: [],
+  currentPage: 1,
+  pageSize: 12,
+  totalPages: 1,
+  isHarvesting: false,
+  currentType: 'all',
 };
 
-// ========= APP =========
-class QDataHarvester {
-  constructor() {
-    // State
-    this.allData = [];
-    this.filteredData = [];
-    this.currentPage = 1;
-    this.pageSize = 12;
-    this.totalPages = 1;
-    this.isHarvesting = false;
-    this.currentSourceType = 'all';
-
-    // UI
-    this.cacheEls();
-    this.bindEvents();
-    this.initFilters();
-    this.loadFromStorage();
-  }
-
-  cacheEls() {
-    // Search / toggles
-    this.searchInput = document.querySelector('.search-input');
-    this.searchButton = document.querySelector('.search-button');
-    this.sourceButtons = document.querySelectorAll('.source-button');
-    this.advancedToggle = document.querySelector('.advanced-toggle');
-    this.advancedSearch = document.querySelector('.advanced-search');
-    this.booleanOptions = document.querySelectorAll('.boolean-option');
-
-    // Results / status
-    this.resultsSection = document.querySelector('.results-section');
-    this.harvestButton = document.querySelector('.harvest-button');
-    this.clearButton = document.querySelector('.clear-button');
-    this.progressBar = document.querySelector('.progress');
-    this.harvestStatus = document.querySelector('.harvest-status');
-
-    // Filters / pagination
-    this.dataCardsContainer = document.getElementById('dataCardsContainer');
-    this.resultsCount = document.getElementById('resultsCount');
-    this.yearFilter = document.getElementById('yearFilter');
-    this.sourceFilter = document.getElementById('sourceFilter');
-    this.typeFilter = document.getElementById('typeFilter');
-    this.sortFilter = document.getElementById('sortFilter');
-    this.searchInResults = document.getElementById('searchInResults');
-    this.searchInResultsButton = document.getElementById('searchInResultsButton');
-    this.resetFiltersBtn = document.querySelector('.reset-filters');
-
-    this.pagination = document.getElementById('pagination');
-    this.firstPageBtn = document.getElementById('firstPage');
-    this.prevPageBtn = document.getElementById('prevPage');
-    this.nextPageBtn = document.getElementById('nextPage');
-    this.lastPageBtn = document.getElementById('lastPage');
-    this.pageInfo = document.getElementById('pageInfo');
-
-    // Misc
-    this.emailButton = document.querySelector('.email-button');
-  }
-
-  bindEvents() {
-    // Search
-    this.searchButton.addEventListener('click', () => this.performSearch());
-    this.searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.performSearch(); });
-
-    // Source buttons (also trigger harvest for UX)
-    this.sourceButtons.forEach(btn => {
-      btn.addEventListener('click', e => {
-        this.sourceButtons.forEach(b => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        this.currentSourceType = e.currentTarget.dataset.type;
-        this.startHarvest(this.currentSourceType);
-      });
-    });
-
-    // Advanced UI
-    this.advancedToggle.addEventListener('click', () => this.advancedSearch.classList.toggle('active'));
-    this.booleanOptions.forEach(opt => opt.addEventListener('click', (e) => {
-      this.booleanOptions.forEach(o => o.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-    }));
-
-    // Harvest / clear
-    this.harvestButton.addEventListener('click', () => this.startHarvest('all'));
-    this.clearButton.addEventListener('click', () => this.clearResults());
-
-    // Filter changes
-    this.yearFilter.addEventListener('change', () => this.applyFilters());
-    this.sourceFilter.addEventListener('change', () => this.applyFilters());
-    this.typeFilter.addEventListener('change', () => this.applyFilters());
-    this.sortFilter.addEventListener('change', () => this.applyFilters());
-    this.resetFiltersBtn.addEventListener('click', () => this.resetFilters());
-
-    // Search within results
-    this.searchInResultsButton.addEventListener('click', () => this.searchWithinResults());
-    this.searchInResults.addEventListener('keypress', e => { if (e.key === 'Enter') this.searchWithinResults(); });
-
-    // Pagination
-    this.firstPageBtn.addEventListener('click', () => this.goToPage(1));
-    this.prevPageBtn.addEventListener('click', () => this.goToPage(this.currentPage - 1));
-    this.nextPageBtn.addEventListener('click', () => this.goToPage(this.currentPage + 1));
-    this.lastPageBtn.addEventListener('click', () => this.goToPage(this.totalPages));
-
-    // Email
-    this.emailButton.addEventListener('click', () => {
-      window.location.href = 'mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry';
-    });
-
-    // Card actions
-    this.dataCardsContainer.addEventListener('click', (e) => {
-      const btn = e.target.closest('.card-action');
-      if (!btn) return;
-      const card = btn.closest('.data-card');
-      const id = card?.dataset.itemId;
-      if (!id) return;
-
-      const action = btn.dataset.action;
-      if (action === 'view') this.viewItem(id);
-      if (action === 'download') this.downloadItem(id);
-      if (action === 'zotero') this.saveToZotero(id);
-    });
-  }
-
-  initFilters() {
-    const currentYear = new Date().getFullYear();
-    for (let y = currentYear; y >= 1980; y--) {
-      const opt = document.createElement('option');
-      opt.value = y; opt.textContent = y;
-      this.yearFilter.appendChild(opt);
-    }
-    [
-      'Zenodo', 'OSF', 'Figshare', 'Mendeley Data', 'Dryad',
-      'Open UCT', 'SUNScholar', 'UP Repository', 'UFS Scholar', 'UNISA DSpace'
-    ].forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s; opt.textContent = s;
-      this.sourceFilter.appendChild(opt);
-    });
-  }
-
-  performSearch() {
-    // Platform APIs vary for full-text search; for now just ensure results visible and harvest per current source type.
-    if (!this.resultsSection.classList.contains('active')) {
-      this.resultsSection.classList.add('active');
-    }
-    this.startHarvest(this.currentSourceType || 'all');
-  }
-
-  // ======== Harvesting ========
-  getSourcesByType(type) {
-    const all = [
-      // JSON data sources
-      { id: 'zenodo',   name: 'Zenodo',        type: 'research' },
-      { id: 'figshare', name: 'Figshare',      type: 'research' },
-      { id: 'osf',      name: 'OSF',           type: 'research' },
-      { id: 'dryad',    name: 'Dryad',         type: 'research' },
-      { id: 'mendeley', name: 'Mendeley Data', type: 'research' },
-
-      // OAI-PMH repos (oai_dc XML)
-      { id:'oai_openuct', name:'Open UCT',      type:'articles', oai:'https://open.uct.ac.za/oai/request' },
-      { id:'oai_sun',     name:'SUNScholar',    type:'articles', oai:'https://scholar.sun.ac.za/oai/request' },
-      { id:'oai_up',      name:'UP Repository', type:'articles', oai:'https://repository.up.ac.za/oai/request' },
-      { id:'oai_ufs',     name:'UFS Scholar',   type:'articles', oai:'https://scholar.ufs.ac.za/oai/request' },
-      { id:'oai_unisa',   name:'UNISA DSpace',  type:'articles', oai:'https://uir.unisa.ac.za/oai/request' }
-    ];
-    if (type === 'all') return all;
-    if (type === 'theses') return all.filter(s => s.id.startsWith('oai_'));
-    return all.filter(s => s.type === type);
-  }
-
-  getPagedApiUrl(source, page = 1, size = 50) {
-    const map = {
-      zenodo:   `https://zenodo.org/api/records?size=${size}&page=${page}&sort=mostrecent`,
-      figshare: `https://api.figshare.com/v2/articles?page=${page}&page_size=${size}`,
-      osf:      `https://api.osf.io/v2/nodes/?page=${page}&page_size=${size}`,
-      dryad:    `https://datadryad.org/api/v2/search?page=${page}&per_page=${size}`,
-      mendeley: `https://data.mendeley.com/api/datasets?page=${page}&limit=${size}`
-    };
-    if (source.id.startsWith('oai_')) {
-      // Initial OAI-PMH request. We’ll follow resumptionToken inside harvestSource().
-      return `${source.oai}?verb=ListRecords&metadataPrefix=oai_dc`;
-    }
-    return map[source.id];
-  }
-
-  async startHarvest(type = 'all') {
-    if (this.isHarvesting) { alert('Harvesting is already in progress'); return; }
-
-    this.isHarvesting = true;
-    this.resultsSection.classList.add('active');
-    this.harvestStatus.textContent = 'Starting harvest...';
-    this.progressBar.style.width = '0%';
-
-    // fresh run
-    this.allData = [];
-    this.filteredData = [];
-    this.updateResultsDisplay();
-
-    const sources = this.getSourcesByType(type);
-    for (let i = 0; i < sources.length; i++) {
-      const src = sources[i];
-      this.harvestStatus.textContent = `Harvesting from ${src.name}...`;
-      this.progressBar.style.width = `${Math.round((i / Math.max(1, sources.length)) * 75)}%`;
-
-      try {
-        const list = await this.harvestSource(src);
-        // stamp type/source for UI
-        const normalized = list.map(r => ({ ...r, source: src.name, type: src.type }));
-        this.allData.push(...normalized);
-        this.filteredData = [...this.allData];
-        this.updateResultsDisplay();
-      } catch (err) {
-        console.error(`Harvest error for ${src.name}`, err);
-      }
-      await this.delay(250);
-    }
-
-    this.harvestStatus.textContent = `Harvest complete! Collected ${this.allData.length} records`;
-    this.progressBar.style.width = '100%';
-    this.saveToStorage();
-    setTimeout(() => (this.harvestStatus.textContent = 'Ready to harvest'), 2500);
-    this.isHarvesting = false;
-  }
-
-  async harvestSource(source) {
-    // JSON APIs: page through up to ~500 items; OAI-PMH: follow resumptionToken to a safe cap
-    const out = [];
-
-    if (!source.id.startsWith('oai_')) {
-      const MAX_PAGES = 10;
-      for (let page = 1; page <= MAX_PAGES; page++) {
-        const url = this.getPagedApiUrl(source, page, 50);
-        const res = await fetch(PROXY(url));
-        if (!res.ok) throw new Error(`Proxy ${res.status}`);
-        const data = await res.json();
-        const parsed = this.parseJson(source.id, data);
-        if (!parsed.length) break;
-        out.push(...parsed);
-        if (parsed.length < 50) break;
-        await this.delay(200);
-      }
-      return out;
-    }
-
-    // OAI-PMH
-    let nextUrl = this.getPagedApiUrl(source);
-    let loops = 0;
-    const MAX_LOOPS = 6; // safety cap
-
-    while (nextUrl && loops < MAX_LOOPS) {
-      const res = await fetch(PROXY(nextUrl));
-      if (!res.ok) throw new Error(`Proxy ${res.status}`);
-
-      const ctype = (res.headers.get('content-type') || '').toLowerCase();
-      const xmlText = ctype.includes('xml') ? await res.text() : await res.text(); // worker passes XML as xml
-
-      const { records, resumptionToken } = this.parseOaiDc(xmlText, source.name);
-      out.push(...records);
-
-      if (resumptionToken) {
-        const base = source.oai;
-        nextUrl = `${base}?verb=ListRecords&resumptionToken=${encodeURIComponent(resumptionToken)}`;
-      } else {
-        nextUrl = null;
-      }
-      loops++;
-      await this.delay(250);
-    }
-    return out;
-  }
-
-  // ======== Parsers ========
-  parseJson(sourceId, data) {
-    switch (sourceId) {
-      case 'zenodo':
-        return (data.hits?.hits || []).map(item => ({
-          id: String(item.id),
-          title: item.metadata?.title || 'Untitled',
-          authors: (item.metadata?.creators || []).map(c => c.name).filter(Boolean),
-          description: this.clean(item.metadata?.description) || 'No description available',
-          keywords: item.metadata?.keywords || (item.metadata?.subjects || []).map(s => s.term) || [],
-          year: this.yearOf(item.metadata?.publication_date),
-          identifier: item.metadata?.doi || item.doi || '',
-          identifierType: (item.metadata?.doi || item.doi) ? 'DOI' : 'ID',
-          url: item.links?.html || (item.metadata?.doi ? `https://doi.org/${item.metadata.doi}` : ''),
-          downloadUrl: item.links?.download || ''
-        }));
-
-      case 'figshare':
-        return (Array.isArray(data) ? data : []).map(a => ({
-          id: String(a.id),
-          title: a.title || 'Untitled',
-          authors: (a.authors || []).map(x => x.full_name).filter(Boolean),
-          description: this.clean(a.description) || 'No description available',
-          keywords: a.tags || [],
-          year: this.yearOf(a.published_date),
-          identifier: a.doi || '',
-          identifierType: a.doi ? 'DOI' : 'ID',
-          url: a.url_public_html || '',
-          downloadUrl: a.files?.[0]?.download_url || ''
-        }));
-
-      case 'osf':
-        return (data.data || []).map(n => ({
-          id: n.id,
-          title: n.attributes?.title || 'Untitled',
-          authors: n.attributes?.contributors?.map(c => c?.users?.data?.attributes?.full_name).filter(Boolean) ||
-                   [(n.relationships?.contributors?.data?.length ? 'Multiple contributors' : 'Unknown')],
-          description: this.clean(n.attributes?.description) || 'No description available',
-          keywords: n.attributes?.tags || [],
-          year: this.yearOf(n.attributes?.date_created),
-          identifier: n.attributes?.doi || '',
-          identifierType: n.attributes?.doi ? 'DOI' : 'ID',
-          url: n.links?.html || '',
-          downloadUrl: n.links?.download || ''
-        }));
-
-      case 'dryad':
-        return (data?.data || []).map(item => ({
-          id: item.id || crypto.randomUUID(),
-          title: item.attributes?.title || 'Untitled',
-          authors: (item.attributes?.authors || []).map(a => a.name).filter(Boolean),
-          description: this.clean(item.attributes?.abstract) || 'No description available',
-          keywords: item.attributes?.keywords || [],
-          year: this.yearOf(item.attributes?.publicationDate),
-          identifier: item.attributes?.doi || '',
-          identifierType: item.attributes?.doi ? 'DOI' : 'ID',
-          url: item.attributes?.doi ? `https://doi.org/${item.attributes.doi}` : (item.links?.self || ''),
-          downloadUrl: ''
-        }));
-
-      case 'mendeley':
-        // Public listing is limited; map what we can
-        const arr = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
-        return arr.map(item => ({
-          id: String(item.id || crypto.randomUUID()),
-          title: item.title || 'Untitled',
-          authors: (item.authors || []).map(a => a.name).filter(Boolean),
-          description: this.clean(item.description) || 'No description available',
-          keywords: item.keywords || [],
-          year: this.yearOf(item.published_at || item.created_at),
-          identifier: item.doi || '',
-          identifierType: item.doi ? 'DOI' : 'ID',
-          url: item.web_url || (item.doi ? `https://doi.org/${item.doi}` : ''),
-          downloadUrl: ''
-        }));
-
-      default:
-        return [];
-    }
-  }
-
-  // Parse OAI-PMH oai_dc, return { records, resumptionToken }
-  parseOaiDc(xmlText, repoName) {
-    const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
-
-    // resumptionToken
-    const tokenNode = xml.getElementsByTagName('resumptionToken')[0];
-    const resumptionToken = tokenNode && tokenNode.textContent ? tokenNode.textContent.trim() : null;
-
-    // records
-    const recNodes = Array.from(xml.getElementsByTagName('record'));
-    const records = recNodes.map((rec, idx) => {
-      const getAll = (qualified) => {
-        // support ns or non-ns dc elements
-        const [prefix, tag] = qualified.includes(':') ? qualified.split(':') : ['dc', qualified];
-        const nsNodes = Array.from(rec.getElementsByTagNameNS('*', tag));
-        const plainNodes = Array.from(rec.getElementsByTagName(`${prefix}:${tag}`))
-          .concat(Array.from(rec.getElementsByTagName(tag)));
-        const all = nsNodes.length ? nsNodes : plainNodes;
-        return all.map(n => (n.textContent || '').trim()).filter(Boolean);
-      };
-
-      const titles = getAll('dc:title');
-      const creators = getAll('dc:creator');
-      const descs = getAll('dc:description');
-      const subjects = getAll('dc:subject');
-      const dates = getAll('dc:date');
-      const idents = getAll('dc:identifier');
-
-      const title = titles[0] || 'Untitled';
-      const description = this.clean(descs[0] || 'No description available');
-      const keywords = subjects.slice(0, 12);
-      const year = this.yearOf(dates[0]);
-
-      // identifier selection priority: DOI > handle URL > handle numeric > http(s) URL > first identifier
-      const doi = idents.find(v => /^10\./.test(v));
-      const handleUrl = idents.find(v => /hdl\.handle\.net\/\d+\/\d+/.test(v));
-      const handleShort = idents.find(v => /^\d+\/\d+$/.test(v)); // e.g., 11660/12345
-      const httpUrl = idents.find(v => /^https?:\/\//i.test(v));
-
-      let identifier = doi || handleUrl || handleShort || httpUrl || idents[0] || '';
-      let identifierType = doi ? 'DOI' : (handleUrl || handleShort) ? 'Handle' : (httpUrl ? 'URL' : 'ID');
-      let url = '';
-
-      if (doi) url = `https://doi.org/${doi}`;
-      else if (handleUrl) url = handleUrl;
-      else if (handleShort) url = this.resolveHandleShort(repoName, handleShort);
-      else if (httpUrl) url = httpUrl;
-
-      return {
-        id: `${repoName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}-${idx}`,
-        title,
-        authors: creators.length ? creators : ['Unknown'],
-        description,
-        keywords,
-        year,
-        identifier,
-        identifierType,
-        url,
-        downloadUrl: ''
-      };
-    });
-
-    return { records, resumptionToken };
-  }
-
-  resolveHandleShort(repoName, shortHandle) {
-    // shortHandle like "2263/123456" or "11660/xxxxx"
-    const base = HANDLE_PREFIX_MAP[repoName];
-    if (!base) return `https://hdl.handle.net/${shortHandle}`;
-    // base ends with /handle/<prefix>/; we only append the numeric suffix after the slash
-    const parts = shortHandle.split('/');
-    return `${base}${parts[1] || parts[0]}`;
-  }
-
-  // ======== Utils ========
-  yearOf(dateStr) {
-    if (!dateStr) return new Date().getFullYear();
-    const y = new Date(dateStr).getFullYear();
-    if (Number.isFinite(y)) return y;
-    // try YYYY form
-    const m = String(dateStr).match(/\b(19|20)\d{2}\b/);
-    return m ? Number(m[0]) : new Date().getFullYear();
-  }
-
-  clean(t) {
-    if (!t) return '';
-    return t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 800);
-  }
-
-  // ======== Filters / display ========
-  applyFilters() {
-    let data = [...this.allData];
-    if (this.yearFilter.value) data = data.filter(d => String(d.year) === this.yearFilter.value);
-    if (this.sourceFilter.value) data = data.filter(d => d.source === this.sourceFilter.value);
-    if (this.typeFilter.value) data = data.filter(d => d.type === this.typeFilter.value);
-
-    const sortBy = this.sortFilter.value;
-    if (sortBy === 'year') data.sort((a, b) => b.year - a.year);
-    if (sortBy === 'year_asc') data.sort((a, b) => a.year - b.year);
-    if (sortBy === 'title') data.sort((a, b) => a.title.localeCompare(b.title));
-
-    this.filteredData = data;
-    this.currentPage = 1;
-    this.updateResultsDisplay();
-  }
-
-  searchWithinResults() {
-    const q = (this.searchInResults.value || '').toLowerCase().trim();
-    if (!q) { this.filteredData = [...this.allData]; this.updateResultsDisplay(); return; }
-    this.filteredData = this.allData.filter(item =>
-      item.title.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q) ||
-      (Array.isArray(item.authors) && item.authors.join(' ').toLowerCase().includes(q)) ||
-      (Array.isArray(item.keywords) && item.keywords.join(' ').toLowerCase().includes(q))
-    );
-    this.currentPage = 1;
-    this.updateResultsDisplay();
-  }
-
-  updateResultsDisplay() {
-    this.totalPages = Math.max(1, Math.ceil(this.filteredData.length / this.pageSize));
-    this.resultsCount.textContent = `${this.filteredData.length.toLocaleString()} results`;
-    this.displayCurrentPage();
-
-    this.firstPageBtn.disabled = this.currentPage === 1;
-    this.prevPageBtn.disabled = this.currentPage === 1;
-    this.nextPageBtn.disabled = this.currentPage === this.totalPages;
-    this.lastPageBtn.disabled = this.currentPage === this.totalPages;
-
-    this.pageInfo.textContent = `Page ${this.currentPage} of ${this.totalPages}`;
-    this.pagination.style.display = this.totalPages <= 1 ? 'none' : 'flex';
-  }
-
-  displayCurrentPage() {
-    const start = (this.currentPage - 1) * this.pageSize;
-    const pageData = this.filteredData.slice(start, start + this.pageSize);
-    this.renderCards(pageData);
-  }
-
-  renderCards(items) {
-    this.dataCardsContainer.innerHTML = '';
-    if (!items.length) {
-      this.dataCardsContainer.innerHTML = `
-        <div class="no-results">
-          <i class="fas fa-search"></i>
-          <h3>No results found</h3>
-          <p>Try adjusting your filters or harvest more data</p>
-        </div>`;
-      return;
-    }
-
-    items.forEach(item => {
-      const el = document.createElement('div');
-      el.className = 'data-card';
-      el.dataset.itemId = item.id;
-
-      el.innerHTML = `
-        <div class="card-header">
-          <div class="card-type">${(item.type || 'DATA').toUpperCase()}</div>
-          <div class="card-source">${item.source || ''}</div>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">${this.escape(item.title)}</h3>
-          <div class="card-authors">${Array.isArray(item.authors) ? this.escape(item.authors.join(', ')) : this.escape(item.authors || '')}</div>
-          <p class="card-description">${this.escape(item.description || '')}</p>
-          <div class="card-keywords">
-            ${(item.keywords || []).slice(0,4).map(k => `<span class="keyword-tag">${this.escape(k)}</span>`).join('')}
-            ${(item.keywords || []).length > 4 ? `<span class="keyword-tag">+${(item.keywords || []).length - 4} more</span>` : ''}
-          </div>
-        </div>
-        <div class="card-footer">
-          <div class="card-meta">
-            <span><i class="far fa-calendar"></i> ${item.year || ''}</span>
-            <span>${item.identifierType || 'ID'}: ${
-              item.identifier
-                ? `<a class="doi-link" target="_blank" href="${item.url || '#'}">${this.escape(item.identifier)}</a>`
-                : 'N/A'
-            }</span>
-          </div>
-          <div class="card-actions">
-            <button class="card-action" data-action="view" title="View Details"><i class="fas fa-eye"></i></button>
-            <button class="card-action" data-action="download" title="Download"><i class="fas fa-download"></i></button>
-            <button class="card-action" data-action="zotero" title="Save to Zotero"><i class="fas fa-bookmark"></i></button>
-          </div>
-        </div>`;
-      this.dataCardsContainer.appendChild(el);
-    });
-  }
-
-  // ======== Card actions ========
-  viewItem(id) {
-    const it = this.allData.find(x => x.id === id);
-    if (it?.url) window.open(it.url, '_blank');
-    else alert('No URL available for this item');
-  }
-
-  downloadItem(id) {
-    const it = this.allData.find(x => x.id === id);
-    if (it?.downloadUrl) window.open(it.downloadUrl, '_blank');
-    else if (it?.url) window.open(it.url, '_blank');
-    else alert('No download URL available for this item');
-  }
-
-  saveToZotero(id) {
-    const it = this.allData.find(x => x.id === id);
-    if (!it) return;
-    const uri = encodeURIComponent(it.url || (it.identifierType === 'DOI' ? `https://doi.org/${it.identifier}` : ''));
-    window.open(`https://www.zotero.org/select/items?uri=${uri}`, '_blank');
-  }
-
-  // ======== Storage / utils ========
-  resetFilters() {
-    this.yearFilter.value = '';
-    this.sourceFilter.value = '';
-    this.typeFilter.value = '';
-    this.sortFilter.value = 'relevance';
-    this.searchInResults.value = '';
-    this.applyFilters();
-  }
-
-  clearResults() {
-    this.allData = [];
-    this.filteredData = [];
-    this.currentPage = 1;
-    this.dataCardsContainer.innerHTML = `
-      <div class="no-results">
-        <i class="fas fa-search"></i>
-        <h3>No data harvested yet</h3>
-        <p>Use the harvest button to collect research data</p>
-      </div>`;
-    this.resultsCount.textContent = '0 results';
-    this.pagination.style.display = 'none';
-    localStorage.removeItem('qDataHarvest');
-    this.searchInput.value = '';
-    this.resetFilters();
-  }
-
-  saveToStorage() {
-    try {
-      localStorage.setItem('qDataHarvest', JSON.stringify({
-        harvestedData: this.allData,
-        ts: Date.now()
-      }));
-    } catch (e) { console.warn('localStorage save failed', e); }
-  }
-
-  loadFromStorage() {
-    try {
-      const raw = localStorage.getItem('qDataHarvest');
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      this.allData = data.harvestedData || [];
-      this.filteredData = [...this.allData];
-      if (this.allData.length) {
-        this.resultsSection.classList.add('active');
-        this.updateResultsDisplay();
-      }
-    } catch (e) { console.error('localStorage load failed', e); }
-  }
-
-  escape(s) {
-    return String(s).replace(/[&<>"']/g, m => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[m]));
-  }
-
-  delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+// ==== State / UI wiring =====
+function stateInit() {
+  state.allData = [];
+  state.filteredData = [];
+  state.currentPage = 1;
+  state.totalPages = 1;
+  state.isHarvesting = false;
+  state.currentType = 'all';
 }
 
-// Boot
-document.addEventListener('DOMContentLoaded', () => {
-  window.qDataHarvester = new QDataHarvester();
-});
+function wireEvents() {
+  // Advanced toggle
+  els.advancedToggle.addEventListener('click', () => els.advancedSearch.classList.toggle('active'));
+  els.booleanOptions.forEach(btn => btn.addEventListener('click', () => {
+    els.booleanOptions.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }));
+  if (els.applyAdvanced) {
+    els.applyAdvanced.addEventListener('click', () => applyFilters(true));
+  }
+
+  // Search box
+  els.searchButton.addEventListener('click', performSearch);
+  els.searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+
+  // Source buttons
+  els.sourceButtons.forEach(b => b.addEventListener('click', (e) => {
+    els.sourceButtons.forEach(x => x.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    state.currentType = e.currentTarget.dataset.type || 'all';
+    applyFilters();
+  }));
+
+  // Harvest & clear
+  els.harvestButton.addEventListener('click', startHarvest);
+  els.clearButton.addEventListener('click', clearResults);
+
+  // Filters
+  els.yearFilter.addEventListener('change', applyFilters);
+  els.sourceFilter.addEventListener('change', applyFilters);
+  els.typeFilter.addEventListener('change', applyFilters);
+  els.sortFilter.addEventListener('change', applyFilters);
+  els.resetFilters.addEventListener('click', resetFilters);
+
+  // Search within results
+  els.searchInResultsButton.addEventListener('click', searchWithinResults);
+  els.searchInResults.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchWithinResults(); });
+
+  // Pagination
+  els.firstPage.addEventListener('click', () => goToPage(1));
+  els.prevPage.addEventListener('click', () => goToPage(state.currentPage - 1));
+  els.nextPage.addEventListener('click', () => goToPage(state.currentPage + 1));
+  els.lastPage.addEventListener('click', () => goToPage(state.totalPages));
+
+  // Card action delegation
+  els.dataCardsContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('.card-action');
+    if (!btn) return;
+    const card = btn.closest('.data-card');
+    if (!card) return;
+    const id = card.dataset.itemId;
+    const action = btn.dataset.action;
+    handleCardAction(action, id);
+  });
+}
+
+function initFilters() {
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= 1980; y--) {
+    const o = document.createElement('option');
+    o.value = String(y);
+    o.textContent = y;
+    els.yearFilter.appendChild(o);
+  }
+  // Sources
+  const unique = REPOSITORIES.map(r => r.name);
+  unique.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name;
+    o.textContent = name;
+    els.sourceFilter.appendChild(o);
+  });
+}
+
+// ==== Harvest logic (OAI-PMH oai_dc) ====
+async function startHarvest() {
+  if (state.isHarvesting) {
+    alert('Harvest is already running');
+    return;
+  }
+  state.isHarvesting = true;
+  els.resultsSection.classList.add('active');
+  els.harvestStatus.textContent = 'Starting harvest...';
+  setProgress(0);
+
+  try {
+    // Clear previous
+    state.allData = [];
+    updateResultsDisplay();
+
+    const sources = getSourcesByType(state.currentType);
+    for (let i = 0; i < sources.length; i++) {
+      const s = sources[i];
+      els.harvestStatus.textContent = `Harvesting from ${s.name}...`;
+      setProgress(Math.round((i / sources.length) * 80));
+
+      const items = await harvestRepository(s);
+      state.allData = state.allData.concat(items);
+      updateResultsDisplay();
+    }
+
+    els.harvestStatus.textContent = `Harvest complete! Collected ${state.allData.length} records.`;
+    setProgress(100);
+  } catch (err) {
+    console.error('Harvest error:', err);
+    els.harvestStatus.textContent = 'Harvest failed. Check console.';
+  }
+  state.isHarvesting = false;
+}
+
+function getSourcesByType(type) {
+  if (type === 'all') return REPOSITORIES;
+  // DSpace here all are "articles" or "theses" buckets; we keep "articles" default
+  return REPOSITORIES.filter(r => r.type === type);
+}
+
+async function harvestRepository(repo) {
+  const out = [];
+  let endpoint = `${repo.oai}?verb=ListRecords&metadataPrefix=oai_dc`;
+  let fetched = 0;
+
+  while (endpoint && fetched < MAX_RECORDS_PER_REPO) {
+    const url = buildProxyUrl(endpoint);
+    const res = await fetch(url, { headers: { 'Accept': 'application/xml' }});
+    if (!res.ok) throw new Error(`Fetch failed ${res.status} at ${repo.name}`);
+    const xmlText = await res.text();
+    const { records, resumptionToken } = parseOaiListRecords(xmlText, repo);
+
+    out.push(...records);
+    fetched += records.length;
+
+    if (resumptionToken && fetched < MAX_RECORDS_PER_REPO) {
+      endpoint = `${repo.oai}?verb=ListRecords&resumptionToken=${encodeURIComponent(resumptionToken)}`;
+      await delay(250);
+    } else {
+      endpoint = null;
+    }
+  }
+  return out;
+}
+
+function buildProxyUrl(target) {
+  return `${WORKER_BASE}/api/proxy?url=${encodeURIComponent(target)}`;
+}
+
+function parseOaiListRecords(xmlText, repo) {
+  // Parse XML robustly (namespace-insensitive)
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(xmlText, 'application/xml');
+
+  const errorNode = xml.querySelector('error');
+  if (errorNode) {
+    console.warn('OAI error:', errorNode.textContent);
+    return { records: [], resumptionToken: null };
+  }
+
+  const recNodes = xml.getElementsByTagName('record');
+  const records = [];
+  for (let i = 0; i < recNodes.length; i++) {
+    const rec = recNodes[i];
+    const md = rec.getElementsByTagName('metadata')[0];
+    if (!md) continue;
+
+    // dc fields (oai_dc:dc)
+    const dc = md.getElementsByTagNameNS('*', 'dc')[0] || md.querySelector('dc');
+    if (!dc) continue;
+
+    const title = findFirst(dc, ['title']) || 'Untitled';
+    const creators = findAll(dc, ['creator']);
+    const description = truncate((findFirst(dc, ['description']) || '').replace(/\s+/g, ' ').trim(), 400);
+    const date = findFirst(dc, ['date']);
+    const year = extractYear(date);
+
+    const identifiers = findAll(dc, ['identifier']);
+    const { url, idType, idValue, downloadUrl } = pickBestIdentifier(identifiers, repo);
+
+    // Type: try subject/type else default "articles"
+    const dcType = (findFirst(dc, ['type']) || '').toLowerCase().includes('thes') ? 'theses' : 'articles';
+
+    records.push({
+      id: `${repo.id}-${hashId(url || idValue || title)}-${i}`,
+      title,
+      authors: creators.length ? creators : ['Unknown'],
+      description: description || `Record from ${repo.name}`,
+      keywords: [], // OAI-Dublin core sometimes provides subjects; you can add: findAll(dc, ['subject'])
+      year: year || '',
+      source: repo.name,
+      type: dcType,
+      identifier: idValue || '',
+      identifierType: idType || '',
+      url: url || '',
+      downloadUrl: downloadUrl || ''
+    });
+  }
+
+  const tokenNode = xml.getElementsByTagName('resumptionToken')[0];
+  const resumptionToken = tokenNode ? (tokenNode.textContent || '').trim() : null;
+
+  return { records, resumptionToken };
+}
+
+function findFirst(dcNode, localNames) {
+  for (const name of localNames) {
+    const el = dcNode.getElementsByTagNameNS('*', name)[0] || dcNode.getElementsByTagName(name)[0];
+    if (el && el.textContent) return el.textContent.trim();
+  }
+  return null;
+}
+function findAll(dcNode, localNames) {
+  const out = [];
+  for (const name of localNames) {
+    const list = dcNode.getElementsByTagNameNS('*', name);
+    if (list && list.length) {
+      for (let i = 0; i < list.length; i++) {
+        const t = (list[i].textContent || '').trim();
+        if (t) out.push(t);
+      }
+    }
+    const list2 = dcNode.getElementsByTagName(name);
+    if (list2 && list2.length) {
+      for (let i = 0; i < list2.length; i++) {
+        const t = (list2[i].textContent || '').trim();
+        if (t) out.push(t);
+      }
+    }
+  }
+  return out;
+}
+
+function extractYear(dateStr) {
+  if (!dateStr) return '';
+  const m = dateStr.match(/(19|20)\d{2}/);
+  return m ? m[0] : '';
+}
+
+function pickBestIdentifier(identifiers, repo) {
+  // Prefer DOI, then full http(s) links to item, then handle patterns, then repo handleBase + suffix
+  let doi = null;
+  let fullUrl = null;
+  let handleShort = null;
+
+  const doiRe = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/i;
+  const doiUrlRe = /^https?:\/\/(dx\.)?doi\.org\/(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)$/i;
+  const urlRe = /^https?:\/\/.+/i;
+
+  const handleFullRe = /^https?:\/\/hdl\.handle\.net\/(.+?)$/i;
+  const repoHandleFullRe = /^https?:\/\/[^\/]+\/handle\/(.+?)$/i; // direct repo handle URL
+  const handleShortRe = new RegExp(`^(${repo.handlePrefixes.map(escapeRegExp).join('|')})\\/\\d+`, 'i');
+
+  for (const id of identifiers) {
+    const s = id.trim();
+
+    // DOI URL
+    const durl = s.match(doiUrlRe);
+    if (durl) {
+      return { url: `https://doi.org/${durl[2]}`, idType: 'DOI', idValue: durl[2], downloadUrl: '' };
+    }
+  }
+  for (const id of identifiers) {
+    const s = id.trim();
+
+    // DOI bare
+    if (doiRe.test(s)) {
+      doi = s;
+      return { url: `https://doi.org/${doi}`, idType: 'DOI', idValue: doi, downloadUrl: '' };
+    }
+  }
+  for (const id of identifiers) {
+    const s = id.trim();
+
+    // Full repo item URL (already a handle page)
+    const rfull = s.match(repoHandleFullRe);
+    if (rfull) {
+      return { url: s, idType: 'Handle', idValue: rfull[1], downloadUrl: '' };
+    }
+    const hfull = s.match(handleFullRe);
+    if (hfull) {
+      // convert to repository handle if possible (prefer local handle page)
+      const hv = hfull[1]; // e.g. 2263/12345
+      if (isKnownHandlePrefix(hv, repo)) {
+        return { url: repo.handleBase + hv, idType: 'Handle', idValue: hv, downloadUrl: '' };
+      }
+      // else keep hdl handle
+      return { url: `https://hdl.handle.net/${hv}`, idType: 'Handle', idValue: hv, downloadUrl: '' };
+    }
+  }
+  for (const id of identifiers) {
+    const s = id.trim();
+
+    // Plain short handle like "2263/12345"
+    if (handleShortRe.test(s)) {
+      handleShort = s;
+      return { url: repo.handleBase + handleShort, idType: 'Handle', idValue: handleShort, downloadUrl: '' };
+    }
+
+    // Any direct URL to an item
+    if (urlRe.test(s)) {
+      fullUrl = s;
+      // If it's a file link, keep it as download
+      const isBitstream = /bitstream|download/i.test(s);
+      return { url: fullUrl, idType: 'URL', idValue: fullUrl, downloadUrl: isBitstream ? fullUrl : '' };
+    }
+  }
+
+  // Fallback: nothing recognized
+  return { url: '', idType: '', idValue: '', downloadUrl: '' };
+}
+
+function isKnownHandlePrefix(handleValue, repo) {
+  // handleValue like "2263/12345"
+  const prefix = (handleValue.split('/')[0] || '').trim();
+  return repo.handlePrefixes.some(p => p.toLowerCase() === prefix.toLowerCase());
+}
+
+function hashId(s) {
+  let h = 0, i, chr;
+  const str = s || (Math.random() + '');
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i);
+    h = ((h << 5) - h) + chr;
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+function setProgress(pct) { els.progressBar.style.width = `${pct}%`; }
+
+// ==== Search & Filters & Display ====
+function performSearch() {
+  // Simple front-end filter over harvested data
+  const q = (els.searchInput.value || '').toLowerCase().trim();
+  if (!q) { applyFilters(); return; }
+
+  els.resultsSection.classList.add('active');
+  state.filteredData = state.allData.filter(item =>
+    item.title.toLowerCase().includes(q) ||
+    item.description.toLowerCase().includes(q) ||
+    (item.authors || []).some(a => a.toLowerCase().includes(q))
+  );
+  state.currentPage = 1;
+  updateResultsDisplay();
+}
+
+function applyFilters(fromAdvanced = false) {
+  let list = [...state.allData];
+
+  // Content type (articles/theses)
+  if (state.currentType !== 'all') {
+    list = list.filter(x => x.type === state.currentType);
+  }
+
+  // Sidebar filters
+  const y = els.yearFilter.value;
+  if (y) list = list.filter(x => String(x.year) === y);
+
+  const s = els.sourceFilter.value;
+  if (s) list = list.filter(x => x.source === s);
+
+  const t = els.typeFilter.value;
+  if (t) list = list.filter(x => x.type === t);
+
+  // Advanced (basic boolean simulation)
+  if (fromAdvanced) {
+    const titleKey = (document.getElementById('advTitle').value || '').toLowerCase().trim();
+    const authorKey = (document.getElementById('advAuthor').value || '').toLowerCase().trim();
+    const subjectKey = (document.getElementById('advSubject').value || '').toLowerCase().trim();
+    const op = document.querySelector('.boolean-option.active')?.dataset?.operator || 'AND';
+
+    list = list.filter(item => {
+      const hits = [];
+      if (titleKey) hits.push(item.title.toLowerCase().includes(titleKey));
+      if (authorKey) hits.push((item.authors || []).some(a => a.toLowerCase().includes(authorKey)));
+      if (subjectKey) hits.push((item.keywords || []).some(k => k.toLowerCase().includes(subjectKey)));
+      if (!hits.length) return true;
+      if (op === 'AND') return hits.every(Boolean);
+      if (op === 'OR')  return hits.some(Boolean);
+      if (op === 'NOT') return hits.every(v => !v);
+      return true;
+    });
+  }
+
+  // Sort
+  const sortBy = els.sortFilter.value;
+  if (sortBy === 'year') list.sort((a,b)=> (b.year||0)-(a.year||0));
+  else if (sortBy === 'year_asc') list.sort((a,b)=> (a.year||0)-(b.year||0));
+  else if (sortBy === 'title') list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+
+  state.filteredData = list;
+  state.currentPage = 1;
+  updateResultsDisplay();
+}
+
+function resetFilters() {
+  els.yearFilter.value = '';
+  els.sourceFilter.value = '';
+  els.typeFilter.value = '';
+  els.sortFilter.value = 'relevance';
+  els.searchInResults.value = '';
+  document.getElementById('advTitle').value = '';
+  document.getElementById('advAuthor').value = '';
+  document.getElementById('advDate').value = '';
+  document.getElementById('advSubject').value = '';
+  applyFilters();
+}
+
+function searchWithinResults() {
+  const q = (els.searchInResults.value || '').toLowerCase().trim();
+  if (!q) { state.filteredData = [...state.allData]; updateResultsDisplay(); return; }
+  state.filteredData = state.allData.filter(item =>
+    item.title.toLowerCase().includes(q) ||
+    item.description.toLowerCase().includes(q) ||
+    (item.authors || []).some(a => a.toLowerCase().includes(q))
+  );
+  state.currentPage = 1;
+  updateResultsDisplay();
+}
+
+function updateResultsDisplay() {
+  state.totalPages = Math.max(1, Math.ceil(state.filteredData.length / state.pageSize));
+  els.resultsCount.textContent = `${state.filteredData.length.toLocaleString()} results`;
+  displayCurrentPage();
+  updatePaginationControls();
+}
+
+function displayCurrentPage() {
+  const start = (state.currentPage - 1) * state.pageSize;
+  const end = start + state.pageSize;
+  const pageData = state.filteredData.slice(start, end);
+  renderCards(pageData);
+}
+
+function updatePaginationControls() {
+  els.firstPage.disabled = state.currentPage === 1;
+  els.prevPage.disabled = state.currentPage === 1;
+  els.nextPage.disabled = state.currentPage === state.totalPages;
+  els.lastPage.disabled = state.currentPage === state.totalPages;
+  els.pageInfo.textContent = `Page ${state.currentPage} of ${state.totalPages}`;
+  els.pagination.style.display = state.totalPages <= 1 ? 'none' : 'flex';
+}
+
+function goToPage(page) {
+  if (page < 1 || page > state.totalPages) return;
+  state.currentPage = page;
+  displayCurrentPage();
+  updatePaginationControls();
+}
+
+function renderCards(data) {
+  els.dataCardsContainer.innerHTML = '';
+  if (!data.length) {
+    els.dataCardsContainer.innerHTML = `
+      <div class="no-results">
+        <i class="fas fa-search"></i>
+        <h3>No results found</h3>
+        <p>Try adjusting your filters or harvest more data</p>
+      </div>`;
+    return;
+  }
+
+  data.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'data-card';
+    card.dataset.itemId = item.id;
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-type">${(item.type || 'ARTICLES').toUpperCase()}</div>
+        <div class="card-source">${item.source || ''}</div>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${escapeHtml(item.title || 'Untitled')}</h3>
+        <div class="card-authors">${escapeHtml((item.authors || []).join(', ') || 'Unknown')}</div>
+        <p class="card-description">${escapeHtml(item.description || '')}</p>
+        <div class="card-keywords"></div>
+      </div>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span><i class="far fa-calendar"></i> ${item.year || ''}</span>
+          ${item.identifier ? `<span>${item.identifierType || 'ID'}: <a class="doi-link" href="${item.url || '#'}" target="_blank" rel="noopener">${escapeHtml(item.identifier)}</a></span>` : ''}
+        </div>
+        <div class="card-actions">
+          <button class="card-action" data-action="view" title="View"><i class="fas fa-eye"></i></button>
+          <button class="card-action" data-action="download" title="Download"><i class="fas fa-download"></i></button>
+          <button class="card-action" data-action="zotero" title="Save to Zotero"><i class="fas fa-bookmark"></i></button>
+        </div>
+      </div>
+    `;
+    els.dataCardsContainer.appendChild(card);
+  });
+}
+
+function handleCardAction(action, id) {
+  const item = state.allData.find(x => x.id === id);
+  if (!item) return;
+  if (action === 'view') {
+    if (item.url) window.open(item.url, '_blank', 'noopener');
+    else alert('No URL available');
+  } else if (action === 'download') {
+    if (item.downloadUrl) window.open(item.downloadUrl, '_blank','noopener');
+    else if (item.url) window.open(item.url, '_blank','noopener');
+    else alert('No download URL available');
+  } else if (action === 'zotero') {
+    const target = item.url || (item.identifierType === 'DOI' ? `https://doi.org/${item.identifier}` : '');
+    if (!target) return alert('Nothing to save');
+    const z = `https://www.zotero.org/select/items?uri=${encodeURIComponent(target)}`;
+    window.open(z, '_blank', 'noopener');
+  }
+}
+
+function escapeHtml(s){
+  return (s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
