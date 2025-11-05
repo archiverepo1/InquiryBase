@@ -1,1470 +1,198 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q Data - Research Data Harvesting</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #0F204B;
-            --secondary-color: #A71930;
-            --light-gray: #f5f5f5;
-            --medium-gray: #e0e0e0;
-            --dark-gray: #333;
-            --search-button-color: #8B8D8E;
-            --footer-color: #A7A8AA;
-            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: var(--light-gray);
-            color: var(--dark-gray);
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            flex: 1;
-        }
-        
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 15px 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .logo {
-            width: 50px;
-            height: 50px;
-            background-color: white;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
-        .logo img {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 8px;
-        }
-        
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .top-footer {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 15px 0;
-        }
-        
-        .top-footer-content {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 30px;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        .copyright {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .email-button {
-            background-color: var(--secondary-color);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .email-button:hover {
-            background-color: #8a1426;
-        }
-        
-        .search-section {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            margin-top: 20px;
-        }
-        
-        .search-box {
-            display: flex;
-            margin-bottom: 20px;
-        }
-        
-        .search-input {
-            flex: 1;
-            padding: 12px 15px;
-            border: 1px solid var(--medium-gray);
-            border-radius: 4px 0 0 4px;
-            font-size: 16px;
-        }
-        
-        .search-button {
-            background-color: var(--search-button-color);
-            color: white;
-            border: none;
-            padding: 0 25px;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        
-        .search-button:hover {
-            background-color: #76787a;
-        }
-        
-        .source-buttons {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .source-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .source-button:hover {
-            background-color: #1a2f6b;
-        }
-        
-        .source-button.active {
-            background-color: var(--secondary-color);
-        }
-        
-        .advanced-toggle {
-            color: var(--secondary-color);
-            cursor: pointer;
-            font-size: 14px;
-            margin-bottom: 20px;
-            display: inline-block;
-        }
-        
-        .advanced-search {
-            display: none;
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 4px;
-            margin-top: 20px;
-            border-left: 3px solid var(--secondary-color);
-        }
-        
-        .advanced-search.active {
-            display: block;
-        }
-        
-        .advanced-search input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid var(--medium-gray);
-            border-radius: 4px;
-        }
-        
-        .boolean-options {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .boolean-option {
-            background-color: white;
-            border: 1px solid var(--medium-gray);
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        .boolean-option.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .results-section {
-            display: none;
-            margin-top: 30px;
-        }
-        
-        .results-section.active {
-            display: block;
-        }
-        
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--medium-gray);
-        }
-        
-        .results-title {
-            font-size: 20px;
-            font-weight: 600;
-        }
-        
-        .results-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .harvest-button, .clear-button {
-            background-color: var(--secondary-color);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .clear-button {
-            background-color: #e74c3c;
-        }
-        
-        .clear-button:hover {
-            background-color: #c0392b;
-        }
-        
-        .harvest-button:hover {
-            background-color: #8a1426;
-        }
-        
-        .results-content {
-            display: flex;
-            gap: 25px;
-            margin-top: 20px;
-        }
-        
-        .filters-sidebar {
-            width: 280px;
-            flex-shrink: 0;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            padding: 20px;
-            height: fit-content;
-        }
-        
-        .filters-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--medium-gray);
-        }
-        
-        .filters-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .reset-filters {
-            background: none;
-            border: none;
-            color: var(--secondary-color);
-            cursor: pointer;
-            font-size: 13px;
-            text-decoration: underline;
-        }
-        
-        .filter-group {
-            margin-bottom: 20px;
-        }
-        
-        .filter-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--dark-gray);
-        }
-        
-        .filter-select, .filter-input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--medium-gray);
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        
-        .filter-options {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid var(--medium-gray);
-            border-radius: 4px;
-            padding: 8px;
-        }
-        
-        .filter-option {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        
-        .filter-option input {
-            margin-right: 8px;
-        }
-        
-        .filter-option label {
-            font-size: 13px;
-            cursor: pointer;
-        }
-        
-        .search-in-results {
-            display: flex;
-            margin-top: 15px;
-        }
-        
-        .search-in-results input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid var(--medium-gray);
-            border-radius: 4px 0 0 4px;
-            font-size: 13px;
-        }
-        
-        .search-in-results button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0 15px;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
-            font-size: 13px;
-        }
-        
-        .results-main {
-            flex: 1;
-        }
-        
-        .data-cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-        
-        .data-card {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: var(--card-shadow);
-            overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .data-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--card-hover-shadow);
-        }
-        
-        .card-header {
-            padding: 15px 20px;
-            background-color: var(--primary-color);
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .card-type {
-            background-color: rgba(255,255,255,0.2);
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
-        .card-source {
-            font-size: 12px;
-            opacity: 0.9;
-        }
-        
-        .card-body {
-            padding: 20px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .card-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            line-height: 1.4;
-            color: var(--dark-gray);
-        }
-        
-        .card-authors {
-            font-size: 14px;
-            color: var(--secondary-color);
-            margin-bottom: 12px;
-            font-style: italic;
-        }
-        
-        .card-description {
-            font-size: 14px;
-            color: #555;
-            line-height: 1.5;
-            margin-bottom: 15px;
-            flex-grow: 1;
-        }
-        
-        .card-keywords {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-        
-        .keyword-tag {
-            background-color: var(--light-gray);
-            color: var(--dark-gray);
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-        }
-        
-        .card-footer {
-            padding: 15px 20px;
-            background-color: #f9f9f9;
-            border-top: 1px solid var(--medium-gray);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .card-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .doi-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .doi-link:hover {
-            text-decoration: underline;
-        }
-        
-        .card-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .card-action {
-            background: none;
-            border: none;
-            color: var(--primary-color);
-            cursor: pointer;
-            font-size: 16px;
-            transition: color 0.3s;
-            padding: 5px;
-            border-radius: 3px;
-        }
-        
-        .card-action:hover {
-            background-color: var(--light-gray);
-            color: var(--secondary-color);
-        }
-        
-        .sources-grid {
-            display: none; /* Hidden as requested */
-        }
-        
-        .zotero-section {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-top: 30px;
-        }
-        
-        .zotero-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .zotero-logo {
-            width: 40px;
-            height: 40px;
-            background-color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--secondary-color);
-            font-weight: bold;
-            margin-right: 15px;
-            font-size: 20px;
-            border: 2px solid var(--secondary-color);
-        }
-        
-        .zotero-title {
-            font-size: 20px;
-            font-weight: 600;
-        }
-        
-        .zotero-description {
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-        
-        .zotero-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .zotero-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .zotero-button:hover {
-            background-color: #1a2f6b;
-        }
-        
-        .footer {
-            background-color: var(--footer-color);
-            text-align: center;
-            padding: 20px 0;
-            color: #333;
-            font-size: 14px;
-        }
-        
-        .progress-bar {
-            height: 5px;
-            background-color: var(--medium-gray);
-            border-radius: 5px;
-            margin-top: 20px;
-            overflow: hidden;
-        }
-        
-        .progress {
-            height: 100%;
-            background-color: var(--secondary-color);
-            width: 0%;
-            transition: width 0.5s;
-        }
-        
-        .harvest-status {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .no-results {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-            grid-column: 1 / -1;
-        }
-        
-        .no-results i {
-            font-size: 48px;
-            margin-bottom: 15px;
-            color: #ccc;
-        }
-        
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin: 20px 0;
-        }
-        
-        .pagination-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: background-color 0.3s;
-        }
-        
-        .pagination-button:hover:not(:disabled) {
-            background-color: #1a2f6b;
-        }
-        
-        .pagination-button:disabled {
-            background-color: var(--medium-gray);
-            cursor: not-allowed;
-        }
-        
-        .page-info {
-            font-size: 13px;
-            color: var(--dark-gray);
-            margin: 0 10px;
-        }
-        
-        .results-count {
-            font-size: 14px;
-            color: var(--dark-gray);
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-        
-        @media (max-width: 768px) {
-            .source-buttons {
-                flex-wrap: wrap;
-            }
-            
-            .sources-grid, .data-cards-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .zotero-buttons {
-                flex-direction: column;
-            }
-            
-            .top-footer-content {
-                flex-direction: column;
-                gap: 10px;
-                text-align: center;
-            }
-            
-            .results-actions {
-                flex-direction: column;
-                width: 100%;
-            }
-            
-            .harvest-button, .clear-button {
-                width: 100%;
-                margin-bottom: 5px;
-            }
-            
-            .results-content {
-                flex-direction: column;
-            }
-            
-            .filters-sidebar {
-                width: 100%;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Q Data - Research Data Harvesting</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo-container">
-                <div class="logo">
-                    <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo">
-                </div>
-                <div class="title">Library</div>
-            </div>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo-container">
+        <div class="logo">
+          <!-- Uses your repo logo file name: Picture2.png -->
+          <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2.png" alt="Sozim Trading & Consultancy Logo">
         </div>
-    </header>
-    
-    <div class="container">
-        <section class="search-section">
-            <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
-                <button class="search-button">Search</button>
-            </div>
-            
-            <div class="source-buttons">
-                <button class="source-button active" data-type="all">All Sources</button>
-                <button class="source-button" data-type="research">Research Data</button>
-                <button class="source-button" data-type="articles">Journal Articles</button>
-                <button class="source-button" data-type="theses">Theses</button>
-            </div>
-            
-            <div class="advanced-toggle">Advanced Filters</div>
-            
-            <div class="advanced-search">
-                <div class="boolean-options">
-                    <div class="boolean-option active" data-operator="AND">AND</div>
-                    <div class="boolean-option" data-operator="OR">OR</div>
-                    <div class="boolean-option" data-operator="NOT">NOT</div>
-                </div>
-                <input type="text" placeholder="Title keywords...">
-                <input type="text" placeholder="Author name...">
-                <input type="text" placeholder="Date range (YYYY-YYYY)...">
-                <input type="text" placeholder="Subject area...">
-                <button class="search-button" style="border-radius: 4px; margin-top: 10px;">Apply Filters</button>
-            </div>
-        </section>
-        
-        <section class="results-section">
-            <div class="results-header">
-                <div class="results-title">Harvested Results</div>
-                <div class="results-actions">
-                    <button class="harvest-button">Harvest All</button>
-                    <button class="clear-button">Clear Results</button>
-                </div>
-            </div>
-            
-            <div class="progress-bar">
-                <div class="progress"></div>
-            </div>
-            <div class="harvest-status">Ready to harvest</div>
-            
-            <div class="results-content">
-                <!-- Filters Sidebar -->
-                <div class="filters-sidebar">
-                    <div class="filters-header">
-                        <div class="filters-title">Filter Results</div>
-                        <button class="reset-filters">Reset</button>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label class="filter-label">Year</label>
-                        <select class="filter-select" id="yearFilter">
-                            <option value="">All Years</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label class="filter-label">Source</label>
-                        <select class="filter-select" id="sourceFilter">
-                            <option value="">All Sources</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label class="filter-label">Content Type</label>
-                        <select class="filter-select" id="typeFilter">
-                            <option value="">All Types</option>
-                            <option value="research">Research Data</option>
-                            <option value="articles">Journal Articles</option>
-                            <option value="theses">Theses</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label class="filter-label">Sort By</label>
-                        <select class="filter-select" id="sortFilter">
-                            <option value="relevance">Relevance</option>
-                            <option value="year">Year (Newest)</option>
-                            <option value="year_asc">Year (Oldest)</option>
-                            <option value="title">Title (A-Z)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="search-in-results">
-                        <input type="text" id="searchInResults" placeholder="Search within results...">
-                        <button id="searchInResultsButton">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Results Main Content -->
-                <div class="results-main">
-                    <div class="results-count" id="resultsCount">0 results</div>
-                    
-                    <!-- Data Cards Container -->
-                    <div class="data-cards-container" id="dataCardsContainer">
-                        <div class="no-results">
-                            <i class="fas fa-search"></i>
-                            <h3>No data harvested yet</h3>
-                            <p>Use the harvest button to collect research data</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Pagination -->
-                    <div class="pagination" id="pagination">
-                        <button class="pagination-button" id="firstPage" disabled>First</button>
-                        <button class="pagination-button" id="prevPage" disabled>Previous</button>
-                        <span class="page-info" id="pageInfo">Page 1 of 1</span>
-                        <button class="pagination-button" id="nextPage" disabled>Next</button>
-                        <button class="pagination-button" id="lastPage" disabled>Last</button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Hidden sources grid (as requested) -->
-            <div class="sources-grid" style="display: none;">
-                <!-- Sources are hidden as requested -->
-            </div>
-        </section>
-        
-        <section class="zotero-section">
-            <div class="zotero-header">
-                <div class="zotero-logo">Z</div>
-                <div class="zotero-title">Your Referencing Manager: Zotero</div>
-            </div>
-            <div class="zotero-description">
-                Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research. 
-                Save sources directly from your browser with a single click, then organize them into collections using tags.
-            </div>
-            <div class="zotero-buttons">
-                <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
-                <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
-                <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
-            </div>
-        </section>
+      </div>
+      <div class="title">Library</div>
     </div>
-    
-    <div class="top-footer">
-        <div class="top-footer-content">
-            <div class="copyright">Q Data Research Platform © 2025</div>
-            <button class="email-button">Email Us</button>
+  </header>
+
+  <div class="container">
+    <!-- Search / Source Section -->
+    <section class="search-section">
+      <div class="search-box">
+        <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
+        <button class="search-button">Search</button>
+      </div>
+
+      <div class="source-buttons">
+        <button class="source-button active" data-type="all">All Sources</button>
+        <button class="source-button" data-type="articles">Journal Articles</button>
+        <button class="source-button" data-type="theses">Theses</button>
+      </div>
+
+      <div class="advanced-toggle">Advanced Filters</div>
+
+      <div class="advanced-search">
+        <div class="boolean-options">
+          <div class="boolean-option active" data-operator="AND">AND</div>
+          <div class="boolean-option" data-operator="OR">OR</div>
+          <div class="boolean-option" data-operator="NOT">NOT</div>
         </div>
+        <input type="text" id="advTitle" placeholder="Title keywords...">
+        <input type="text" id="advAuthor" placeholder="Author name...">
+        <input type="text" id="advDate" placeholder="Date range (YYYY-YYYY)...">
+        <input type="text" id="advSubject" placeholder="Subject area...">
+        <button class="search-button" id="applyAdvanced" style="border-radius:4px;margin-top:10px;">Apply Filters</button>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="results-section">
+      <div class="results-header">
+        <div class="results-title">Harvested Results</div>
+        <div class="results-actions">
+          <button class="harvest-button">Harvest All</button>
+          <button class="clear-button">Clear Results</button>
+        </div>
+      </div>
+
+      <div class="progress-bar"><div class="progress"></div></div>
+      <div class="harvest-status">Ready to harvest</div>
+
+      <div class="results-content">
+        <!-- Filters Sidebar -->
+        <aside class="filters-sidebar">
+          <div class="filters-header">
+            <div class="filters-title">Filter Results</div>
+            <button class="reset-filters">Reset</button>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Year</label>
+            <select class="filter-select" id="yearFilter">
+              <option value="">All Years</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Source</label>
+            <select class="filter-select" id="sourceFilter">
+              <option value="">All Sources</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Content Type</label>
+            <select class="filter-select" id="typeFilter">
+              <option value="">All Types</option>
+              <option value="articles">Journal Articles</option>
+              <option value="theses">Theses</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Sort By</label>
+            <select class="filter-select" id="sortFilter">
+              <option value="relevance">Relevance</option>
+              <option value="year">Year (Newest)</option>
+              <option value="year_asc">Year (Oldest)</option>
+              <option value="title">Title (A-Z)</option>
+            </select>
+          </div>
+
+          <div class="search-in-results">
+            <input type="text" id="searchInResults" placeholder="Search within results...">
+            <button id="searchInResultsButton"><i class="fas fa-search"></i></button>
+          </div>
+        </aside>
+
+        <!-- Results Main -->
+        <main class="results-main">
+          <div class="results-count" id="resultsCount">0 results</div>
+
+          <div class="data-cards-container" id="dataCardsContainer">
+            <div class="no-results">
+              <i class="fas fa-search"></i>
+              <h3>No data harvested yet</h3>
+              <p>Use the harvest button to collect research data</p>
+            </div>
+          </div>
+
+          <div class="pagination" id="pagination">
+            <button class="pagination-button" id="firstPage" disabled>First</button>
+            <button class="pagination-button" id="prevPage" disabled>Previous</button>
+            <span class="page-info" id="pageInfo">Page 1 of 1</span>
+            <button class="pagination-button" id="nextPage" disabled>Next</button>
+            <button class="pagination-button" id="lastPage" disabled>Last</button>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <!-- Zotero -->
+    <section class="zotero-section">
+      <div class="zotero-header">
+        <div class="zotero-logo">Z</div>
+        <div class="zotero-title">Your Referencing Manager: Zotero</div>
+      </div>
+      <div class="zotero-description">
+        Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research.
+        Save sources directly from your browser with a single click, then organize them into collections using tags.
+      </div>
+      <div class="zotero-buttons">
+        <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
+        <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
+        <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- Sozim footer -->
+  <footer class="sozim-footer">
+    <div class="sozim-footer-container">
+      <div class="footer-column">
+        <div class="footer-logo">
+          <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2.png" alt="Sozim Logo">
+        </div>
+        <p class="footer-description">
+          Sozim Trading & Consultancy stands for quality, excellent products, highly efficient processes, and outstanding results.
+        </p>
+      </div>
+      <div class="footer-column">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="https://sozim.vercel.app/">Home</a></li>
+          <li><a href="https://sozim.vercel.app/courses">Courses</a></li>
+          <li><a href="https://sozim.vercel.app/about">About</a></li>
+          <li><a href="https://sozim.vercel.app/contact">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-column">
+        <h4>Programs</h4>
+        <ul>
+          <li><a href="#">Undergraduate</a></li>
+          <li><a href="#">Graduate</a></li>
+          <li><a href="#">Online Learning</a></li>
+          <li><a href="#">Certificates</a></li>
+        </ul>
+      </div>
+      <div class="footer-column">
+        <h4>Contact Us</h4>
+        <p><i class="fas fa-envelope"></i> admin@sozim.co.za</p>
+        <p><i class="fas fa-phone"></i> (+27) 83 668 0104</p>
+        <p><i class="fas fa-phone"></i> (+27) 72 302 3929</p>
+        <p><i class="fas fa-map-marker-alt"></i> 4697 Modiko Street, Bochabela Location, Mangaung, 9323</p>
+      </div>
     </div>
-    
-    <footer class="footer">
-        Research Data Harvesting System
-    </footer>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Elements
-            const searchInput = document.querySelector('.search-input');
-            const searchButton = document.querySelector('.search-button');
-            const sourceButtons = document.querySelectorAll('.source-button');
-            const advancedToggle = document.querySelector('.advanced-toggle');
-            const advancedSearch = document.querySelector('.advanced-search');
-            const booleanOptions = document.querySelectorAll('.boolean-option');
-            const resultsSection = document.querySelector('.results-section');
-            const harvestButton = document.querySelector('.harvest-button');
-            const clearButton = document.querySelector('.clear-button');
-            const progressBar = document.querySelector('.progress');
-            const harvestStatus = document.querySelector('.harvest-status');
-            const emailButton = document.querySelector('.email-button');
-            const dataCardsContainer = document.getElementById('dataCardsContainer');
-            const yearFilter = document.getElementById('yearFilter');
-            const sourceFilter = document.getElementById('sourceFilter');
-            const typeFilter = document.getElementById('typeFilter');
-            const sortFilter = document.getElementById('sortFilter');
-            const searchInResults = document.getElementById('searchInResults');
-            const searchInResultsButton = document.getElementById('searchInResultsButton');
-            const resultsCount = document.getElementById('resultsCount');
-            const pagination = document.getElementById('pagination');
-            const firstPageBtn = document.getElementById('firstPage');
-            const prevPageBtn = document.getElementById('prevPage');
-            const nextPageBtn = document.getElementById('nextPage');
-            const lastPageBtn = document.getElementById('lastPage');
-            const pageInfo = document.getElementById('pageInfo');
-            const resetFiltersBtn = document.querySelector('.reset-filters');
-            
-            // Data state
-            const dataState = {
-                allData: [],
-                filteredData: [],
-                currentPage: 1,
-                pageSize: 12,
-                totalPages: 1,
-                isHarvesting: false
-            };
-            
-            // Initialize filters
-            initializeFilters();
-            
-            // Email button functionality
-            emailButton.addEventListener('click', function() {
-                window.location.href = 'mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry';
-            });
-            
-            // Advanced filters toggle
-            advancedToggle.addEventListener('click', function() {
-                advancedSearch.classList.toggle('active');
-            });
-            
-            // Boolean search options
-            booleanOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    booleanOptions.forEach(opt => opt.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-            
-            // Search functionality
-            searchButton.addEventListener('click', performSearch);
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            });
-            
-            // Source buttons functionality
-            sourceButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    sourceButtons.forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
-                    const type = this.getAttribute('data-type');
-                    startHarvest(type);
-                });
-            });
-            
-            // Harvest all button
-            harvestButton.addEventListener('click', function() {
-                startHarvest('all');
-            });
-            
-            // Clear results button
-            clearButton.addEventListener('click', clearResults);
-            
-            // Filter change events
-            yearFilter.addEventListener('change', applyFilters);
-            sourceFilter.addEventListener('change', applyFilters);
-            typeFilter.addEventListener('change', applyFilters);
-            sortFilter.addEventListener('change', applyFilters);
-            
-            // Reset filters button
-            resetFiltersBtn.addEventListener('click', resetFilters);
-            
-            // Search within results
-            searchInResultsButton.addEventListener('click', searchWithinResults);
-            searchInResults.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchWithinResults();
-                }
-            });
-            
-            // Pagination events
-            firstPageBtn.addEventListener('click', () => goToPage(1));
-            prevPageBtn.addEventListener('click', () => goToPage(dataState.currentPage - 1));
-            nextPageBtn.addEventListener('click', () => goToPage(dataState.currentPage + 1));
-            lastPageBtn.addEventListener('click', () => goToPage(dataState.totalPages));
-            
-            // Event delegation for card actions
-            dataCardsContainer.addEventListener('click', function(e) {
-                const cardAction = e.target.closest('.card-action');
-                if (!cardAction) return;
-                
-                const card = cardAction.closest('.data-card');
-                if (!card) return;
-                
-                const itemId = card.dataset.itemId;
-                if (!itemId) return;
-                
-                const action = cardAction.dataset.action;
-                handleCardAction(action, itemId);
-            });
-            
-            // Function to initialize filters
-            function initializeFilters() {
-                // Initialize year filter
-                const currentYear = new Date().getFullYear();
-                for (let year = currentYear; year >= 1980; year--) {
-                    const option = document.createElement('option');
-                    option.value = year;
-                    option.textContent = year;
-                    yearFilter.appendChild(option);
-                }
-                
-                // Initialize source filter
-                const sources = [
-                    'Zenodo', 'OSF', 'Figshare', 'Mendeley Data', 'Dryad',
-                    'Open UCT', 'SUNScholar', 'UP Repository', 'UFS Scholar', 'UNisa DSpace',
-                    'UCT Theses', 'SUNScholar Theses', 'UP Theses', 'UFS Theses', 'UNisa Theses'
-                ];
-                sources.forEach(source => {
-                    const option = document.createElement('option');
-                    option.value = source;
-                    option.textContent = source;
-                    sourceFilter.appendChild(option);
-                });
-            }
-            
-            // Function to perform search
-            function performSearch() {
-                const query = searchInput.value.trim();
-                if (query) {
-                    resultsSection.classList.add('active');
-                    startHarvest('search', query);
-                }
-            }
-            
-            // Function to start harvesting
-            function startHarvest(type, query = '') {
-                if (dataState.isHarvesting) {
-                    alert('Harvesting is already in progress');
-                    return;
-                }
-                
-                dataState.isHarvesting = true;
-                resultsSection.classList.add('active');
-                harvestStatus.textContent = 'Starting harvest...';
-                progressBar.style.width = '0%';
-                
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += Math.random() * 10;
-                    if (progress >= 100) {
-                        progress = 100;
-                        clearInterval(interval);
-                        harvestStatus.textContent = 'Harvest complete!';
-                        
-                        // Generate data
-                        generateData(type, query);
-                        
-                        // Show a success message
-                        setTimeout(() => {
-                            alert(`Successfully harvested ${type === 'all' ? 'all sources' : type} data! Collected ${dataState.allData.length} records.`);
-                        }, 500);
-                        
-                        dataState.isHarvesting = false;
-                    }
-                    progressBar.style.width = `${progress}%`;
-                }, 200);
-            }
-            
-            // Function to clear results
-            function clearResults() {
-                dataState.allData = [];
-                dataState.filteredData = [];
-                dataState.currentPage = 1;
-                
-                // Reset display
-                dataCardsContainer.innerHTML = `
-                    <div class="no-results">
-                        <i class="fas fa-search"></i>
-                        <h3>No data harvested yet</h3>
-                        <p>Use the harvest button to collect research data</p>
-                    </div>
-                `;
-                
-                // Reset results count
-                resultsCount.textContent = '0 results';
-                
-                // Reset pagination
-                updatePagination();
-                
-                // Clear localStorage
-                localStorage.removeItem('qDataHarvest');
-                
-                // Clear search input
-                searchInput.value = '';
-                
-                // Reset filters
-                resetFilters();
-                
-                // Show notification
-                alert('All results have been cleared');
-            }
-            
-            // Function to reset filters
-            function resetFilters() {
-                yearFilter.value = '';
-                sourceFilter.value = '';
-                typeFilter.value = '';
-                sortFilter.value = 'relevance';
-                searchInResults.value = '';
-                
-                // Reapply filters (which will show all data)
-                applyFilters();
-            }
-            
-            // Function to generate data (1000+ records)
-            function generateData(type, query = '') {
-                dataState.allData = [];
-                
-                // Define sources based on type
-                let sources = [];
-                if (type === 'research' || type === 'all') {
-                    sources = sources.concat(['Zenodo', 'OSF', 'Figshare', 'Mendeley Data', 'Dryad']);
-                }
-                if (type === 'articles' || type === 'all') {
-                    sources = sources.concat(['Open UCT', 'SUNScholar', 'UP Repository', 'UFS Scholar', 'UNisa DSpace']);
-                }
-                if (type === 'theses' || type === 'all') {
-                    sources = sources.concat(['UCT Theses', 'SUNScholar Theses', 'UP Theses', 'UFS Theses', 'UNisa Theses']);
-                }
-                
-                // Generate 1000+ records
-                sources.forEach(source => {
-                    const itemCount = 200 + Math.floor(Math.random() * 50); // 200-250 items per source
-                    
-                    for (let i = 0; i < itemCount; i++) {
-                        const year = 2000 + Math.floor(Math.random() * 25);
-                        const authors = generateAuthors();
-                        const keywords = generateKeywords(query);
-                        
-                        // Generate proper identifiers based on source type
-                        let identifier, url, downloadUrl;
-                        if (source.includes('Zenodo') || source.includes('Figshare') || 
-                            source.includes('OSF') || source.includes('Mendeley') || source.includes('Dryad')) {
-                            // Research data sources with DOI
-                            identifier = `10.1234/${source.replace(/\s+/g, '').toLowerCase()}.${Math.floor(Math.random() * 10000)}`;
-                            url = `https://doi.org/${identifier}`;
-                            downloadUrl = `https://${source.replace(/\s+/g, '-').toLowerCase()}.org/api/record/${identifier}/download`;
-                        } else {
-                            // DSpace repositories with handles
-                            identifier = `2263/${Math.floor(100000 + Math.random() * 900000)}`;
-                            url = `http://hdl.handle.net/${identifier}`;
-                            downloadUrl = `${url}/download`;
-                        }
-                        
-                        const recordId = `${source.replace(/\s+/g, '-').toLowerCase()}-${i}-${Date.now()}`;
-                        
-                        dataState.allData.push({
-                            id: recordId,
-                            title: `${query ? query + ' - ' : ''}Research from ${source} - ${i + 1}`,
-                            authors: authors,
-                            description: `This is research data harvested from ${source}. It contains valuable research findings and data relevant to various fields of study. This record demonstrates the harvesting capability of the Q Data Research Hub.`,
-                            keywords: keywords,
-                            year: year,
-                            source: source,
-                            type: getTypeFromSource(source),
-                            identifier: identifier,
-                            identifierType: source.includes('Zenodo') || source.includes('Figshare') || 
-                                          source.includes('OSF') || source.includes('Mendeley') || source.includes('Dryad') ? 'DOI' : 'Handle',
-                            url: url,
-                            downloadUrl: downloadUrl
-                        });
-                    }
-                });
-                
-                // Update display
-                dataState.filteredData = [...dataState.allData];
-                dataState.currentPage = 1;
-                updateResultsDisplay();
-                
-                // Save to localStorage
-                saveToStorage();
-            }
-            
-            // Helper function to generate random authors
-            function generateAuthors() {
-                const firstNames = ['John', 'Jane', 'David', 'Sarah', 'Michael', 'Emily', 'Robert', 'Lisa', 'James', 'Maria'];
-                const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
-                
-                const numAuthors = 1 + Math.floor(Math.random() * 3); // 1-4 authors
-                const authors = [];
-                
-                for (let i = 0; i < numAuthors; i++) {
-                    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-                    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-                    authors.push(`${firstName} ${lastName}`);
-                }
-                
-                return authors;
-            }
-            
-            // Helper function to generate keywords
-            function generateKeywords(query) {
-                const baseKeywords = ['research', 'data', 'analysis', 'study', 'methodology', 'statistics', 'visualization', 'science', 'academic'];
-                const queryKeywords = query ? query.toLowerCase().split(' ') : [];
-                
-                // Take 3-6 random keywords
-                const shuffled = [...baseKeywords].sort(() => 0.5 - Math.random());
-                const selected = shuffled.slice(0, 3 + Math.floor(Math.random() * 4));
-                
-                return [...new Set([...queryKeywords, ...selected])];
-            }
-            
-            // Helper function to determine type from source
-            function getTypeFromSource(source) {
-                if (source.includes('Zenodo') || source.includes('OSF') || source.includes('Figshare') || 
-                    source.includes('Mendeley') || source.includes('Dryad')) {
-                    return 'research';
-                } else if (source.includes('Theses')) {
-                    return 'theses';
-                } else {
-                    return 'articles';
-                }
-            }
-            
-            // Function to apply filters
-            function applyFilters() {
-                let filtered = [...dataState.allData];
-                
-                // Apply year filter
-                if (yearFilter.value) {
-                    filtered = filtered.filter(item => item.year == yearFilter.value);
-                }
-                
-                // Apply source filter
-                if (sourceFilter.value) {
-                    filtered = filtered.filter(item => item.source === sourceFilter.value);
-                }
-                
-                // Apply type filter
-                if (typeFilter.value) {
-                    filtered = filtered.filter(item => item.type === typeFilter.value);
-                }
-                
-                // Apply sorting
-                const sortBy = sortFilter.value;
-                if (sortBy === 'year') {
-                    filtered.sort((a, b) => b.year - a.year);
-                } else if (sortBy === 'year_asc') {
-                    filtered.sort((a, b) => a.year - b.year);
-                } else if (sortBy === 'title') {
-                    filtered.sort((a, b) => a.title.localeCompare(b.title));
-                }
-                // 'relevance' is the default order
-                
-                dataState.filteredData = filtered;
-                dataState.currentPage = 1;
-                updateResultsDisplay();
-            }
-            
-            // Function to search within harvested data
-            function searchWithinResults() {
-                const query = searchInResults.value.toLowerCase().trim();
-                
-                if (!query) {
-                    dataState.filteredData = [...dataState.allData];
-                } else {
-                    dataState.filteredData = dataState.allData.filter(item => 
-                        item.title.toLowerCase().includes(query) ||
-                        item.description.toLowerCase().includes(query) ||
-                        item.authors.some(author => author.toLowerCase().includes(query)) ||
-                        item.keywords.some(keyword => keyword.toLowerCase().includes(query))
-                    );
-                }
-                
-                dataState.currentPage = 1;
-                updateResultsDisplay();
-            }
-            
-            // Function to update results display
-            function updateResultsDisplay() {
-                dataState.totalPages = Math.ceil(dataState.filteredData.length / dataState.pageSize);
-                
-                // Update results count
-                resultsCount.textContent = `${dataState.filteredData.length.toLocaleString()} results`;
-                
-                // Display current page
-                displayCurrentPage();
-                
-                // Update pagination
-                updatePagination();
-            }
-            
-            // Function to display current page
-            function displayCurrentPage() {
-                const startIndex = (dataState.currentPage - 1) * dataState.pageSize;
-                const endIndex = startIndex + dataState.pageSize;
-                const pageData = dataState.filteredData.slice(startIndex, endIndex);
-                
-                displayDataCards(pageData);
-            }
-            
-            // Function to display data cards
-            function displayDataCards(data) {
-                dataCardsContainer.innerHTML = '';
-                
-                if (data.length === 0) {
-                    dataCardsContainer.innerHTML = `
-                        <div class="no-results">
-                            <i class="fas fa-search"></i>
-                            <h3>No results found</h3>
-                            <p>Try adjusting your filters or search terms</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                data.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'data-card';
-                    card.dataset.itemId = item.id; // Store item ID for event handling
-                    
-                    const badgeClass = item.type === 'research' ? 'research' : 
-                                     item.type === 'articles' ? 'articles' : 'theses';
-                    
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <div class="card-type">${item.type.toUpperCase()}</div>
-                            <div class="card-source">${item.source}</div>
-                        </div>
-                        <div class="card-body">
-                            <h3 class="card-title">${item.title}</h3>
-                            <div class="card-authors">${Array.isArray(item.authors) ? item.authors.join(', ') : item.authors}</div>
-                            <p class="card-description">${item.description}</p>
-                            <div class="card-keywords">
-                                ${item.keywords.slice(0, 4).map(keyword => 
-                                    `<span class="keyword-tag">${keyword}</span>`
-                                ).join('')}
-                                ${item.keywords.length > 4 ? `<span class="keyword-tag">+${item.keywords.length - 4} more</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="card-meta">
-                                <span><i class="far fa-calendar"></i> ${item.year}</span>
-                                <span>${item.identifierType}: <a href="${item.url}" target="_blank" class="doi-link">${item.identifier}</a></span>
-                            </div>
-                            <div class="card-actions">
-                                <button class="card-action" data-action="view" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="card-action" data-action="download" title="Download">
-                                    <i class="fas fa-download"></i>
-                                </button>
-                                <button class="card-action" data-action="zotero" title="Save to Zotero">
-                                    <i class="fas fa-bookmark"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                    dataCardsContainer.appendChild(card);
-                });
-            }
-            
-            // Function to handle card actions
-            function handleCardAction(action, itemId) {
-                const item = dataState.allData.find(i => i.id === itemId);
-                if (!item) return;
-                
-                switch (action) {
-                    case 'view':
-                        if (item.url) {
-                            window.open(item.url, '_blank');
-                        } else {
-                            alert('No URL available for this item');
-                        }
-                        break;
-                        
-                    case 'download':
-                        if (item.downloadUrl) {
-                            window.open(item.downloadUrl, '_blank');
-                        } else if (item.url) {
-                            window.open(item.url, '_blank');
-                        } else {
-                            alert('No download URL available for this item');
-                        }
-                        break;
-                        
-                    case 'zotero':
-                        // Simple Zotero integration
-                        const zoteroUrl = `https://www.zotero.org/select/items?uri=${encodeURIComponent(item.url)}`;
-                        window.open(zoteroUrl, '_blank');
-                        break;
-                }
-            }
-            
-            // Function to update pagination
-            function updatePagination() {
-                firstPageBtn.disabled = dataState.currentPage === 1;
-                prevPageBtn.disabled = dataState.currentPage === 1;
-                nextPageBtn.disabled = dataState.currentPage === dataState.totalPages;
-                lastPageBtn.disabled = dataState.currentPage === dataState.totalPages;
-                
-                pageInfo.textContent = `Page ${dataState.currentPage} of ${dataState.totalPages}`;
-                
-                // Show/hide pagination
-                if (dataState.totalPages <= 1) {
-                    pagination.style.display = 'none';
-                } else {
-                    pagination.style.display = 'flex';
-                }
-            }
-            
-            // Function to go to specific page
-            function goToPage(page) {
-                if (page < 1 || page > dataState.totalPages) return;
-                
-                dataState.currentPage = page;
-                displayCurrentPage();
-                updatePagination();
-            }
-            
-            // Function to save to localStorage
-            function saveToStorage() {
-                const data = {
-                    harvestedData: dataState.allData,
-                    timestamp: new Date().toISOString()
-                };
-                try {
-                    localStorage.setItem('qDataHarvest', JSON.stringify(data));
-                } catch (e) {
-                    console.warn('Could not save to localStorage:', e);
-                }
-            }
-            
-            // Function to load from localStorage
-            function loadFromStorage() {
-                try {
-                    const saved = localStorage.getItem('qDataHarvest');
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        dataState.allData = data.harvestedData || [];
-                        dataState.filteredData = [...dataState.allData];
-                        
-                        if (dataState.allData.length > 0) {
-                            resultsSection.classList.add('active');
-                            updateResultsDisplay();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error loading saved data:', error);
-                }
-            }
-            
-            // Load saved data on startup
-            loadFromStorage();
-        });
-    </script>
+    <div class="footer-bottom">© 2025 Excellence University. All rights reserved.</div>
+  </footer>
+
+  <script src="qdata.js"></script>
 </body>
 </html>
