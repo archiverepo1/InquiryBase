@@ -2,35 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Q Data - Research Data Harvesting</title>
-  <link rel="stylesheet" href="style.css"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InquiryBase | Q Data Research Hub</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 </head>
 <body>
+
   <!-- Header -->
   <header class="site-header">
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand" href="#">
-          <img
-            src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2.png"
-            alt="Q Data Logo"
-            class="brand-logo"
-          />
-        </a>
+        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png"
+             alt="Sozim Logo"
+             class="brand-logo"/>
       </div>
       <div class="header-center">
         <h1 class="header-title">Library</h1>
       </div>
-      <div class="header-right"><!-- empty to keep title perfectly centered --></div>
+      <div class="header-right"></div>
     </div>
   </header>
 
   <main class="container">
-    <!-- Search / Controls -->
+    <!-- Search Section -->
     <section class="search-section">
       <div class="search-box">
         <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
@@ -55,11 +52,11 @@
         <input type="text" id="advAuthor" placeholder="Author name...">
         <input type="text" id="advDate" placeholder="Date range (YYYY-YYYY)...">
         <input type="text" id="advSubject" placeholder="Subject area...">
-        <button class="search-button" id="applyFilters" style="border-radius:4px;margin-top:10px;">Apply Filters</button>
+        <button class="search-button" id="applyFilters" style="margin-top:10px;border-radius:6px;">Apply Filters</button>
       </div>
     </section>
 
-    <!-- Results -->
+    <!-- Results Section -->
     <section class="results-section" id="resultsSection">
       <div class="results-header">
         <div class="results-title">Harvested Results</div>
@@ -73,7 +70,6 @@
       <div class="harvest-status" id="harvestStatus">Ready to harvest</div>
 
       <div class="results-content">
-        <!-- Filters Sidebar -->
         <aside class="filters-sidebar">
           <div class="filters-header">
             <div class="filters-title">Filter Results</div>
@@ -82,16 +78,12 @@
 
           <div class="filter-group">
             <label class="filter-label">Year</label>
-            <select class="filter-select" id="yearFilter">
-              <option value="">All Years</option>
-            </select>
+            <select class="filter-select" id="yearFilter"><option value="">All Years</option></select>
           </div>
 
           <div class="filter-group">
             <label class="filter-label">Source</label>
-            <select class="filter-select" id="sourceFilter">
-              <option value="">All Sources</option>
-            </select>
+            <select class="filter-select" id="sourceFilter"><option value="">All Sources</option></select>
           </div>
 
           <div class="filter-group">
@@ -120,15 +112,14 @@
           </div>
         </aside>
 
-        <!-- Cards + Pagination -->
         <div class="results-main">
           <div class="results-count" id="resultsCount">0 results</div>
 
           <div class="data-cards-container" id="dataCardsContainer">
             <div class="no-results">
-              <i class="fas fa-search"></i>
+              <i class="fas fa-database"></i>
               <h3>No data harvested yet</h3>
-              <p>Use the harvest button to collect research data</p>
+              <p>Click <b>Harvest All</b> to begin collecting research data.</p>
             </div>
           </div>
 
@@ -141,42 +132,39 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Zotero Card -->
-      <section class="zotero-section">
-        <div class="zotero-card">
-          <div class="zotero-card-head">
-            <div class="zotero-logo-circle">Z</div>
-            <div>
-              <h3 class="zotero-card-title">Your Referencing Manager: Zotero</h3>
-              <p class="zotero-card-sub">Collect, organize, annotate, and cite research effortlessly.</p>
-            </div>
-          </div>
-          <p class="zotero-card-body">
-            Save sources directly from your browser with a single click, then organize them into collections using tags.
-            Easily generate citations and bibliographies in various styles.
-          </p>
-          <div class="zotero-actions">
-            <a href="https://www.zotero.org/" target="_blank" class="zotero-button"><i class="fa-solid fa-globe"></i> Visit Zotero</a>
-            <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button"><i class="fa-brands fa-youtube"></i> Tutorial 1</a>
-            <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button"><i class="fa-brands fa-youtube"></i> Tutorial 2</a>
+    <!-- Zotero Card -->
+    <section class="zotero-section">
+      <div class="zotero-card">
+        <div class="zotero-card-head">
+          <div class="zotero-logo-circle">Z</div>
+          <div>
+            <h3 class="zotero-card-title">Your Referencing Manager: Zotero</h3>
+            <p class="zotero-card-sub">A free, easy-to-use tool to collect, organize, cite, and share research.</p>
           </div>
         </div>
-      </section>
+        <p class="zotero-card-body">
+          Zotero helps you collect and manage references, annotate PDFs, and generate citations.
+          Save sources directly from your browser with one click, then organize them into collections using tags.
+        </p>
+        <div class="zotero-actions">
+          <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
+          <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
+          <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
+        </div>
+      </div>
     </section>
   </main>
 
-  <!-- Footer (exact Sozim layout / black) -->
+  <!-- Footer -->
   <footer class="sozim-footer">
     <div class="footer-grid">
       <div class="footer-brand">
-        <img
-          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2.png"
-          alt="Logo"
-          class="footer-logo"
-        />
+        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png" alt="Logo" class="footer-logo"/>
         <p class="footer-blurb">
-          Sozim Trading and Consultancy stands for quality, excellent products, highly efficient processes and outstanding results.
+          Sozim Trading and Consultancy stands for quality, excellent products,
+          highly efficient processes, and outstanding results.
         </p>
       </div>
 
