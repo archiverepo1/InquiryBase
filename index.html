@@ -2,35 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>InquiryBase | Q Data Research Hub</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InquiryBase | Library</title>
+  <link rel="stylesheet" href="style.css"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- HEADER -->
   <header class="site-header">
     <div class="header-inner">
       <div class="header-left">
-        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png"
-             alt="Sozim Logo"
-             class="brand-logo"/>
+        <!-- Use the white logo for visibility on the blue banner -->
+        <img
+          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png"
+          alt="Sozim Trading & Consultancy"
+          class="brand-logo"
+        />
       </div>
+
       <div class="header-center">
         <h1 class="header-title">Library</h1>
       </div>
-      <div class="header-right"></div>
+
+      <div class="header-right"><!-- reserved --></div>
     </div>
   </header>
 
   <main class="container">
-    <!-- Search Section -->
+    <!-- SEARCH / CONTROLS -->
     <section class="search-section">
       <div class="search-box">
-        <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
+        <input type="text" class="search-input" id="globalQuery" placeholder="Search by keyword, title, or author...">
         <button class="search-button" id="searchButton">Search</button>
       </div>
 
@@ -41,22 +44,23 @@
         <button class="source-button" data-type="theses">Theses</button>
       </div>
 
-      <div class="advanced-toggle">Advanced Filters</div>
+      <div class="advanced-toggle" id="toggleAdvanced">Advanced Filters</div>
       <div class="advanced-search" id="advancedSearch">
-        <div class="boolean-options">
+        <div class="boolean-options" id="booleanOptions">
           <div class="boolean-option active" data-operator="AND">AND</div>
           <div class="boolean-option" data-operator="OR">OR</div>
           <div class="boolean-option" data-operator="NOT">NOT</div>
         </div>
+
         <input type="text" id="advTitle" placeholder="Title keywords...">
         <input type="text" id="advAuthor" placeholder="Author name...">
         <input type="text" id="advDate" placeholder="Date range (YYYY-YYYY)...">
         <input type="text" id="advSubject" placeholder="Subject area...">
-        <button class="search-button" id="applyFilters" style="margin-top:10px;border-radius:6px;">Apply Filters</button>
+        <button class="search-button" id="applyFilters" style="margin-top:10px;border-radius:8px;">Apply Filters</button>
       </div>
     </section>
 
-    <!-- Results Section -->
+    <!-- RESULTS -->
     <section class="results-section" id="resultsSection">
       <div class="results-header">
         <div class="results-title">Harvested Results</div>
@@ -70,6 +74,7 @@
       <div class="harvest-status" id="harvestStatus">Ready to harvest</div>
 
       <div class="results-content">
+        <!-- Sidebar -->
         <aside class="filters-sidebar">
           <div class="filters-header">
             <div class="filters-title">Filter Results</div>
@@ -78,12 +83,16 @@
 
           <div class="filter-group">
             <label class="filter-label">Year</label>
-            <select class="filter-select" id="yearFilter"><option value="">All Years</option></select>
+            <select class="filter-select" id="yearFilter">
+              <option value="">All Years</option>
+            </select>
           </div>
 
           <div class="filter-group">
             <label class="filter-label">Source</label>
-            <select class="filter-select" id="sourceFilter"><option value="">All Sources</option></select>
+            <select class="filter-select" id="sourceFilter">
+              <option value="">All Sources</option>
+            </select>
           </div>
 
           <div class="filter-group">
@@ -112,6 +121,7 @@
           </div>
         </aside>
 
+        <!-- Main -->
         <div class="results-main">
           <div class="results-count" id="resultsCount">0 results</div>
 
@@ -134,7 +144,7 @@
       </div>
     </section>
 
-    <!-- Zotero Card -->
+    <!-- ZOTERO CARD -->
     <section class="zotero-section">
       <div class="zotero-card">
         <div class="zotero-card-head">
@@ -157,14 +167,18 @@
     </section>
   </main>
 
-  <!-- Footer -->
+  <!-- FOOTER (replica of sozim.vercel.app style) -->
   <footer class="sozim-footer">
     <div class="footer-grid">
       <div class="footer-brand">
-        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png" alt="Logo" class="footer-logo"/>
+        <img
+          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png"
+          alt="Sozim"
+          class="footer-logo"
+        />
         <p class="footer-blurb">
           Sozim Trading and Consultancy stands for quality, excellent products,
-          highly efficient processes, and outstanding results.
+          highly efficient processes and outstanding results.
         </p>
       </div>
 
