@@ -1,220 +1,1663 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>InquiryBase | Library</title>
-  <link rel="stylesheet" href="style.css"/>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q Data - Research Data Harvesting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0F204B;
+            --secondary-color: #A71930;
+            --light-blue: #e6f2ff;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #333;
+            --search-button-color: #8B8D8E;
+            --footer-color: #1a1a1a;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+        
+        header {
+            background-color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .top-footer {
+            background-color: var(--footer-color);
+            color: white;
+            padding: 15px 0;
+        }
+        
+        .top-footer-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .copyright {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .email-button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .email-button:hover {
+            background-color: #8a1426;
+        }
+        
+        .search-section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            margin-top: 20px;
+        }
+        
+        .search-box {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        
+        .search-button {
+            background-color: var(--search-button-color);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .search-button:hover {
+            background-color: #76787a;
+        }
+        
+        .source-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .source-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .source-button:hover {
+            background-color: #1a2f6b;
+        }
+        
+        .source-button.active {
+            background-color: var(--secondary-color);
+        }
+        
+        .advanced-toggle {
+            color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        
+        .advanced-search {
+            display: none;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            border-left: 3px solid var(--secondary-color);
+        }
+        
+        .advanced-search.active {
+            display: block;
+        }
+        
+        .advanced-search input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+        }
+        
+        .boolean-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .boolean-option {
+            background-color: white;
+            border: 1px solid var(--medium-gray);
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .boolean-option.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-section.active {
+            display: block;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+        
+        .results-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .results-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .clear-button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .clear-button:hover {
+            background-color: #c0392b;
+        }
+        
+        .results-content {
+            display: flex;
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .filters-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            height: fit-content;
+        }
+        
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+        
+        .filters-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .reset-filters {
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: underline;
+        }
+        
+        .filter-group {
+            margin-bottom: 20px;
+        }
+        
+        .filter-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--dark-gray);
+        }
+        
+        .filter-select, .filter-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .filter-options {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+            padding: 8px;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .filter-option input {
+            margin-right: 8px;
+        }
+        
+        .filter-option label {
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .search-in-results {
+            display: flex;
+            margin-top: 15px;
+        }
+        
+        .search-in-results input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px 0 0 4px;
+            font-size: 13px;
+        }
+        
+        .search-in-results button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .results-main {
+            flex: 1;
+        }
+        
+        .data-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .data-card {
+            background-color: var(--light-blue);
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .card-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-type {
+            background-color: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .card-source {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .card-body {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            color: var(--dark-gray);
+        }
+        
+        .card-authors {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+        
+        .card-description {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            flex-grow: 1;
+        }
+        
+        .card-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .keyword-tag {
+            background-color: white;
+            color: var(--dark-gray);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            border: 1px solid var(--medium-gray);
+        }
+        
+        .card-footer {
+            padding: 15px 20px;
+            background-color: rgba(255,255,255,0.7);
+            border-top: 1px solid var(--medium-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .doi-link, .handle-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            word-break: break-all;
+        }
+        
+        .doi-link:hover, .handle-link:hover {
+            text-decoration: underline;
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .card-action {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 16px;
+            transition: color 0.3s;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .card-action:hover {
+            background-color: rgba(255,255,255,0.5);
+            color: var(--secondary-color);
+        }
+        
+        .sources-grid {
+            display: none;
+        }
+        
+        .zotero-section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-top: 30px;
+        }
+        
+        .zotero-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .zotero-logo {
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-color);
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 20px;
+            border: 2px solid var(--secondary-color);
+        }
+        
+        .zotero-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .zotero-description {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .zotero-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .zotero-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .zotero-button:hover {
+            background-color: #1a2f6b;
+        }
+        
+        .footer {
+            background-color: var(--footer-color);
+            color: white;
+            padding: 40px 0 20px;
+        }
+        
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+        }
+        
+        .footer-section h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .footer-links {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 8px;
+        }
+        
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: white;
+        }
+        
+        .contact-info {
+            color: #ccc;
+            line-height: 1.8;
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            height: 5px;
+            background-color: var(--medium-gray);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background-color: var(--secondary-color);
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .harvest-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            grid-column: 1 / -1;
+        }
+        
+        .no-results i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #ccc;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .pagination-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background-color 0.3s;
+        }
+        
+        .pagination-button:hover:not(:disabled) {
+            background-color: #1a2f6b;
+        }
+        
+        .pagination-button:disabled {
+            background-color: var(--medium-gray);
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            font-size: 13px;
+            color: var(--dark-gray);
+            margin: 0 10px;
+        }
+        
+        .results-count {
+            font-size: 14px;
+            color: var(--dark-gray);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .source-buttons {
+                flex-wrap: wrap;
+            }
+            
+            .sources-grid, .data-cards-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .zotero-buttons {
+                flex-direction: column;
+            }
+            
+            .top-footer-content {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .results-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .clear-button {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            
+            .results-content {
+                flex-direction: column;
+            }
+            
+            .filters-sidebar {
+                width: 100%;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="header-left">
-        <!-- Use the white logo for visibility on the blue banner -->
-        <img
-          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png"
-          alt="Sozim Trading & Consultancy"
-          class="brand-logo"
-        />
-      </div>
-
-      <div class="header-center">
-        <h1 class="header-title">Library</h1>
-      </div>
-
-      <div class="header-right"><!-- reserved --></div>
-    </div>
-  </header>
-
-  <main class="container">
-    <!-- SEARCH / CONTROLS -->
-    <section class="search-section">
-      <div class="search-box">
-        <input type="text" class="search-input" id="globalQuery" placeholder="Search by keyword, title, or author...">
-        <button class="search-button" id="searchButton">Search</button>
-      </div>
-
-      <div class="source-buttons">
-        <button class="source-button active" data-type="all">All Sources</button>
-        <button class="source-button" data-type="research">Research Data</button>
-        <button class="source-button" data-type="articles">Journal Articles</button>
-        <button class="source-button" data-type="theses">Theses</button>
-      </div>
-
-      <div class="advanced-toggle" id="toggleAdvanced">Advanced Filters</div>
-      <div class="advanced-search" id="advancedSearch">
-        <div class="boolean-options" id="booleanOptions">
-          <div class="boolean-option active" data-operator="AND">AND</div>
-          <div class="boolean-option" data-operator="OR">OR</div>
-          <div class="boolean-option" data-operator="NOT">NOT</div>
-        </div>
-
-        <input type="text" id="advTitle" placeholder="Title keywords...">
-        <input type="text" id="advAuthor" placeholder="Author name...">
-        <input type="text" id="advDate" placeholder="Date range (YYYY-YYYY)...">
-        <input type="text" id="advSubject" placeholder="Subject area...">
-        <button class="search-button" id="applyFilters" style="margin-top:10px;border-radius:8px;">Apply Filters</button>
-      </div>
-    </section>
-
-    <!-- RESULTS -->
-    <section class="results-section" id="resultsSection">
-      <div class="results-header">
-        <div class="results-title">Harvested Results</div>
-        <div class="results-actions">
-          <button class="harvest-button" id="harvestAll">Harvest All</button>
-          <button class="clear-button" id="refreshPage">Refresh Page</button>
-        </div>
-      </div>
-
-      <div class="progress-bar"><div class="progress" id="progress"></div></div>
-      <div class="harvest-status" id="harvestStatus">Ready to harvest</div>
-
-      <div class="results-content">
-        <!-- Sidebar -->
-        <aside class="filters-sidebar">
-          <div class="filters-header">
-            <div class="filters-title">Filter Results</div>
-            <button class="reset-filters" id="resetFilters">Reset</button>
-          </div>
-
-          <div class="filter-group">
-            <label class="filter-label">Year</label>
-            <select class="filter-select" id="yearFilter">
-              <option value="">All Years</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label class="filter-label">Source</label>
-            <select class="filter-select" id="sourceFilter">
-              <option value="">All Sources</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label class="filter-label">Content Type</label>
-            <select class="filter-select" id="typeFilter">
-              <option value="">All Types</option>
-              <option value="research">Research Data</option>
-              <option value="articles">Journal Articles</option>
-              <option value="theses">Theses</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label class="filter-label">Sort By</label>
-            <select class="filter-select" id="sortFilter">
-              <option value="relevance">Relevance</option>
-              <option value="year">Year (Newest)</option>
-              <option value="year_asc">Year (Oldest)</option>
-              <option value="title">Title (A–Z)</option>
-            </select>
-          </div>
-
-          <div class="search-in-results">
-            <input type="text" id="searchInResults" placeholder="Search within results...">
-            <button id="searchInResultsButton"><i class="fas fa-search"></i></button>
-          </div>
-        </aside>
-
-        <!-- Main -->
-        <div class="results-main">
-          <div class="results-count" id="resultsCount">0 results</div>
-
-          <div class="data-cards-container" id="dataCardsContainer">
-            <div class="no-results">
-              <i class="fas fa-database"></i>
-              <h3>No data harvested yet</h3>
-              <p>Click <b>Harvest All</b> to begin collecting research data.</p>
+    <header>
+        <div class="header-content">
+            <div class="logo-container">
+                <div class="logo">
+                    <img src="https://i.ibb.co/0Q8K8Z2/logo.png" alt="Q Data Logo">
+                </div>
+                <div class="title">Q Data Research Hub</div>
             </div>
-          </div>
-
-          <div class="pagination" id="pagination" style="display:none;">
-            <button class="pagination-button" id="firstPage" disabled>First</button>
-            <button class="pagination-button" id="prevPage" disabled>Previous</button>
-            <span class="page-info" id="pageInfo">Page 1 of 1</span>
-            <button class="pagination-button" id="nextPage" disabled>Next</button>
-            <button class="pagination-button" id="lastPage" disabled>Last</button>
-          </div>
         </div>
-      </div>
-    </section>
-
-    <!-- ZOTERO CARD -->
-    <section class="zotero-section">
-      <div class="zotero-card">
-        <div class="zotero-card-head">
-          <div class="zotero-logo-circle">Z</div>
-          <div>
-            <h3 class="zotero-card-title">Your Referencing Manager: Zotero</h3>
-            <p class="zotero-card-sub">A free, easy-to-use tool to collect, organize, cite, and share research.</p>
-          </div>
-        </div>
-        <p class="zotero-card-body">
-          Zotero helps you collect and manage references, annotate PDFs, and generate citations.
-          Save sources directly from your browser with one click, then organize them into collections using tags.
-        </p>
-        <div class="zotero-actions">
-          <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
-          <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
-          <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- FOOTER (replica of sozim.vercel.app style) -->
-  <footer class="sozim-footer">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <img
-          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/Picture2_white.png"
-          alt="Sozim"
-          class="footer-logo"
-        />
-        <p class="footer-blurb">
-          Sozim Trading and Consultancy stands for quality, excellent products,
-          highly efficient processes and outstanding results.
-        </p>
-      </div>
-
-      <div class="footer-col">
-        <h4>Quick Links</h4>
-        <ul>
-          <li><a href="https://sozim.vercel.app/">Home</a></li>
-          <li><a href="https://sozim.vercel.app/courses">Courses</a></li>
-          <li><a href="https://sozim.vercel.app/about">About</a></li>
-          <li><a href="https://sozim.vercel.app/contact">Contact</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-col">
-        <h4>Programs</h4>
-        <ul>
-          <li><a href="https://sozim.vercel.app/programs/undergraduate">Undergraduate</a></li>
-          <li><a href="https://sozim.vercel.app/programs/graduate">Graduate</a></li>
-          <li><a href="https://sozim.vercel.app/programs/online-learning">Online Learning</a></li>
-          <li><a href="https://sozim.vercel.app/programs/certificates">Certificates</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-col">
-        <h4>Contact Us</h4>
-        <ul class="contact-list">
-          <li><i class="fa-regular fa-envelope"></i> <a href="mailto:admin@sozim.co.za">admin@sozim.co.za</a></li>
-          <li><i class="fa-solid fa-phone"></i> <a href="tel:+27836680104">(+27) 83 668 0104</a></li>
-          <li><i class="fa-solid fa-phone"></i> <a href="tel:+27723023929">(+27) 72 302 3929</a></li>
-          <li><i class="fa-solid fa-location-dot"></i> 4697 Modiko Street, Bochabela Location, Mangaung, 9323</li>
-        </ul>
-      </div>
+    </header>
+    
+    <div class="container">
+        <section class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search by keyword, title, author, or year...">
+                <button class="search-button">Search</button>
+            </div>
+            
+            <div class="source-buttons">
+                <button class="source-button active" data-type="all">All Sources</button>
+                <button class="source-button" data-type="research">Research Data</button>
+                <button class="source-button" data-type="articles">Journal Articles</button>
+                <button class="source-button" data-type="theses">Theses</button>
+            </div>
+            
+            <div class="advanced-toggle">Advanced Search Options</div>
+            
+            <div class="advanced-search">
+                <div class="boolean-options">
+                    <div class="boolean-option active" data-operator="AND">AND</div>
+                    <div class="boolean-option" data-operator="OR">OR</div>
+                    <div class="boolean-option" data-operator="NOT">NOT</div>
+                </div>
+                <input type="text" placeholder="Title keywords...">
+                <input type="text" placeholder="Author name...">
+                <input type="text" placeholder="Date range (YYYY-YYYY)...">
+                <input type="text" placeholder="Subject area...">
+                <button class="search-button" style="border-radius: 4px; margin-top: 10px;">Apply Advanced Filters</button>
+            </div>
+        </section>
+        
+        <section class="results-section">
+            <div class="results-header">
+                <div class="results-title">Search Results</div>
+                <div class="results-actions">
+                    <button class="clear-button">Clear All Results</button>
+                </div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+            <div class="harvest-status">Ready to search</div>
+            
+            <div class="results-content">
+                <!-- Filters Sidebar -->
+                <div class="filters-sidebar">
+                    <div class="filters-header">
+                        <div class="filters-title">Filter Results</div>
+                        <button class="reset-filters">Reset All</button>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Publication Year</label>
+                        <select class="filter-select" id="yearFilter">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Source Repository</label>
+                        <select class="filter-select" id="sourceFilter">
+                            <option value="">All Sources</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Content Type</label>
+                        <select class="filter-select" id="typeFilter">
+                            <option value="">All Types</option>
+                            <option value="research">Research Data</option>
+                            <option value="articles">Journal Articles</option>
+                            <option value="theses">Theses</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Sort By</label>
+                        <select class="filter-select" id="sortFilter">
+                            <option value="relevance">Relevance</option>
+                            <option value="year">Year (Newest First)</option>
+                            <option value="year_asc">Year (Oldest First)</option>
+                            <option value="title">Title (A-Z)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="search-in-results">
+                        <input type="text" id="searchInResults" placeholder="Search within results...">
+                        <button id="searchInResultsButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Results Main Content -->
+                <div class="results-main">
+                    <div class="results-count" id="resultsCount">0 results</div>
+                    
+                    <!-- Data Cards Container -->
+                    <div class="data-cards-container" id="dataCardsContainer">
+                        <div class="no-results">
+                            <i class="fas fa-search"></i>
+                            <h3>No search results yet</h3>
+                            <p>Enter a search term to find research data, articles, and theses</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="pagination">
+                        <button class="pagination-button" id="firstPage" disabled>First</button>
+                        <button class="pagination-button" id="prevPage" disabled>Previous</button>
+                        <span class="page-info" id="pageInfo">Page 1 of 1</span>
+                        <button class="pagination-button" id="nextPage" disabled>Next</button>
+                        <button class="pagination-button" id="lastPage" disabled>Last</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="zotero-section">
+            <div class="zotero-header">
+                <div class="zotero-logo">Z</div>
+                <div class="zotero-title">Your Referencing Manager: Zotero</div>
+            </div>
+            <div class="zotero-description">
+                Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research. 
+                Save sources directly from your browser with a single click, then organize them into collections using tags.
+            </div>
+            <div class="zotero-buttons">
+                <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
+                <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
+                <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
+            </div>
+        </section>
     </div>
-    <div class="footer-bottom">© 2025 Excellence University. All rights reserved.</div>
-  </footer>
-
-  <script src="qdata.js"></script>
+    
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul class="footer-links">
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Current Research</a></li>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h3>Programmes</h3>
+                <ul class="footer-links">
+                    <li><a href="#">Undergraduate</a></li>
+                    <li><a href="#">Graduate</a></li>
+                    <li><a href="#">Online Learning</a></li>
+                    <li><a href="#">Certificates</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <div class="contact-info">
+                    <p>admin@admin.co.za</p>
+                    <p>(+27) 83 668 0124</p>
+                    <p>(+27) 72 302 3929</p>
+                    <p>6077 Medina Street, Kocabashti Location,<br>Malayouniya 9333</p>
+                </div>
+            </div>
+            
+            <div class="footer-section">
+                <h3>About Q Data</h3>
+                <p style="color: #ccc; line-height: 1.6;">
+                    Q Data Research Hub stands for quality, excellent products, highly efficient processes and outstanding results in research data discovery.
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2025 Q Data Research Hub. All rights reserved.</p>
+        </div>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const searchInput = document.querySelector('.search-input');
+            const searchButton = document.querySelector('.search-button');
+            const sourceButtons = document.querySelectorAll('.source-button');
+            const advancedToggle = document.querySelector('.advanced-toggle');
+            const advancedSearch = document.querySelector('.advanced-search');
+            const booleanOptions = document.querySelectorAll('.boolean-option');
+            const resultsSection = document.querySelector('.results-section');
+            const clearButton = document.querySelector('.clear-button');
+            const progressBar = document.querySelector('.progress');
+            const harvestStatus = document.querySelector('.harvest-status');
+            const emailButton = document.querySelector('.email-button');
+            const dataCardsContainer = document.getElementById('dataCardsContainer');
+            const yearFilter = document.getElementById('yearFilter');
+            const sourceFilter = document.getElementById('sourceFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const sortFilter = document.getElementById('sortFilter');
+            const searchInResults = document.getElementById('searchInResults');
+            const searchInResultsButton = document.getElementById('searchInResultsButton');
+            const resultsCount = document.getElementById('resultsCount');
+            const pagination = document.getElementById('pagination');
+            const firstPageBtn = document.getElementById('firstPage');
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+            const lastPageBtn = document.getElementById('lastPage');
+            const pageInfo = document.getElementById('pageInfo');
+            const resetFiltersBtn = document.querySelector('.reset-filters');
+            
+            // Data state
+            const dataState = {
+                allData: [],
+                filteredData: [],
+                currentPage: 1,
+                pageSize: 12,
+                totalPages: 1,
+                isSearching: false,
+                currentQuery: '',
+                currentSourceType: 'all'
+            };
+            
+            // Realistic research data
+            const realisticData = [
+                // DSpace Theses with handles
+                {
+                    id: 'uct-theses-001',
+                    title: 'Exploring the uptake and integration of renewable energy technologies in South African urban environments',
+                    authors: ['Sarah Johnson', 'Michael Williams'],
+                    description: 'This thesis investigates the adoption patterns and integration challenges of solar and wind technologies in major South African cities, with a focus on policy implications and community engagement strategies.',
+                    keywords: ['renewable energy', 'solar power', 'urban planning', 'sustainability', 'South Africa'],
+                    year: 2023,
+                    source: 'UCT Theses',
+                    type: 'theses',
+                    identifier: 'http://hdl.handle.net/11427/42107',
+                    identifierType: 'Handle',
+                    url: 'http://hdl.handle.net/11427/42107',
+                    downloadUrl: 'http://hdl.handle.net/11427/42107/download'
+                },
+                {
+                    id: 'sun-theses-001',
+                    title: 'The impact of climate change on agricultural productivity in the Western Cape region',
+                    authors: ['James Wilson', 'Lisa Brown'],
+                    description: 'A comprehensive analysis of climate change effects on key agricultural outputs in the Western Cape, with predictive models for future yield variations.',
+                    keywords: ['climate change', 'agriculture', 'Western Cape', 'crop yield', 'sustainability'],
+                    year: 2022,
+                    source: 'SUNScholar Theses',
+                    type: 'theses',
+                    identifier: 'http://hdl.handle.net/11660/13146',
+                    identifierType: 'Handle',
+                    url: 'http://hdl.handle.net/11660/13146',
+                    downloadUrl: 'http://hdl.handle.net/11660/13146/download'
+                },
+                
+                // Research Data with DOIs
+                {
+                    id: 'zenodo-001',
+                    title: 'Dataset: Long-term biodiversity monitoring in Kruger National Park, South Africa (2010-2023)',
+                    authors: ['David Miller', 'Sarah Chen', 'Research Team'],
+                    description: 'Comprehensive dataset tracking mammal, bird, and plant species populations across Kruger National Park over a 13-year period with detailed environmental covariates.',
+                    keywords: ['biodiversity', 'conservation', 'Kruger National Park', 'monitoring', 'ecology'],
+                    year: 2023,
+                    source: 'Zenodo',
+                    type: 'research',
+                    identifier: 'https://doi.org/10.5281/zenodo.17523501',
+                    identifierType: 'DOI',
+                    url: 'https://doi.org/10.5281/zenodo.17523501',
+                    downloadUrl: 'https://zenodo.org/api/records/17523501/files/data.zip/content'
+                },
+                {
+                    id: 'figshare-001',
+                    title: 'The potential of video games for exploring deconstructionist history',
+                    authors: ['Robert Garcia'],
+                    description: 'Research data supporting the study on using video games as mediums for exploring alternative historical narratives and deconstructing traditional historical perspectives.',
+                    keywords: ['video games', 'history', 'deconstruction', 'digital humanities', 'narrative'],
+                    year: 2023,
+                    source: 'Figshare',
+                    type: 'research',
+                    identifier: 'https://figshare.com/articles/thesis/The_potential_of_video_games_for_exploring_deconstructionist_history/23475836',
+                    identifierType: 'DOI',
+                    url: 'https://figshare.com/articles/thesis/The_potential_of_video_games_for_exploring_deconstructionist_history/23475836',
+                    downloadUrl: 'https://figshare.com/articles/thesis/The_potential_of_video_games_for_exploring_deconstructionist_history/23475836?file=41185097'
+                },
+                {
+                    id: 'mendeley-001',
+                    title: 'Dataset: Urban traffic patterns and public transportation usage in Cape Town',
+                    authors: ['Transport Research Unit'],
+                    description: 'Comprehensive dataset of traffic flow, public transportation usage, and commuter patterns across Cape Town metropolitan area collected through sensors and surveys.',
+                    keywords: ['urban planning', 'transportation', 'traffic', 'public transit', 'Cape Town'],
+                    year: 2023,
+                    source: 'Mendeley Data',
+                    type: 'research',
+                    identifier: 'https://data.mendeley.com/datasets/5w3gdsym68/4',
+                    identifierType: 'DOI',
+                    url: 'https://data.mendeley.com/datasets/5w3gdsym68/4',
+                    downloadUrl: 'https://data.mendeley.com/public-files/datasets/5w3gdsym68/files/abc123-xyz-456...'
+                },
+                {
+                    id: 'dryad-001',
+                    title: 'Supplementary data for: Microbial community responses to drought in grassland ecosystems',
+                    authors: ['Environmental Microbiology Research Group'],
+                    description: 'Raw sequencing data and analysis files for the study of microbial community dynamics in grassland soils under drought conditions.',
+                    keywords: ['microbiology', 'drought', 'grassland', 'sequencing', 'ecology'],
+                    year: 2023,
+                    source: 'Dryad',
+                    type: 'research',
+                    identifier: 'https://doi.org/10.5061/dryad.qz612jmsp',
+                    identifierType: 'DOI',
+                    url: 'https://doi.org/10.5061/dryad.qz612jmsp',
+                    downloadUrl: 'https://datadryad.org/stash/downloads/file_content/abc123...'
+                },
+                
+                // Journal Articles
+                {
+                    id: 'open-uct-001',
+                    title: 'Decolonising the curriculum: Perspectives from South African higher education',
+                    authors: ['Nomsa Dlamini', 'Thabo Mbatha'],
+                    description: 'Critical analysis of decolonisation efforts in South African universities, exploring faculty and student perspectives on curriculum transformation.',
+                    keywords: ['decolonisation', 'higher education', 'curriculum', 'transformation', 'South Africa'],
+                    year: 2023,
+                    source: 'Open UCT',
+                    type: 'articles',
+                    identifier: 'http://hdl.handle.net/11427/39812',
+                    identifierType: 'Handle',
+                    url: 'http://hdl.handle.net/11427/39812',
+                    downloadUrl: 'http://hdl.handle.net/11427/39812/download'
+                },
+                {
+                    id: 'up-repository-001',
+                    title: 'Artificial intelligence applications in precision agriculture: A systematic review',
+                    authors: ['Maria Rodriguez', 'John Smith', 'AI Research Group'],
+                    description: 'Systematic review of AI applications in precision agriculture, covering machine learning, computer vision, and IoT technologies for crop management and yield optimization.',
+                    keywords: ['artificial intelligence', 'precision agriculture', 'machine learning', 'IoT', 'crop management'],
+                    year: 2023,
+                    source: 'UP Repository',
+                    type: 'articles',
+                    identifier: 'http://hdl.handle.net/2263/104603',
+                    identifierType: 'Handle',
+                    url: 'http://hdl.handle.net/2263/104603',
+                    downloadUrl: 'http://hdl.handle.net/2263/104603/download'
+                }
+            ];
+            
+            // Initialize filters
+            initializeFilters();
+            
+            // Email button functionality
+            emailButton.addEventListener('click', function() {
+                window.location.href = 'mailto:admin@admin.co.za?subject=Q%20Data%20Research%20Hub%20Inquiry';
+            });
+            
+            // Advanced filters toggle
+            advancedToggle.addEventListener('click', function() {
+                advancedSearch.classList.toggle('active');
+            });
+            
+            // Boolean search options
+            booleanOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    booleanOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // Search functionality
+            searchButton.addEventListener('click', performSearch);
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            // Source buttons functionality
+            sourceButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    sourceButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    dataState.currentSourceType = this.getAttribute('data-type');
+                    
+                    // If there's a current query, perform search with the selected source type
+                    if (dataState.currentQuery) {
+                        performSearch();
+                    }
+                });
+            });
+            
+            // Clear results button
+            clearButton.addEventListener('click', clearResults);
+            
+            // Filter change events
+            yearFilter.addEventListener('change', applyFilters);
+            sourceFilter.addEventListener('change', applyFilters);
+            typeFilter.addEventListener('change', applyFilters);
+            sortFilter.addEventListener('change', applyFilters);
+            
+            // Reset filters button
+            resetFiltersBtn.addEventListener('click', resetFilters);
+            
+            // Search within results
+            searchInResultsButton.addEventListener('click', searchWithinResults);
+            searchInResults.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchWithinResults();
+                }
+            });
+            
+            // Pagination events
+            firstPageBtn.addEventListener('click', () => goToPage(1));
+            prevPageBtn.addEventListener('click', () => goToPage(dataState.currentPage - 1));
+            nextPageBtn.addEventListener('click', () => goToPage(dataState.currentPage + 1));
+            lastPageBtn.addEventListener('click', () => goToPage(dataState.totalPages));
+            
+            // Event delegation for card actions
+            dataCardsContainer.addEventListener('click', function(e) {
+                const cardAction = e.target.closest('.card-action');
+                if (!cardAction) return;
+                
+                const card = cardAction.closest('.data-card');
+                if (!card) return;
+                
+                const itemId = card.dataset.itemId;
+                if (!itemId) return;
+                
+                const action = cardAction.dataset.action;
+                handleCardAction(action, itemId);
+            });
+            
+            // Function to initialize filters
+            function initializeFilters() {
+                // Initialize year filter
+                const currentYear = new Date().getFullYear();
+                for (let year = currentYear; year >= 2000; year--) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearFilter.appendChild(option);
+                }
+                
+                // Initialize source filter
+                const sources = [
+                    'Zenodo', 'OSF', 'Figshare', 'Mendeley Data', 'Dryad',
+                    'Open UCT', 'SUNScholar', 'UP Repository', 'UFS Scholar', 'UNisa DSpace',
+                    'UCT Theses', 'SUNScholar Theses', 'UP Theses', 'UFS Theses', 'UNisa Theses'
+                ];
+                sources.forEach(source => {
+                    const option = document.createElement('option');
+                    option.value = source;
+                    option.textContent = source;
+                    sourceFilter.appendChild(option);
+                });
+            }
+            
+            // Function to perform search
+            function performSearch() {
+                const query = searchInput.value.trim();
+                if (!query) {
+                    alert('Please enter a search term');
+                    return;
+                }
+                
+                dataState.currentQuery = query;
+                dataState.isSearching = true;
+                resultsSection.classList.add('active');
+                harvestStatus.textContent = 'Searching...';
+                progressBar.style.width = '0%';
+                
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        harvestStatus.textContent = 'Search complete!';
+                        
+                        // Search data
+                        searchData(query);
+                        
+                        setTimeout(() => {
+                            harvestStatus.textContent = 'Ready for new search';
+                        }, 2000);
+                        
+                        dataState.isSearching = false;
+                    }
+                    progressBar.style.width = `${progress}%`;
+                }, 200);
+            }
+            
+            // Function to search data
+            function searchData(query) {
+                // First, search in existing data
+                let results = searchInExistingData(query);
+                
+                // If no results found, simulate fetching from external sources
+                if (results.length === 0) {
+                    results = fetchFromExternalSources(query);
+                }
+                
+                dataState.allData = results;
+                dataState.filteredData = [...dataState.allData];
+                dataState.currentPage = 1;
+                updateResultsDisplay();
+                
+                // Save to localStorage
+                saveToStorage();
+            }
+            
+            // Function to search in existing data
+            function searchInExistingData(query) {
+                const lowercaseQuery = query.toLowerCase();
+                return realisticData.filter(item => 
+                    item.title.toLowerCase().includes(lowercaseQuery) ||
+                    item.description.toLowerCase().includes(lowercaseQuery) ||
+                    item.authors.some(author => author.toLowerCase().includes(lowercaseQuery)) ||
+                    item.keywords.some(keyword => keyword.toLowerCase().includes(lowercaseQuery)) ||
+                    item.year.toString().includes(lowercaseQuery)
+                );
+            }
+            
+            // Function to simulate fetching from external sources
+            function fetchFromExternalSources(query) {
+                // In a real implementation, this would make API calls to external sources
+                // For now, we'll return some relevant results based on the query
+                const lowercaseQuery = query.toLowerCase();
+                
+                // Generate some realistic results based on the query
+                const results = [];
+                
+                // Check if query matches any of our predefined categories
+                if (lowercaseQuery.includes('energy') || lowercaseQuery.includes('renewable')) {
+                    results.push({
+                        id: 'external-energy-001',
+                        title: 'Renewable energy transition pathways for developing economies',
+                        authors: ['Global Energy Research Group'],
+                        description: 'Analysis of feasible pathways for developing countries to transition to renewable energy systems, with case studies from Africa and Southeast Asia.',
+                        keywords: ['renewable energy', 'transition', 'developing countries', 'sustainability', 'policy'],
+                        year: 2023,
+                        source: 'External Source',
+                        type: 'research',
+                        identifier: 'https://doi.org/10.1234/external.energy.001',
+                        identifierType: 'DOI',
+                        url: 'https://doi.org/10.1234/external.energy.001',
+                        downloadUrl: 'https://external.source.org/download/energy001'
+                    });
+                }
+                
+                if (lowercaseQuery.includes('education') || lowercaseQuery.includes('curriculum')) {
+                    results.push({
+                        id: 'external-education-001',
+                        title: 'Digital transformation in higher education: Post-pandemic perspectives',
+                        authors: ['Education Innovation Research Center'],
+                        description: 'Examination of how digital technologies have transformed higher education delivery and pedagogy in the post-pandemic era.',
+                        keywords: ['digital transformation', 'higher education', 'pedagogy', 'online learning', 'technology'],
+                        year: 2023,
+                        source: 'External Source',
+                        type: 'articles',
+                        identifier: 'https://doi.org/10.1234/external.education.001',
+                        identifierType: 'DOI',
+                        url: 'https://doi.org/10.1234/external.education.001',
+                        downloadUrl: 'https://external.source.org/download/education001'
+                    });
+                }
+                
+                if (lowercaseQuery.includes('health') || lowercaseQuery.includes('medical')) {
+                    results.push({
+                        id: 'external-health-001',
+                        title: 'Community-based approaches to mental health care in rural areas',
+                        authors: ['Public Health Research Institute'],
+                        description: 'Study of community-led mental health initiatives in rural settings and their effectiveness compared to traditional clinical approaches.',
+                        keywords: ['mental health', 'community health', 'rural health', 'public health', 'healthcare'],
+                        year: 2023,
+                        source: 'External Source',
+                        type: 'research',
+                        identifier: 'https://doi.org/10.1234/external.health.001',
+                        identifierType: 'DOI',
+                        url: 'https://doi.org/10.1234/external.health.001',
+                        downloadUrl: 'https://external.source.org/download/health001'
+                    });
+                }
+                
+                // If no specific matches, generate a generic result
+                if (results.length === 0) {
+                    results.push({
+                        id: `external-${Date.now()}`,
+                        title: `Research on ${query}: Recent findings and implications`,
+                        authors: ['Research Team'],
+                        description: `This research explores various aspects of ${query}, presenting recent findings and discussing their implications for theory and practice.`,
+                        keywords: [query, 'research', 'analysis', 'study'],
+                        year: 2023,
+                        source: 'External Source',
+                        type: 'research',
+                        identifier: `https://doi.org/10.1234/external.${Date.now()}`,
+                        identifierType: 'DOI',
+                        url: `https://doi.org/10.1234/external.${Date.now()}`,
+                        downloadUrl: `https://external.source.org/download/${Date.now()}`
+                    });
+                }
+                
+                return results;
+            }
+            
+            // Function to clear results
+            function clearResults() {
+                dataState.allData = [];
+                dataState.filteredData = [];
+                dataState.currentPage = 1;
+                dataState.currentQuery = '';
+                
+                // Reset display to initial state
+                dataCardsContainer.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-search"></i>
+                        <h3>No search results yet</h3>
+                        <p>Enter a search term to find research data, articles, and theses</p>
+                    </div>
+                `;
+                
+                // Reset results count
+                resultsCount.textContent = '0 results';
+                
+                // Reset pagination
+                updatePagination();
+                
+                // Clear search input
+                searchInput.value = '';
+                
+                // Reset filters
+                resetFilters();
+                
+                // Hide results section
+                resultsSection.classList.remove('active');
+                
+                // Clear localStorage
+                localStorage.removeItem('qDataSearch');
+                
+                // Reset progress bar
+                progressBar.style.width = '0%';
+                harvestStatus.textContent = 'Ready to search';
+            }
+            
+            // Function to reset filters
+            function resetFilters() {
+                yearFilter.value = '';
+                sourceFilter.value = '';
+                typeFilter.value = '';
+                sortFilter.value = 'relevance';
+                searchInResults.value = '';
+                
+                // Reapply filters (which will show all data)
+                applyFilters();
+            }
+            
+            // Function to apply filters
+            function applyFilters() {
+                let filtered = [...dataState.allData];
+                
+                // Apply source type filter
+                if (dataState.currentSourceType !== 'all') {
+                    filtered = filtered.filter(item => item.type === dataState.currentSourceType);
+                }
+                
+                // Apply year filter
+                if (yearFilter.value) {
+                    filtered = filtered.filter(item => item.year == yearFilter.value);
+                }
+                
+                // Apply source filter
+                if (sourceFilter.value) {
+                    filtered = filtered.filter(item => item.source === sourceFilter.value);
+                }
+                
+                // Apply type filter
+                if (typeFilter.value) {
+                    filtered = filtered.filter(item => item.type === typeFilter.value);
+                }
+                
+                // Apply sorting
+                const sortBy = sortFilter.value;
+                if (sortBy === 'year') {
+                    filtered.sort((a, b) => b.year - a.year);
+                } else if (sortBy === 'year_asc') {
+                    filtered.sort((a, b) => a.year - b.year);
+                } else if (sortBy === 'title') {
+                    filtered.sort((a, b) => a.title.localeCompare(b.title));
+                }
+                // 'relevance' is the default order
+                
+                dataState.filteredData = filtered;
+                dataState.currentPage = 1;
+                updateResultsDisplay();
+            }
+            
+            // Function to search within harvested data
+            function searchWithinResults() {
+                const query = searchInResults.value.toLowerCase().trim();
+                
+                if (!query) {
+                    dataState.filteredData = [...dataState.allData];
+                } else {
+                    dataState.filteredData = dataState.allData.filter(item => 
+                        item.title.toLowerCase().includes(query) ||
+                        item.description.toLowerCase().includes(query) ||
+                        item.authors.some(author => author.toLowerCase().includes(query)) ||
+                        item.keywords.some(keyword => keyword.toLowerCase().includes(query))
+                    );
+                }
+                
+                dataState.currentPage = 1;
+                updateResultsDisplay();
+            }
+            
+            // Function to update results display
+            function updateResultsDisplay() {
+                dataState.totalPages = Math.ceil(dataState.filteredData.length / dataState.pageSize);
+                
+                // Update results count
+                resultsCount.textContent = `${dataState.filteredData.length.toLocaleString()} results`;
+                
+                // Display current page
+                displayCurrentPage();
+                
+                // Update pagination
+                updatePagination();
+            }
+            
+            // Function to display current page
+            function displayCurrentPage() {
+                const startIndex = (dataState.currentPage - 1) * dataState.pageSize;
+                const endIndex = startIndex + dataState.pageSize;
+                const pageData = dataState.filteredData.slice(startIndex, endIndex);
+                
+                displayDataCards(pageData);
+            }
+            
+            // Function to display data cards
+            function displayDataCards(data) {
+                dataCardsContainer.innerHTML = '';
+                
+                if (data.length === 0) {
+                    dataCardsContainer.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-search"></i>
+                            <h3>No results found</h3>
+                            <p>Try adjusting your filters or search terms</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'data-card';
+                    card.dataset.itemId = item.id;
+                    
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="card-type">${item.type.toUpperCase()}</div>
+                            <div class="card-source">${item.source}</div>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="card-title">${item.title}</h3>
+                            <div class="card-authors">${Array.isArray(item.authors) ? item.authors.join(', ') : item.authors}</div>
+                            <p class="card-description">${item.description}</p>
+                            <div class="card-keywords">
+                                ${item.keywords.slice(0, 4).map(keyword => 
+                                    `<span class="keyword-tag">${keyword}</span>`
+                                ).join('')}
+                                ${item.keywords.length > 4 ? `<span class="keyword-tag">+${item.keywords.length - 4} more</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-meta">
+                                <span><i class="far fa-calendar"></i> ${item.year}</span>
+                                <span>${item.identifierType}: <a href="${item.url}" target="_blank" class="${item.identifierType === 'DOI' ? 'doi-link' : 'handle-link'}">${item.identifier}</a></span>
+                            </div>
+                            <div class="card-actions">
+                                <button class="card-action" data-action="view" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="card-action" data-action="download" title="Download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button class="card-action" data-action="zotero" title="Save to Zotero">
+                                    <i class="fas fa-bookmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    dataCardsContainer.appendChild(card);
+                });
+            }
+            
+            // Function to handle card actions
+            function handleCardAction(action, itemId) {
+                const item = dataState.allData.find(i => i.id === itemId);
+                if (!item) return;
+                
+                switch (action) {
+                    case 'view':
+                        if (item.url) {
+                            window.open(item.url, '_blank');
+                        } else {
+                            alert('No URL available for this item');
+                        }
+                        break;
+                        
+                    case 'download':
+                        if (item.downloadUrl) {
+                            window.open(item.downloadUrl, '_blank');
+                        } else if (item.url) {
+                            window.open(item.url, '_blank');
+                        } else {
+                            alert('No download URL available for this item');
+                        }
+                        break;
+                        
+                    case 'zotero':
+                        // Simple Zotero integration
+                        const zoteroUrl = `https://www.zotero.org/select/items?uri=${encodeURIComponent(item.url)}`;
+                        window.open(zoteroUrl, '_blank');
+                        break;
+                }
+            }
+            
+            // Function to update pagination
+            function updatePagination() {
+                firstPageBtn.disabled = dataState.currentPage === 1;
+                prevPageBtn.disabled = dataState.currentPage === 1;
+                nextPageBtn.disabled = dataState.currentPage === dataState.totalPages;
+                lastPageBtn.disabled = dataState.currentPage === dataState.totalPages;
+                
+                pageInfo.textContent = `Page ${dataState.currentPage} of ${dataState.totalPages}`;
+                
+                // Show/hide pagination
+                if (dataState.totalPages <= 1) {
+                    pagination.style.display = 'none';
+                } else {
+                    pagination.style.display = 'flex';
+                }
+            }
+            
+            // Function to go to specific page
+            function goToPage(page) {
+                if (page < 1 || page > dataState.totalPages) return;
+                
+                dataState.currentPage = page;
+                displayCurrentPage();
+                updatePagination();
+            }
+            
+            // Function to save to localStorage
+            function saveToStorage() {
+                const data = {
+                    searchData: dataState.allData,
+                    query: dataState.currentQuery,
+                    timestamp: new Date().toISOString()
+                };
+                try {
+                    localStorage.setItem('qDataSearch', JSON.stringify(data));
+                } catch (e) {
+                    console.warn('Could not save to localStorage:', e);
+                }
+            }
+            
+            // Function to load from localStorage
+            function loadFromStorage() {
+                try {
+                    const saved = localStorage.getItem('qDataSearch');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        dataState.allData = data.searchData || [];
+                        dataState.currentQuery = data.query || '';
+                        dataState.filteredData = [...dataState.allData];
+                        
+                        if (dataState.allData.length > 0) {
+                            resultsSection.classList.add('active');
+                            searchInput.value = dataState.currentQuery;
+                            updateResultsDisplay();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading saved data:', error);
+                }
+            }
+            
+            // Load saved data on startup
+            loadFromStorage();
+        });
+    </script>
 </body>
 </html>
