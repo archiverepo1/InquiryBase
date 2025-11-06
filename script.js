@@ -1,6 +1,3 @@
-// ==========================
-// Q Data Research Hub (LIVE)
-// ==========================
 
 const WORKER_URL = 'https://inquirybase.archiverepo1.workers.dev';
 
