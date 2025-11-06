@@ -1,4 +1,3 @@
-// Cloudflare Worker URL - UPDATE THIS WITH YOUR ACTUAL WORKER URL
 const WORKER_URL = 'https://inquirybase.archiverepo1.workers.dev/';
 
 class QDataHarvester {
