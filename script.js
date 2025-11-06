@@ -1,4 +1,3 @@
-/* Q Data Research Hub Frontend (Category-Aware, DOI/Handle Clickable) */
 const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
 
 document.addEventListener("DOMContentLoaded", () => {
