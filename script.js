@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         category,
         query,
-        perSourceLimit: 1000
+        perSourceLimit: 100
       };
 
       const response = await fetch(`${WORKER_URL}/api/harvest`, {
