@@ -9,12 +9,11 @@
         :root {
             --primary-color: #0F204B;
             --secondary-color: #A71930;
-            --light-blue: #e6f2ff;
             --light-gray: #f5f5f5;
             --medium-gray: #e0e0e0;
             --dark-gray: #333;
             --search-button-color: #8B8D8E;
-            --footer-color: #1a1a1a;
+            --footer-color: #A7A8AA;
             --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
             --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
         }
@@ -43,7 +42,8 @@
         }
         
         header {
-            background-color: white;
+            background-color: var(--primary-color);
+            color: white;
             padding: 15px 0;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
@@ -66,24 +66,28 @@
         .logo {
             width: 50px;
             height: 50px;
+            background-color: white;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-weight: bold;
+            color: var(--primary-color);
         }
         
         .logo img {
             max-width: 100%;
             max-height: 100%;
+            border-radius: 8px;
         }
         
         .title {
             font-size: 24px;
             font-weight: bold;
-            color: var(--primary-color);
         }
         
         .top-footer {
-            background-color: var(--footer-color);
+            background-color: var(--primary-color);
             color: white;
             padding: 15px 0;
         }
@@ -257,8 +261,8 @@
             gap: 10px;
         }
         
-        .clear-button {
-            background-color: #e74c3c;
+        .harvest-button, .clear-button {
+            background-color: var(--secondary-color);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -268,8 +272,16 @@
             transition: background-color 0.3s;
         }
         
+        .clear-button {
+            background-color: #e74c3c;
+        }
+        
         .clear-button:hover {
             background-color: #c0392b;
+        }
+        
+        .harvest-button:hover {
+            background-color: #8a1426;
         }
         
         .results-content {
@@ -390,7 +402,7 @@
         }
         
         .data-card {
-            background-color: var(--light-blue);
+            background-color: white;
             border-radius: 8px;
             box-shadow: var(--card-shadow);
             overflow: hidden;
@@ -465,17 +477,16 @@
         }
         
         .keyword-tag {
-            background-color: white;
+            background-color: var(--light-gray);
             color: var(--dark-gray);
             padding: 3px 8px;
             border-radius: 12px;
             font-size: 11px;
-            border: 1px solid var(--medium-gray);
         }
         
         .card-footer {
             padding: 15px 20px;
-            background-color: rgba(255,255,255,0.7);
+            background-color: #f9f9f9;
             border-top: 1px solid var(--medium-gray);
             display: flex;
             justify-content: space-between;
@@ -490,14 +501,13 @@
             color: #666;
         }
         
-        .doi-link, .handle-link {
+        .doi-link {
             color: var(--primary-color);
             text-decoration: none;
             font-weight: 500;
-            word-break: break-all;
         }
         
-        .doi-link:hover, .handle-link:hover {
+        .doi-link:hover {
             text-decoration: underline;
         }
         
@@ -518,12 +528,12 @@
         }
         
         .card-action:hover {
-            background-color: rgba(255,255,255,0.5);
+            background-color: var(--light-gray);
             color: var(--secondary-color);
         }
         
         .sources-grid {
-            display: none;
+            display: none; /* Hidden as requested */
         }
         
         .zotero-section {
@@ -589,54 +599,9 @@
         
         .footer {
             background-color: var(--footer-color);
-            color: white;
-            padding: 40px 0 20px;
-        }
-        
-        .footer-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
-        }
-        
-        .footer-section h3 {
-            color: white;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        
-        .footer-links {
-            list-style: none;
-        }
-        
-        .footer-links li {
-            margin-bottom: 8px;
-        }
-        
-        .footer-links a {
-            color: #ccc;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-        
-        .footer-links a:hover {
-            color: white;
-        }
-        
-        .contact-info {
-            color: #ccc;
-            line-height: 1.8;
-        }
-        
-        .footer-bottom {
             text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #333;
-            color: #999;
+            padding: 20px 0;
+            color: #333;
             font-size: 14px;
         }
         
@@ -739,7 +704,7 @@
                 width: 100%;
             }
             
-            .clear-button {
+            .harvest-button, .clear-button {
                 width: 100%;
                 margin-bottom: 5px;
             }
@@ -751,10 +716,6 @@
             .filters-sidebar {
                 width: 100%;
             }
-            
-            .footer-content {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -763,7 +724,7 @@
         <div class="header-content">
             <div class="logo-container">
                 <div class="logo">
-                    <img src="https://i.ibb.co/0Q8K8Z2/logo.png" alt="Q Data Logo">
+                    <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo">
                 </div>
                 <div class="title">Q Data Research Hub</div>
             </div>
@@ -773,7 +734,7 @@
     <div class="container">
         <section class="search-section">
             <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search by keyword, title, author, or year...">
+                <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
                 <button class="search-button">Search</button>
             </div>
             
@@ -784,7 +745,7 @@
                 <button class="source-button" data-type="theses">Theses</button>
             </div>
             
-            <div class="advanced-toggle">Advanced Search Options</div>
+            <div class="advanced-toggle">Advanced Filters</div>
             
             <div class="advanced-search">
                 <div class="boolean-options">
@@ -796,40 +757,41 @@
                 <input type="text" placeholder="Author name...">
                 <input type="text" placeholder="Date range (YYYY-YYYY)...">
                 <input type="text" placeholder="Subject area...">
-                <button class="search-button" style="border-radius: 4px; margin-top: 10px;">Apply Advanced Filters</button>
+                <button class="search-button" style="border-radius: 4px; margin-top: 10px;">Apply Filters</button>
             </div>
         </section>
         
         <section class="results-section">
             <div class="results-header">
-                <div class="results-title">Search Results</div>
+                <div class="results-title">Harvested Results</div>
                 <div class="results-actions">
-                    <button class="clear-button">Clear All Results</button>
+                    <button class="harvest-button">Harvest All</button>
+                    <button class="clear-button">Clear Results</button>
                 </div>
             </div>
             
             <div class="progress-bar">
                 <div class="progress"></div>
             </div>
-            <div class="harvest-status">Ready to search</div>
+            <div class="harvest-status">Ready to harvest</div>
             
             <div class="results-content">
                 <!-- Filters Sidebar -->
                 <div class="filters-sidebar">
                     <div class="filters-header">
                         <div class="filters-title">Filter Results</div>
-                        <button class="reset-filters">Reset All</button>
+                        <button class="reset-filters">Reset</button>
                     </div>
                     
                     <div class="filter-group">
-                        <label class="filter-label">Publication Year</label>
+                        <label class="filter-label">Year</label>
                         <select class="filter-select" id="yearFilter">
                             <option value="">All Years</option>
                         </select>
                     </div>
                     
                     <div class="filter-group">
-                        <label class="filter-label">Source Repository</label>
+                        <label class="filter-label">Source</label>
                         <select class="filter-select" id="sourceFilter">
                             <option value="">All Sources</option>
                         </select>
@@ -849,8 +811,8 @@
                         <label class="filter-label">Sort By</label>
                         <select class="filter-select" id="sortFilter">
                             <option value="relevance">Relevance</option>
-                            <option value="year">Year (Newest First)</option>
-                            <option value="year_asc">Year (Oldest First)</option>
+                            <option value="year">Year (Newest)</option>
+                            <option value="year_asc">Year (Oldest)</option>
                             <option value="title">Title (A-Z)</option>
                         </select>
                     </div>
@@ -871,8 +833,8 @@
                     <div class="data-cards-container" id="dataCardsContainer">
                         <div class="no-results">
                             <i class="fas fa-search"></i>
-                            <h3>No search results yet</h3>
-                            <p>Enter a search term to find research data, articles, and theses</p>
+                            <h3>No data harvested yet</h3>
+                            <p>Use the harvest button to collect research data</p>
                         </div>
                     </div>
                     
@@ -885,6 +847,11 @@
                         <button class="pagination-button" id="lastPage" disabled>Last</button>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Hidden sources grid (as requested) -->
+            <div class="sources-grid" style="display: none;">
+                <!-- Sources are hidden as requested -->
             </div>
         </section>
         
@@ -905,49 +872,15 @@
         </section>
     </div>
     
+    <div class="top-footer">
+        <div class="top-footer-content">
+            <div class="copyright">Q Data Research Platform © 2025</div>
+            <button class="email-button">Email Us</button>
+        </div>
+    </div>
+    
     <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>Quick Links</h3>
-                <ul class="footer-links">
-                    <li><a href="#">Home</a></li>
-                    <li><a href="#">Current Research</a></li>
-                    <li><a href="#">About Us</a></li>
-                    <li><a href="#">Contact</a></li>
-                </ul>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Programmes</h3>
-                <ul class="footer-links">
-                    <li><a href="#">Undergraduate</a></li>
-                    <li><a href="#">Graduate</a></li>
-                    <li><a href="#">Online Learning</a></li>
-                    <li><a href="#">Certificates</a></li>
-                </ul>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Contact Us</h3>
-                <div class="contact-info">
-                    <p>admin@admin.co.za</p>
-                    <p>(+27) 83 668 0124</p>
-                    <p>(+27) 72 302 3929</p>
-                    <p>6077 Medina Street, Kocabashti Location,<br>Malayouniya 9333</p>
-                </div>
-            </div>
-            
-            <div class="footer-section">
-                <h3>About Q Data</h3>
-                <p style="color: #ccc; line-height: 1.6;">
-                    Q Data Research Hub stands for quality, excellent products, highly efficient processes and outstanding results in research data discovery.
-                </p>
-            </div>
-        </div>
-        
-        <div class="footer-bottom">
-            <p>&copy; 2025 Q Data Research Hub. All rights reserved.</p>
-        </div>
+        Research Data Harvesting System
     </footer>
     
     <script>
@@ -960,6 +893,7 @@
             const advancedSearch = document.querySelector('.advanced-search');
             const booleanOptions = document.querySelectorAll('.boolean-option');
             const resultsSection = document.querySelector('.results-section');
+            const harvestButton = document.querySelector('.harvest-button');
             const clearButton = document.querySelector('.clear-button');
             const progressBar = document.querySelector('.progress');
             const harvestStatus = document.querySelector('.harvest-status');
@@ -987,138 +921,15 @@
                 currentPage: 1,
                 pageSize: 12,
                 totalPages: 1,
-                isSearching: false,
-                currentQuery: '',
-                currentSourceType: 'all'
+                isHarvesting: false
             };
-            
-            // Realistic research data
-            const realisticData = [
-                // DSpace Theses with handles
-                {
-                    id: 'uct-theses-001',
-                    title: 'Exploring the uptake and integration of renewable energy technologies in South African urban environments',
-                    authors: ['Sarah Johnson', 'Michael Williams'],
-                    description: 'This thesis investigates the adoption patterns and integration challenges of solar and wind technologies in major South African cities, with a focus on policy implications and community engagement strategies.',
-                    keywords: ['renewable energy', 'solar power', 'urban planning', 'sustainability', 'South Africa'],
-                    year: 2023,
-                    source: 'UCT Theses',
-                    type: 'theses',
-                    identifier: 'http://hdl.handle.net/11427/42107',
-                    identifierType: 'Handle',
-                    url: 'http://hdl.handle.net/11427/42107',
-                    downloadUrl: 'http://hdl.handle.net/11427/42107/download'
-                },
-                {
-                    id: 'sun-theses-001',
-                    title: 'The impact of climate change on agricultural productivity in the Western Cape region',
-                    authors: ['James Wilson', 'Lisa Brown'],
-                    description: 'A comprehensive analysis of climate change effects on key agricultural outputs in the Western Cape, with predictive models for future yield variations.',
-                    keywords: ['climate change', 'agriculture', 'Western Cape', 'crop yield', 'sustainability'],
-                    year: 2022,
-                    source: 'SUNScholar Theses',
-                    type: 'theses',
-                    identifier: 'http://hdl.handle.net/11660/13146',
-                    identifierType: 'Handle',
-                    url: 'http://hdl.handle.net/11660/13146',
-                    downloadUrl: 'http://hdl.handle.net/11660/13146/download'
-                },
-                
-                // Research Data with DOIs
-                {
-                    id: 'zenodo-001',
-                    title: 'Dataset: Long-term biodiversity monitoring in Kruger National Park, South Africa (2010-2023)',
-                    authors: ['David Miller', 'Sarah Chen', 'Research Team'],
-                    description: 'Comprehensive dataset tracking mammal, bird, and plant species populations across Kruger National Park over a 13-year period with detailed environmental covariates.',
-                    keywords: ['biodiversity', 'conservation', 'Kruger National Park', 'monitoring', 'ecology'],
-                    year: 2023,
-                    source: 'Zenodo',
-                    type: 'research',
-                    identifier: 'https://doi.org/10.5281/zenodo.17523501',
-                    identifierType: 'DOI',
-                    url: 'https://doi.org/10.5281/zenodo.17523501',
-                    downloadUrl: 'https://zenodo.org/api/records/17523501/files/data.zip/content'
-                },
-                {
-                    id: 'figshare-001',
-                    title: 'The potential of video games for exploring deconstructionist history',
-                    authors: ['Robert Garcia'],
-                    description: 'Research data supporting the study on using video games as mediums for exploring alternative historical narratives and deconstructing traditional historical perspectives.',
-                    keywords: ['video games', 'history', 'deconstruction', 'digital humanities', 'narrative'],
-                    year: 2023,
-                    source: 'Figshare',
-                    type: 'research',
-                    identifier: 'https://figshare.com/articles/thesis/The_potential_of_video_games_for_exploring_deconstructionist_history/23475836',
-                    identifierType: 'DOI',
-                    url: 'https://figshare.com/articles/thesis/The_potential_of_video_games_for_exploring_deconstructionist_history/23475836',
-                    downloadUrl: 'https://figshare.com/articles/thesis/The_potential_of_video_games_for_exploring_deconstructionist_history/23475836?file=41185097'
-                },
-                {
-                    id: 'mendeley-001',
-                    title: 'Dataset: Urban traffic patterns and public transportation usage in Cape Town',
-                    authors: ['Transport Research Unit'],
-                    description: 'Comprehensive dataset of traffic flow, public transportation usage, and commuter patterns across Cape Town metropolitan area collected through sensors and surveys.',
-                    keywords: ['urban planning', 'transportation', 'traffic', 'public transit', 'Cape Town'],
-                    year: 2023,
-                    source: 'Mendeley Data',
-                    type: 'research',
-                    identifier: 'https://data.mendeley.com/datasets/5w3gdsym68/4',
-                    identifierType: 'DOI',
-                    url: 'https://data.mendeley.com/datasets/5w3gdsym68/4',
-                    downloadUrl: 'https://data.mendeley.com/public-files/datasets/5w3gdsym68/files/abc123-xyz-456...'
-                },
-                {
-                    id: 'dryad-001',
-                    title: 'Supplementary data for: Microbial community responses to drought in grassland ecosystems',
-                    authors: ['Environmental Microbiology Research Group'],
-                    description: 'Raw sequencing data and analysis files for the study of microbial community dynamics in grassland soils under drought conditions.',
-                    keywords: ['microbiology', 'drought', 'grassland', 'sequencing', 'ecology'],
-                    year: 2023,
-                    source: 'Dryad',
-                    type: 'research',
-                    identifier: 'https://doi.org/10.5061/dryad.qz612jmsp',
-                    identifierType: 'DOI',
-                    url: 'https://doi.org/10.5061/dryad.qz612jmsp',
-                    downloadUrl: 'https://datadryad.org/stash/downloads/file_content/abc123...'
-                },
-                
-                // Journal Articles
-                {
-                    id: 'open-uct-001',
-                    title: 'Decolonising the curriculum: Perspectives from South African higher education',
-                    authors: ['Nomsa Dlamini', 'Thabo Mbatha'],
-                    description: 'Critical analysis of decolonisation efforts in South African universities, exploring faculty and student perspectives on curriculum transformation.',
-                    keywords: ['decolonisation', 'higher education', 'curriculum', 'transformation', 'South Africa'],
-                    year: 2023,
-                    source: 'Open UCT',
-                    type: 'articles',
-                    identifier: 'http://hdl.handle.net/11427/39812',
-                    identifierType: 'Handle',
-                    url: 'http://hdl.handle.net/11427/39812',
-                    downloadUrl: 'http://hdl.handle.net/11427/39812/download'
-                },
-                {
-                    id: 'up-repository-001',
-                    title: 'Artificial intelligence applications in precision agriculture: A systematic review',
-                    authors: ['Maria Rodriguez', 'John Smith', 'AI Research Group'],
-                    description: 'Systematic review of AI applications in precision agriculture, covering machine learning, computer vision, and IoT technologies for crop management and yield optimization.',
-                    keywords: ['artificial intelligence', 'precision agriculture', 'machine learning', 'IoT', 'crop management'],
-                    year: 2023,
-                    source: 'UP Repository',
-                    type: 'articles',
-                    identifier: 'http://hdl.handle.net/2263/104603',
-                    identifierType: 'Handle',
-                    url: 'http://hdl.handle.net/2263/104603',
-                    downloadUrl: 'http://hdl.handle.net/2263/104603/download'
-                }
-            ];
             
             // Initialize filters
             initializeFilters();
             
             // Email button functionality
             emailButton.addEventListener('click', function() {
-                window.location.href = 'mailto:admin@admin.co.za?subject=Q%20Data%20Research%20Hub%20Inquiry';
+                window.location.href = 'mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry';
             });
             
             // Advanced filters toggle
@@ -1147,13 +958,14 @@
                 button.addEventListener('click', function() {
                     sourceButtons.forEach(btn => btn.classList.remove('active'));
                     this.classList.add('active');
-                    dataState.currentSourceType = this.getAttribute('data-type');
-                    
-                    // If there's a current query, perform search with the selected source type
-                    if (dataState.currentQuery) {
-                        performSearch();
-                    }
+                    const type = this.getAttribute('data-type');
+                    startHarvest(type);
                 });
+            });
+            
+            // Harvest all button
+            harvestButton.addEventListener('click', function() {
+                startHarvest('all');
             });
             
             // Clear results button
@@ -1201,7 +1013,7 @@
             function initializeFilters() {
                 // Initialize year filter
                 const currentYear = new Date().getFullYear();
-                for (let year = currentYear; year >= 2000; year--) {
+                for (let year = currentYear; year >= 1980; year--) {
                     const option = document.createElement('option');
                     option.value = year;
                     option.textContent = year;
@@ -1225,149 +1037,44 @@
             // Function to perform search
             function performSearch() {
                 const query = searchInput.value.trim();
-                if (!query) {
-                    alert('Please enter a search term');
+                if (query) {
+                    resultsSection.classList.add('active');
+                    startHarvest('search', query);
+                }
+            }
+            
+            // Function to start harvesting
+            function startHarvest(type, query = '') {
+                if (dataState.isHarvesting) {
+                    alert('Harvesting is already in progress');
                     return;
                 }
                 
-                dataState.currentQuery = query;
-                dataState.isSearching = true;
+                dataState.isHarvesting = true;
                 resultsSection.classList.add('active');
-                harvestStatus.textContent = 'Searching...';
+                harvestStatus.textContent = 'Starting harvest...';
                 progressBar.style.width = '0%';
                 
                 let progress = 0;
                 const interval = setInterval(() => {
-                    progress += Math.random() * 15;
+                    progress += Math.random() * 10;
                     if (progress >= 100) {
                         progress = 100;
                         clearInterval(interval);
-                        harvestStatus.textContent = 'Search complete!';
+                        harvestStatus.textContent = 'Harvest complete!';
                         
-                        // Search data
-                        searchData(query);
+                        // Generate data
+                        generateData(type, query);
                         
+                        // Show a success message
                         setTimeout(() => {
-                            harvestStatus.textContent = 'Ready for new search';
-                        }, 2000);
+                            alert(`Successfully harvested ${type === 'all' ? 'all sources' : type} data! Collected ${dataState.allData.length} records.`);
+                        }, 500);
                         
-                        dataState.isSearching = false;
+                        dataState.isHarvesting = false;
                     }
                     progressBar.style.width = `${progress}%`;
                 }, 200);
-            }
-            
-            // Function to search data
-            function searchData(query) {
-                // First, search in existing data
-                let results = searchInExistingData(query);
-                
-                // If no results found, simulate fetching from external sources
-                if (results.length === 0) {
-                    results = fetchFromExternalSources(query);
-                }
-                
-                dataState.allData = results;
-                dataState.filteredData = [...dataState.allData];
-                dataState.currentPage = 1;
-                updateResultsDisplay();
-                
-                // Save to localStorage
-                saveToStorage();
-            }
-            
-            // Function to search in existing data
-            function searchInExistingData(query) {
-                const lowercaseQuery = query.toLowerCase();
-                return realisticData.filter(item => 
-                    item.title.toLowerCase().includes(lowercaseQuery) ||
-                    item.description.toLowerCase().includes(lowercaseQuery) ||
-                    item.authors.some(author => author.toLowerCase().includes(lowercaseQuery)) ||
-                    item.keywords.some(keyword => keyword.toLowerCase().includes(lowercaseQuery)) ||
-                    item.year.toString().includes(lowercaseQuery)
-                );
-            }
-            
-            // Function to simulate fetching from external sources
-            function fetchFromExternalSources(query) {
-                // In a real implementation, this would make API calls to external sources
-                // For now, we'll return some relevant results based on the query
-                const lowercaseQuery = query.toLowerCase();
-                
-                // Generate some realistic results based on the query
-                const results = [];
-                
-                // Check if query matches any of our predefined categories
-                if (lowercaseQuery.includes('energy') || lowercaseQuery.includes('renewable')) {
-                    results.push({
-                        id: 'external-energy-001',
-                        title: 'Renewable energy transition pathways for developing economies',
-                        authors: ['Global Energy Research Group'],
-                        description: 'Analysis of feasible pathways for developing countries to transition to renewable energy systems, with case studies from Africa and Southeast Asia.',
-                        keywords: ['renewable energy', 'transition', 'developing countries', 'sustainability', 'policy'],
-                        year: 2023,
-                        source: 'External Source',
-                        type: 'research',
-                        identifier: 'https://doi.org/10.1234/external.energy.001',
-                        identifierType: 'DOI',
-                        url: 'https://doi.org/10.1234/external.energy.001',
-                        downloadUrl: 'https://external.source.org/download/energy001'
-                    });
-                }
-                
-                if (lowercaseQuery.includes('education') || lowercaseQuery.includes('curriculum')) {
-                    results.push({
-                        id: 'external-education-001',
-                        title: 'Digital transformation in higher education: Post-pandemic perspectives',
-                        authors: ['Education Innovation Research Center'],
-                        description: 'Examination of how digital technologies have transformed higher education delivery and pedagogy in the post-pandemic era.',
-                        keywords: ['digital transformation', 'higher education', 'pedagogy', 'online learning', 'technology'],
-                        year: 2023,
-                        source: 'External Source',
-                        type: 'articles',
-                        identifier: 'https://doi.org/10.1234/external.education.001',
-                        identifierType: 'DOI',
-                        url: 'https://doi.org/10.1234/external.education.001',
-                        downloadUrl: 'https://external.source.org/download/education001'
-                    });
-                }
-                
-                if (lowercaseQuery.includes('health') || lowercaseQuery.includes('medical')) {
-                    results.push({
-                        id: 'external-health-001',
-                        title: 'Community-based approaches to mental health care in rural areas',
-                        authors: ['Public Health Research Institute'],
-                        description: 'Study of community-led mental health initiatives in rural settings and their effectiveness compared to traditional clinical approaches.',
-                        keywords: ['mental health', 'community health', 'rural health', 'public health', 'healthcare'],
-                        year: 2023,
-                        source: 'External Source',
-                        type: 'research',
-                        identifier: 'https://doi.org/10.1234/external.health.001',
-                        identifierType: 'DOI',
-                        url: 'https://doi.org/10.1234/external.health.001',
-                        downloadUrl: 'https://external.source.org/download/health001'
-                    });
-                }
-                
-                // If no specific matches, generate a generic result
-                if (results.length === 0) {
-                    results.push({
-                        id: `external-${Date.now()}`,
-                        title: `Research on ${query}: Recent findings and implications`,
-                        authors: ['Research Team'],
-                        description: `This research explores various aspects of ${query}, presenting recent findings and discussing their implications for theory and practice.`,
-                        keywords: [query, 'research', 'analysis', 'study'],
-                        year: 2023,
-                        source: 'External Source',
-                        type: 'research',
-                        identifier: `https://doi.org/10.1234/external.${Date.now()}`,
-                        identifierType: 'DOI',
-                        url: `https://doi.org/10.1234/external.${Date.now()}`,
-                        downloadUrl: `https://external.source.org/download/${Date.now()}`
-                    });
-                }
-                
-                return results;
             }
             
             // Function to clear results
@@ -1375,14 +1082,13 @@
                 dataState.allData = [];
                 dataState.filteredData = [];
                 dataState.currentPage = 1;
-                dataState.currentQuery = '';
                 
-                // Reset display to initial state
+                // Reset display
                 dataCardsContainer.innerHTML = `
                     <div class="no-results">
                         <i class="fas fa-search"></i>
-                        <h3>No search results yet</h3>
-                        <p>Enter a search term to find research data, articles, and theses</p>
+                        <h3>No data harvested yet</h3>
+                        <p>Use the harvest button to collect research data</p>
                     </div>
                 `;
                 
@@ -1392,21 +1098,17 @@
                 // Reset pagination
                 updatePagination();
                 
+                // Clear localStorage
+                localStorage.removeItem('qDataHarvest');
+                
                 // Clear search input
                 searchInput.value = '';
                 
                 // Reset filters
                 resetFilters();
                 
-                // Hide results section
-                resultsSection.classList.remove('active');
-                
-                // Clear localStorage
-                localStorage.removeItem('qDataSearch');
-                
-                // Reset progress bar
-                progressBar.style.width = '0%';
-                harvestStatus.textContent = 'Ready to search';
+                // Show notification
+                alert('All results have been cleared');
             }
             
             // Function to reset filters
@@ -1421,14 +1123,119 @@
                 applyFilters();
             }
             
+            // Function to generate data (1000+ records)
+            function generateData(type, query = '') {
+                dataState.allData = [];
+                
+                // Define sources based on type
+                let sources = [];
+                if (type === 'research' || type === 'all') {
+                    sources = sources.concat(['Zenodo', 'OSF', 'Figshare', 'Mendeley Data', 'Dryad']);
+                }
+                if (type === 'articles' || type === 'all') {
+                    sources = sources.concat(['Open UCT', 'SUNScholar', 'UP Repository', 'UFS Scholar', 'UNisa DSpace']);
+                }
+                if (type === 'theses' || type === 'all') {
+                    sources = sources.concat(['UCT Theses', 'SUNScholar Theses', 'UP Theses', 'UFS Theses', 'UNisa Theses']);
+                }
+                
+                // Generate 1000+ records
+                sources.forEach(source => {
+                    const itemCount = 200 + Math.floor(Math.random() * 50); // 200-250 items per source
+                    
+                    for (let i = 0; i < itemCount; i++) {
+                        const year = 2000 + Math.floor(Math.random() * 25);
+                        const authors = generateAuthors();
+                        const keywords = generateKeywords(query);
+                        
+                        // Generate proper identifiers based on source type
+                        let identifier, url, downloadUrl;
+                        if (source.includes('Zenodo') || source.includes('Figshare') || 
+                            source.includes('OSF') || source.includes('Mendeley') || source.includes('Dryad')) {
+                            // Research data sources with DOI
+                            identifier = `10.1234/${source.replace(/\s+/g, '').toLowerCase()}.${Math.floor(Math.random() * 10000)}`;
+                            url = `https://doi.org/${identifier}`;
+                            downloadUrl = `https://${source.replace(/\s+/g, '-').toLowerCase()}.org/api/record/${identifier}/download`;
+                        } else {
+                            // DSpace repositories with handles
+                            identifier = `2263/${Math.floor(100000 + Math.random() * 900000)}`;
+                            url = `http://hdl.handle.net/${identifier}`;
+                            downloadUrl = `${url}/download`;
+                        }
+                        
+                        const recordId = `${source.replace(/\s+/g, '-').toLowerCase()}-${i}-${Date.now()}`;
+                        
+                        dataState.allData.push({
+                            id: recordId,
+                            title: `${query ? query + ' - ' : ''}Research from ${source} - ${i + 1}`,
+                            authors: authors,
+                            description: `This is research data harvested from ${source}. It contains valuable research findings and data relevant to various fields of study. This record demonstrates the harvesting capability of the Q Data Research Hub.`,
+                            keywords: keywords,
+                            year: year,
+                            source: source,
+                            type: getTypeFromSource(source),
+                            identifier: identifier,
+                            identifierType: source.includes('Zenodo') || source.includes('Figshare') || 
+                                          source.includes('OSF') || source.includes('Mendeley') || source.includes('Dryad') ? 'DOI' : 'Handle',
+                            url: url,
+                            downloadUrl: downloadUrl
+                        });
+                    }
+                });
+                
+                // Update display
+                dataState.filteredData = [...dataState.allData];
+                dataState.currentPage = 1;
+                updateResultsDisplay();
+                
+                // Save to localStorage
+                saveToStorage();
+            }
+            
+            // Helper function to generate random authors
+            function generateAuthors() {
+                const firstNames = ['John', 'Jane', 'David', 'Sarah', 'Michael', 'Emily', 'Robert', 'Lisa', 'James', 'Maria'];
+                const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+                
+                const numAuthors = 1 + Math.floor(Math.random() * 3); // 1-4 authors
+                const authors = [];
+                
+                for (let i = 0; i < numAuthors; i++) {
+                    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                    authors.push(`${firstName} ${lastName}`);
+                }
+                
+                return authors;
+            }
+            
+            // Helper function to generate keywords
+            function generateKeywords(query) {
+                const baseKeywords = ['research', 'data', 'analysis', 'study', 'methodology', 'statistics', 'visualization', 'science', 'academic'];
+                const queryKeywords = query ? query.toLowerCase().split(' ') : [];
+                
+                // Take 3-6 random keywords
+                const shuffled = [...baseKeywords].sort(() => 0.5 - Math.random());
+                const selected = shuffled.slice(0, 3 + Math.floor(Math.random() * 4));
+                
+                return [...new Set([...queryKeywords, ...selected])];
+            }
+            
+            // Helper function to determine type from source
+            function getTypeFromSource(source) {
+                if (source.includes('Zenodo') || source.includes('OSF') || source.includes('Figshare') || 
+                    source.includes('Mendeley') || source.includes('Dryad')) {
+                    return 'research';
+                } else if (source.includes('Theses')) {
+                    return 'theses';
+                } else {
+                    return 'articles';
+                }
+            }
+            
             // Function to apply filters
             function applyFilters() {
                 let filtered = [...dataState.allData];
-                
-                // Apply source type filter
-                if (dataState.currentSourceType !== 'all') {
-                    filtered = filtered.filter(item => item.type === dataState.currentSourceType);
-                }
                 
                 // Apply year filter
                 if (yearFilter.value) {
@@ -1521,7 +1328,10 @@
                 data.forEach(item => {
                     const card = document.createElement('div');
                     card.className = 'data-card';
-                    card.dataset.itemId = item.id;
+                    card.dataset.itemId = item.id; // Store item ID for event handling
+                    
+                    const badgeClass = item.type === 'research' ? 'research' : 
+                                     item.type === 'articles' ? 'articles' : 'theses';
                     
                     card.innerHTML = `
                         <div class="card-header">
@@ -1542,7 +1352,7 @@
                         <div class="card-footer">
                             <div class="card-meta">
                                 <span><i class="far fa-calendar"></i> ${item.year}</span>
-                                <span>${item.identifierType}: <a href="${item.url}" target="_blank" class="${item.identifierType === 'DOI' ? 'doi-link' : 'handle-link'}">${item.identifier}</a></span>
+                                <span>${item.identifierType}: <a href="${item.url}" target="_blank" class="doi-link">${item.identifier}</a></span>
                             </div>
                             <div class="card-actions">
                                 <button class="card-action" data-action="view" title="View Details">
@@ -1623,12 +1433,11 @@
             // Function to save to localStorage
             function saveToStorage() {
                 const data = {
-                    searchData: dataState.allData,
-                    query: dataState.currentQuery,
+                    harvestedData: dataState.allData,
                     timestamp: new Date().toISOString()
                 };
                 try {
-                    localStorage.setItem('qDataSearch', JSON.stringify(data));
+                    localStorage.setItem('qDataHarvest', JSON.stringify(data));
                 } catch (e) {
                     console.warn('Could not save to localStorage:', e);
                 }
@@ -1637,16 +1446,14 @@
             // Function to load from localStorage
             function loadFromStorage() {
                 try {
-                    const saved = localStorage.getItem('qDataSearch');
+                    const saved = localStorage.getItem('qDataHarvest');
                     if (saved) {
                         const data = JSON.parse(saved);
-                        dataState.allData = data.searchData || [];
-                        dataState.currentQuery = data.query || '';
+                        dataState.allData = data.harvestedData || [];
                         dataState.filteredData = [...dataState.allData];
                         
                         if (dataState.allData.length > 0) {
                             resultsSection.classList.add('active');
-                            searchInput.value = dataState.currentQuery;
                             updateResultsDisplay();
                         }
                     }
