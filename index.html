@@ -1,278 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Q Data Research Hub</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      --primary-color: #0F204B;
-      --secondary-color: #A71930;
-      --light-gray: #f5f5f5;
-      --medium-gray: #e0e0e0;
-      --dark-gray: #333;
-      --search-button-color: #8B8D8E;
-      --footer-color: #A7A8AA;
-      --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-
-    * {
-      margin: 0; padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    body {
-      background-color: var(--light-gray);
-      color: var(--dark-gray);
-      line-height: 1.6;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    .container { max-width: 1400px; margin: 0 auto; padding: 20px; flex: 1; }
-
-    header {
-      background-color: var(--primary-color);
-      color: white;
-      padding: 15px 0;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    .header-content {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-
-    .logo-container { display: flex; align-items: center; gap: 15px; }
-    .logo {
-      width: 50px; height: 50px;
-      background-color: white;
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: bold; color: var(--primary-color);
-    }
-    .logo img { max-width: 100%; max-height: 100%; border-radius: 8px; }
-
-    .title { font-size: 24px; font-weight: bold; }
-
-    .top-footer { background-color: var(--primary-color); color: white; padding: 15px 0; }
-    .top-footer-content {
-      display: flex; justify-content: center; align-items: center;
-      gap: 30px; max-width: 1400px; margin: 0 auto; padding: 0 20px;
-    }
-    .copyright { font-size: 14px; color: rgba(255,255,255,0.9); }
-    .email-button {
-      background-color: var(--secondary-color); color: white;
-      border: none; padding: 8px 16px; border-radius: 4px;
-      cursor: pointer; font-size: 14px; transition: background-color 0.3s;
-    }
-    .email-button:hover { background-color: #8a1426; }
-
-    /* --- Search / Buttons / Cards / Results --- */
-    .search-section {
-      background-color: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      margin-bottom: 30px;
-      margin-top: 20px;
-    }
-    .search-box { display: flex; margin-bottom: 20px; }
-    .search-input {
-      flex: 1; padding: 12px 15px;
-      border: 1px solid var(--medium-gray);
-      border-radius: 4px 0 0 4px;
-      font-size: 16px;
-    }
-    .search-button {
-      background-color: var(--search-button-color);
-      color: white; border: none;
-      padding: 0 25px; border-radius: 0 4px 4px 0;
-      cursor: pointer; font-size: 16px; transition: background-color 0.3s;
-    }
-    .search-button:hover { background-color: #76787a; }
-
-    .source-buttons { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-    .source-button {
-      background-color: var(--primary-color); color: white;
-      border: none; padding: 10px 20px; border-radius: 4px;
-      cursor: pointer; font-size: 14px; transition: background-color 0.3s;
-    }
-    .source-button:hover { background-color: #1a2f6b; }
-    .source-button.active { background-color: var(--secondary-color); }
-
-    .results-section { display: none; margin-top: 30px; }
-    .results-section.active { display: block; }
-
-    .results-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--medium-gray);
-    }
-    .results-title { font-size: 20px; font-weight: 600; }
-
-    .harvest-button, .clear-button {
-      background-color: var(--secondary-color);
-      color: white; border: none; padding: 8px 16px;
-      border-radius: 4px; cursor: pointer; font-size: 14px;
-      transition: background-color 0.3s;
-    }
-    .harvest-button:hover { background-color: #8a1426; }
-    .clear-button { background-color: #e74c3c; }
-    .clear-button:hover { background-color: #c0392b; }
-
-    .progress-bar {
-      height: 5px; background-color: var(--medium-gray);
-      border-radius: 5px; margin-top: 20px; overflow: hidden;
-    }
-    .progress {
-      height: 100%; background-color: var(--secondary-color);
-      width: 0%; transition: width 0.5s;
-    }
-    .harvest-status { margin-top: 10px; font-size: 14px; color: #666; }
-
-    .results-content { margin-top: 20px; }
-    .data-cards-container {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 25px; margin-bottom: 40px;
-    }
-    .data-card {
-      background-color: white; border-radius: 8px;
-      box-shadow: var(--card-shadow);
-      overflow: hidden; transition: transform 0.3s, box-shadow 0.3s;
-      display: flex; flex-direction: column; height: 100%;
-    }
-    .data-card:hover { transform: translateY(-5px); box-shadow: var(--card-hover-shadow); }
-    .card-header {
-      padding: 15px 20px; background-color: var(--primary-color);
-      color: white; display: flex; justify-content: space-between; align-items: center;
-    }
-    .card-type {
-      background-color: rgba(255,255,255,0.2);
-      padding: 3px 10px; border-radius: 12px;
-      font-size: 12px; font-weight: 600;
-    }
-    .card-body { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
-    .card-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; line-height: 1.4; color: var(--dark-gray); }
-    .card-authors { font-size: 14px; color: var(--secondary-color); margin-bottom: 12px; font-style: italic; }
-    .card-description { font-size: 14px; color: #555; line-height: 1.5; margin-bottom: 15px; flex-grow: 1; }
-    .card-keywords { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; }
-    .keyword-tag {
-      background-color: var(--light-gray); color: var(--dark-gray);
-      padding: 3px 8px; border-radius: 12px; font-size: 11px;
-    }
-    .card-footer {
-      padding: 15px 20px; background-color: #f9f9f9;
-      border-top: 1px solid var(--medium-gray);
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .card-meta { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #666; }
-    .doi-link { color: var(--primary-color); text-decoration: none; font-weight: 500; }
-    .doi-link:hover { text-decoration: underline; }
-    .card-actions { display: flex; gap: 10px; }
-    .card-action {
-      background: none; border: none; color: var(--primary-color);
-      cursor: pointer; font-size: 16px;
-      transition: color 0.3s; padding: 5px; border-radius: 3px;
-    }
-    .card-action:hover { background-color: var(--light-gray); color: var(--secondary-color); }
-
-    .no-results { text-align: center; padding: 40px; color: #666; grid-column: 1 / -1; }
-    .no-results i { font-size: 48px; margin-bottom: 15px; color: #ccc; }
-
-    .footer { background-color: var(--footer-color); text-align: center; padding: 20px 0; color: #333; font-size: 14px; }
-
-    @media (max-width: 768px) {
-      .data-cards-container { grid-template-columns: 1fr; }
-      .top-footer-content { flex-direction: column; gap: 10px; text-align: center; }
-    }
-  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <div class="header-content">
-      <div class="logo-container">
-        <div class="logo">
-          <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo">
-        </div>
-        <div class="title">Library</div>
-      </div>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#" class="brand">
+        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo" class="brand-logo" />
+        <span class="header-title">Q Data Research Hub</span>
+      </a>
+      <div class="header-spacer"></div>
     </div>
   </header>
 
+  <!-- MAIN CONTAINER -->
   <div class="container">
+    <!-- SEARCH + CATEGORY SECTION -->
     <section class="search-section">
-      <div class="search-box">
-        <input type="text" class="search-input" placeholder="Search by keyword, title, or author...">
-        <button class="search-button">Search</button>
+      <div class="search-row">
+        <input type="text" class="search-input" placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...' />
+        <button class="btn search-btn"><i class="fas fa-search"></i> Search</button>
       </div>
 
-      <div class="source-buttons">
-        <button class="source-button active" data-type="all">All Sources</button>
-        <button class="source-button" data-type="research">Research Data</button>
-        <button class="source-button" data-type="articles">Journal Articles</button>
-        <button class="source-button" data-type="theses">Theses</button>
+      <div class="source-tabs">
+        <button class="tab active" data-type="all">All Sources</button>
+        <button class="tab" data-type="research">Research Data</button>
+        <button class="tab" data-type="articles">Journal Articles</button>
+        <button class="tab" data-type="theses">Theses</button>
       </div>
     </section>
 
+    <!-- RESULTS SECTION -->
     <section class="results-section">
       <div class="results-header">
-        <div class="results-title">Harvested Results</div>
+        <h2 class="results-title">Harvested Results</h2>
         <div class="results-actions">
-          <button class="harvest-button">Harvest All</button>
-          <button class="clear-button">Clear Results</button>
+          <button class="btn harvest-btn"><i class="fas fa-database"></i> Harvest All</button>
+          <button class="btn refresh-btn"><i class="fas fa-trash"></i> Clear Results</button>
         </div>
       </div>
 
       <div class="progress-bar"><div class="progress"></div></div>
       <div class="harvest-status">Ready to harvest</div>
 
+      <!-- Filters (built dynamically by script.js) -->
+      <div class="filters"></div>
+
       <div class="results-content">
-        <div class="results-count" id="resultsCount">0 results</div>
-        <div class="data-cards-container" id="dataCardsContainer">
+        <div id="resultsCount" class="results-count">0 results</div>
+        <div id="dataCardsContainer" class="data-cards-container">
           <div class="no-results">
             <i class="fas fa-search"></i>
             <h3>No data harvested yet</h3>
-            <p>Use the harvest button to collect research data</p>
+            <p>Click “Harvest All” to collect research data.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="zotero-section">
-      <div class="zotero-header">
-        <div class="zotero-logo">Z</div>
-        <div class="zotero-title">Your Referencing Manager: Zotero</div>
+    <!-- ZOTERO SECTION -->
+    <section class="zotero-card">
+      <div class="zotero-head">
+        <div class="zotero-mark">Z</div>
+        <div>
+          <h3>Your Referencing Manager: Zotero</h3>
+          <p>
+            Zotero is a free, open-source tool for collecting, organizing, citing, and sharing research.
+            Save references directly from your browser, organize them into collections, and sync across devices.
+          </p>
+        </div>
       </div>
-      <div class="zotero-description">
-        Zotero is a free, easy-to-use tool to help you collect, organize, annotate, cite, and share research.
-        Save sources directly from your browser with a single click, then organize them into collections using tags.
-      </div>
-      <div class="zotero-buttons">
-        <a href="https://www.zotero.org/" target="_blank" class="zotero-button">Visit Zotero</a>
-        <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank" class="zotero-button">Tutorial 1</a>
-        <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank" class="zotero-button">Tutorial 2</a>
+
+      <div class="zotero-actions">
+        <a href="https://www.zotero.org/" target="_blank"><i class="fas fa-globe"></i> Visit Zotero</a>
+        <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank"><i class="fab fa-youtube"></i> Tutorial 1</a>
+        <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank"><i class="fab fa-youtube"></i> Tutorial 2</a>
       </div>
     </section>
   </div>
 
-  <div class="top-footer">
-    <div class="top-footer-content">
-      <div class="copyright">Q Data Research Platform © 2025</div>
-      <button class="email-button" onclick="window.location.href='mailto:vuyo.ngayeka@gmail.com?subject=Q%20Data%20Platform%20Inquiry'">Email Us</button>
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="foot-col">
+        <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" alt="Q Data Logo" class="footer-logo big" />
+        <p class="tagline">Connecting South African research repositories through open access discovery.</p>
+      </div>
+      <div class="foot-col">
+        <h4>About</h4>
+        <ul>
+          <li><a href="#">About the Platform</a></li>
+          <li><a href="#">Data Sources</a></li>
+          <li><a href="#">Support</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h4>Contact</h4>
+        <ul class="contact-list">
+          <li>Email: <a href="mailto:vuyo.ngayeka@gmail.com">vuyo.ngayeka@gmail.com</a></li>
+          <li>UFS Library & Info Services</li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="https://www.ufs.ac.za/library" target="_blank">UFS Library</a></li>
+          <li><a href="https://www.dhet.gov.za/" target="_blank">DHET</a></li>
+          <li><a href="https://www.doaj.org/" target="_blank">DOAJ</a></li>
+        </ul>
+      </div>
     </div>
-  </div>
+    <div class="copyright">© 2025 Q Data Research Platform | Powered by Cloudflare Workers & GitHub</div>
+  </footer>
 
-  <footer class="footer">Research Data Harvesting System</footer>
-
-  <!-- External JS -->
   <script src="script.js"></script>
 </body>
 </html>
