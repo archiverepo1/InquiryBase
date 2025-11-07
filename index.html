@@ -5,11 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Library</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
   <style>
+    :root {
+      --primary-color: #0F204B;
+      --secondary-color: #A71930;
+      --light-gray: #f5f5f5;
+      --medium-gray: #e0e0e0;
+      --dark-gray: #333;
+      --search-button-color: #8B8D8E;
+      --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--light-gray);
+      color: var(--dark-gray);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
     /* HEADER */
     .site-header {
-      background-color: #0F204B;
+      background-color: var(--primary-color);
       padding: 16px 24px;
       display: flex;
       align-items: center;
@@ -34,17 +55,176 @@
       color: #fff;
     }
 
-    /* Remove "Ready to harvest" */
-    .harvest-status { display: none !important; }
+    /* SEARCH SECTION */
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; flex: 1; }
 
-    /* Hide the old results header title */
-    .results-header h2.results-title {
-      display: none;
+    .search-section {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: var(--card-shadow);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      border: 1px solid var(--medium-gray);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 16px;
+      color: #333;
+    }
+
+    /* Center placeholder only */
+    .search-input::placeholder {
+      text-align: center;
+      color: #888;
+      opacity: 1;
+      font-weight: 500;
+    }
+
+    .btn.search-btn {
+      background: var(--search-button-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    .btn.search-btn:hover { background: #707273; }
+
+    .source-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .tab {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0.9;
+      transition: all 0.3s;
+    }
+    .tab:hover,
+    .tab.active {
+      opacity: 1;
+      background: var(--secondary-color);
+    }
+
+    /* RESULTS SECTION */
+    .results-section { margin-top: 20px; }
+    .results-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .btn.refresh-btn {
+      background: #2d2f33;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn.refresh-btn:hover { background: #444; }
+
+    .progress-bar {
+      height: 5px;
+      background: var(--medium-gray);
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .progress {
+      height: 100%;
+      background-color: var(--secondary-color);
+      width: 0%;
+      transition: width 0.5s;
+    }
+
+    .data-cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 22px;
+    }
+    .no-results {
+      text-align: center;
+      color: #666;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: var(--card-shadow);
+      padding: 28px;
+      grid-column: 1 / -1;
+    }
+
+    /* ZOTERO CARD */
+    .zotero-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: var(--card-shadow);
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .zotero-head {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .zotero-mark {
+      height: 44px;
+      width: 44px;
+      border-radius: 999px;
+      border: 2px solid var(--secondary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--secondary-color);
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .zotero-card h3 { margin: 0 0 6px; }
+    .zotero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .zotero-actions a {
+      text-decoration: none;
+      background: var(--primary-color);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+    .zotero-actions a:hover {
+      background: var(--secondary-color);
     }
 
     /* FOOTER */
     .top-footer {
-      background-color: #0F204B;
+      background-color: var(--primary-color);
       color: white;
       padding: 30px 0;
       text-align: center;
@@ -63,7 +243,7 @@
       color: #ffffff;
     }
     .email-button {
-      background-color: #A71930;
+      background-color: var(--secondary-color);
       color: white;
       border: none;
       padding: 10px 18px;
@@ -76,16 +256,22 @@
       background-color: #8a1426;
     }
     .footer {
-      background-color: #0F204B;
+      background-color: var(--primary-color);
       color: #ffffff;
       text-align: center;
       padding: 12px 0;
       font-size: 14px;
       border-top: 1px solid rgba(255,255,255,0.2);
     }
+
+    @media (max-width: 768px) {
+      .search-row { flex-direction: column; }
+      .search-input { min-width: 100%; }
+    }
   </style>
 </head>
 <body>
+
   <!-- HEADER -->
   <header class="site-header">
     <img src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/8eb8b5de-da57-4058-ab47-147005070d45.png"
@@ -94,12 +280,14 @@
     <span class="header-title">Library</span>
   </header>
 
-  <!-- MAIN CONTAINER -->
+  <!-- MAIN CONTENT -->
   <div class="container">
+
     <!-- SEARCH SECTION -->
     <section class="search-section">
       <div class="search-row">
-        <input type="text" class="search-input" placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...' />
+        <input type="text" class="search-input"
+          placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'>
         <button class="btn search-btn"><i class="fas fa-search"></i> Search</button>
       </div>
 
@@ -111,26 +299,19 @@
       </div>
     </section>
 
-    <!-- RESULTS SECTION (without “Harvested Results” title) -->
+    <!-- RESULTS -->
     <section class="results-section">
       <div class="results-header">
-        <div class="results-actions" style="display:flex;justify-content:flex-end;gap:10px;">
-          <button class="btn harvest-btn"><i class="fas fa-database"></i> Harvest All</button>
-          <button class="btn refresh-btn"><i class="fas fa-trash"></i> Clear Results</button>
-        </div>
+        <button class="btn refresh-btn"><i class="fas fa-trash"></i> Clear Results</button>
       </div>
 
       <div class="progress-bar"><div class="progress"></div></div>
 
-      <div class="filters"></div>
-
-      <div class="results-content">
-        <div class="data-cards-container" id="dataCardsContainer">
-          <div class="no-results">
-            <i class="fas fa-search"></i>
-            <h3>No data harvested yet</h3>
-            <p>Click “Harvest All” to collect research data.</p>
-          </div>
+      <div class="data-cards-container" id="dataCardsContainer">
+        <div class="no-results">
+          <i class="fas fa-search"></i>
+          <h3>No data harvested yet</h3>
+          <p>Click “All Sources” to collect research data.</p>
         </div>
       </div>
     </section>
