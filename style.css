@@ -96,8 +96,6 @@ body{
   position:relative;
 }
 .tab.active,.tab:hover{opacity:1}
-
-/* category badge for counters */
 .tab-count{
   background:var(--secondary);
   color:#fff;
@@ -139,20 +137,58 @@ body{
 .results-title{margin:0;font-size:22px}
 .results-count{font-weight:700;color:#444}
 
-/* FILTERS (reserved) */
+/* FILTERS (ENHANCED) */
 .filters{
-  display:flex;gap:16px;flex-wrap:wrap;
-  background:#fff;border-radius:10px;
-  box-shadow:var(--shadow);padding:14px;margin:14px 0;
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  padding:14px 18px;
+  align-items:center;
+  justify-content:flex-start;
 }
-.filter{min-width:180px}
-.filter.grow{flex:1}
-.filter label{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
-.filter select,.filter input{
-  width:100%;border:1px solid var(--mid);
-  border-radius:6px;padding:10px;
+.filter{min-width:180px;flex-shrink:0}
+.filter label{
+  display:block;
+  font-weight:600;
+  font-size:13px;
+  color:var(--primary);
+  margin-bottom:6px;
 }
-.inline-input{display:flex;gap:8px}
+.filter select{
+  width:100%;
+  border:1px solid var(--mid);
+  border-radius:6px;
+  padding:10px;
+  font-size:14px;
+  color:var(--dark);
+  background:#fafafa;
+  transition:border-color 0.2s;
+}
+.filter select:hover,
+.filter select:focus{
+  border-color:var(--secondary);
+  outline:none;
+}
+.filters .btn.harvest-btn{
+  background:var(--secondary);
+  color:#fff;
+  font-weight:600;
+  border-radius:6px;
+  padding:10px 16px;
+  box-shadow:var(--shadow);
+  margin-left:auto;
+}
+.filters .btn.harvest-btn:hover{background:#c21f38}
+
+/* Checkbox selection */
+.select-record{
+  accent-color:var(--secondary);
+  transform:scale(1.2);
+  margin-top:4px;
+}
 
 /* CARDS */
 .data-cards-container{
@@ -232,23 +268,39 @@ body{
 .load-more-btn:hover{background:var(--secondary)}
 .page-info{font-size:13px;color:#444;margin-top:6px}
 
-/* ZOTERO CARD */
+/* ZOTERO CARD (ENHANCED) */
 .zotero-card{
+  border-left:5px solid var(--secondary);
   background:#fff;
-  border-radius:10px;
+  padding:20px 24px;
   box-shadow:var(--shadow);
-  padding:20px;
+  border-radius:10px;
   margin:20px 0;
 }
-.zotero-head{display:flex;gap:14px;align-items:center}
+.zotero-head{display:flex;align-items:center;gap:14px}
 .zotero-mark{
-  height:44px;width:44px;border-radius:999px;
-  border:2px solid var(--secondary);
+  height:48px;width:48px;border-radius:50%;
+  background:var(--secondary);color:#fff;
+  font-size:20px;font-weight:700;
   display:flex;align-items:center;justify-content:center;
-  color:var(--secondary);font-weight:800;font-size:18px;
+  box-shadow:0 2px 4px rgba(0,0,0,0.2);
 }
-.zotero-card h3{margin:0 0 6px}
-.zotero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.zotero-card h3{margin:0;font-size:18px;color:var(--primary)}
+.zotero-actions{
+  display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;
+}
+.zotero-actions a,.zotero-actions button{
+  background:var(--primary);
+  color:#fff;
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  font-size:13px;
+  cursor:pointer;
+  transition:.2s;
+  box-shadow:var(--shadow);
+}
+.zotero-actions a:hover,.zotero-actions button:hover{background:var(--secondary)}
 
 /* FOOTER */
 .site-footer{background:#000;color:#e6e6e6;margin-top:40px}
@@ -280,6 +332,11 @@ body{
   .footer-inner{grid-template-columns:1fr 1fr}
   .brand-logo{height:56px}
   .header-title{font-size:24px}
+}
+@media (max-width: 768px){
+  .filters{flex-direction:column;align-items:stretch}
+  .filters .btn.harvest-btn{width:100%;margin:10px 0 0}
+  .filter{width:100%}
 }
 @media (max-width: 640px){
   .footer-inner{grid-template-columns:1fr}
