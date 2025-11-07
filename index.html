@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
   <style>
-    /* HEADER STYLING */
+    /* HEADER */
     .site-header {
       background-color: #0F204B;
       padding: 16px 24px;
@@ -34,10 +34,15 @@
       color: #fff;
     }
 
-    /* Remove "Ready to harvest" row space */
+    /* Remove "Ready to harvest" */
     .harvest-status { display: none !important; }
 
-    /* FOOTER FIX */
+    /* Hide the old results header title */
+    .results-header h2.results-title {
+      display: none;
+    }
+
+    /* FOOTER */
     .top-footer {
       background-color: #0F204B;
       color: white;
@@ -106,11 +111,10 @@
       </div>
     </section>
 
-    <!-- RESULTS SECTION -->
+    <!-- RESULTS SECTION (without “Harvested Results” title) -->
     <section class="results-section">
       <div class="results-header">
-        <h2 class="results-title">Harvested Results</h2>
-        <div class="results-actions">
+        <div class="results-actions" style="display:flex;justify-content:flex-end;gap:10px;">
           <button class="btn harvest-btn"><i class="fas fa-database"></i> Harvest All</button>
           <button class="btn refresh-btn"><i class="fas fa-trash"></i> Clear Results</button>
         </div>
