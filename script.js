@@ -1,111 +1,98 @@
 const WORKER_URL = 'https://inquirybase.archiverepo1.workers.dev';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const searchInput = document.querySelector('.search-input');
-  const searchButton = document.querySelector('.search-button');
-  const sourceButtons = document.querySelectorAll('.source-button');
-  const harvestButton = document.querySelector('.harvest-button');
-  const clearButton = document.querySelector('.clear-button');
-  const progressBar = document.querySelector('.progress');
-  const harvestStatus = document.querySelector('.harvest-status');
-  const dataCardsContainer = document.getElementById('dataCardsContainer');
-  const resultsCount = document.getElementById('resultsCount');
-  const resultsSection = document.querySelector('.results-section');
+  // DOM
+  const searchInput   = document.querySelector('.search-input');
+  const searchBtn     = document.querySelector('.search-btn');
+  const tabs          = document.querySelectorAll('.tab');
+  const clearBtn      = document.querySelector('.clear-btn'); // hidden until results exist
+  const progressBar   = document.querySelector('.progress');
+  const cards         = document.getElementById('dataCardsContainer');
+  const filtersMount  = document.getElementById('filtersMount');
 
-  // Filter containers
-  const filtersWrapper = document.createElement('div');
-  filtersWrapper.className = 'filters';
-  resultsSection.insertBefore(filtersWrapper, resultsSection.querySelector('.results-content'));
-
-  // Track state
+  // State
   const state = {
-    allData: [],
-    filtered: [],
-    facets: {},
-    isHarvesting: false,
     activeCategory: 'all',
-    selected: new Set()
+    isHarvesting: false,
+    allData: [],
+    facets: {},
+    selected: new Set(),
   };
 
-  /* ------------------------------------------------------------------ */
-  /* Event Handlers */
-  /* ------------------------------------------------------------------ */
-  searchButton.addEventListener('click', () => {
-    const query = searchInput.value.trim();
-    startHarvest(state.activeCategory, query);
+  // Events
+  searchBtn.addEventListener('click', () => {
+    startHarvest(state.activeCategory, searchInput.value.trim());
   });
 
-  sourceButtons.forEach(btn => btn.addEventListener('click', () => {
-    sourceButtons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.activeCategory = btn.dataset.type;
-    startHarvest(state.activeCategory);
-  }));
+  tabs.forEach(tb => {
+    tb.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tb.classList.add('active');
+      state.activeCategory = tb.dataset.type;
+      // All Sources doubles as "Harvest All"
+      startHarvest(state.activeCategory, searchInput.value.trim());
+    });
+  });
 
-  harvestButton.addEventListener('click', () => startHarvest('all'));
-  clearButton.addEventListener('click', clearResults);
+  clearBtn.addEventListener('click', clearResults);
 
-  /* ------------------------------------------------------------------ */
-  /* Core Harvest */
-  /* ------------------------------------------------------------------ */
+  // Core
   async function startHarvest(category = 'all', query = '') {
-    if (state.isHarvesting) {
-      alert('Harvest already in progress. Please wait...');
-      return;
-    }
+    if (state.isHarvesting) return;
     state.isHarvesting = true;
-    state.allData = [];
-    resultsSection.classList.add('active');
-    dataCardsContainer.innerHTML = loadingCard(category);
-    resultsCount.textContent = 'Fetching...';
-    progressBar.style.width = '15%';
-    harvestStatus.textContent = 'Initializing harvest...';
+    showLoading(category);
 
     try {
-      const payload = { category, query, perSourceLimit: 1000 };
       const res = await fetch(`${WORKER_URL}/api/harvest`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, query, perSourceLimit: 1000 }),
       });
+
       if (!res.ok) throw new Error(`Worker responded with ${res.status}`);
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Unknown error');
 
-      progressBar.style.width = '65%';
       state.allData = data.results || [];
-      state.facets = data.facets || {};
-      harvestStatus.innerHTML = data.cached
-        ? `⚡ Loaded from cache (${data.total.toLocaleString()} records)`
-        : `⏳ Live harvest complete (${data.total.toLocaleString()} new records)`;
+      state.facets  = data.facets || {};
+      buildFilters();
+      renderCards(state.allData);
 
-      resultsCount.textContent = `${data.total.toLocaleString()} results`;
-      buildFilterControls();
-      displayResults(state.allData);
+      // show clear button only when results are present
+      clearBtn.style.display = state.allData.length ? 'inline-flex' : 'none';
       progressBar.style.width = '100%';
-    } catch (err) {
-      console.error(err);
-      harvestStatus.textContent = `❌ Error: ${err.message}`;
-      dataCardsContainer.innerHTML = errorCard(err.message);
+    } catch (e) {
+      cards.innerHTML = errorCard(e.message);
+      clearBtn.style.display = 'none';
+      progressBar.style.width = '0%';
+      console.error(e);
     } finally {
       state.isHarvesting = false;
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Display */
-  /* ------------------------------------------------------------------ */
-  function displayResults(records) {
-    if (!records?.length) {
-      dataCardsContainer.innerHTML = noResultsCard();
-      resultsCount.textContent = '0 results';
+  // Display helpers
+  function showLoading(cat) {
+    cards.innerHTML = `
+      <div class="data-card" style="padding:24px;text-align:center;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <div style="margin-top:6px;">Fetching ${cat.toUpperCase()} data…</div>
+      </div>`;
+    filtersMount.innerHTML = '';
+    progressBar.style.width = '25%';
+  }
+
+  function renderCards(records) {
+    if (!records || !records.length) {
+      cards.innerHTML = '';
       return;
     }
 
     const frag = document.createDocumentFragment();
     records.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'data-card';
-      card.innerHTML = `
+      const div = document.createElement('div');
+      div.className = 'data-card';
+      div.innerHTML = `
         <div class="card-header">
           <div class="card-type">${escapeHtml(item.type || '')}</div>
           <div class="card-source">${escapeHtml(item.source || '')}</div>
@@ -114,162 +101,122 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="checkbox" class="select-record" data-id="${item.id}" style="float:right;margin-left:8px;">
           <h3 class="card-title">${escapeHtml(item.title || 'Untitled')}</h3>
           <div class="card-authors">${(item.authors || []).join(', ')}</div>
-          <p class="card-description">${escapeHtml((item.description || '').substring(0, 300))}...</p>
-          <div class="card-keywords">
-            ${(item.keywords || []).slice(0, 5).map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}
+          <p class="card-description">${escapeHtml(String(item.description || '').slice(0, 320))}${(item.description||'').length>320?'…':''}</p>
+          <div>
+            ${(item.keywords || []).slice(0, 6).map(k=>`<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}
           </div>
         </div>
         <div class="card-footer">
           <div class="card-meta">
             <span><i class="far fa-calendar"></i> ${item.year || ''}</span>
-            ${item.identifier ? `<span>${item.identifierType || ''}: <a href="${item.url || '#'}" target="_blank" class="doi-link">${item.identifier}</a></span>` : ''}
+            ${item.identifier ? `<span>${item.identifierType || ''}: <a href="${item.url || '#'}" target="_blank" class="doi-link">${escapeHtml(item.identifier)}</a></span>` : ''}
           </div>
           <div class="card-actions">
-            <button class="card-action" onclick="window.open('${item.url || '#'}','_blank')" title="View Record"><i class="fas fa-external-link-alt"></i></button>
-            <button class="card-action ris-btn" data-id="${item.id}" title="Export RIS"><i class="fas fa-file-export"></i></button>
+            <button class="card-action" title="View" onclick="window.open('${item.url || '#'}','_blank')">
+              <i class="fas fa-external-link-alt"></i>
+            </button>
+            <button class="card-action ris-btn" data-id="${item.id}" title="Export RIS">
+              <i class="fas fa-file-export"></i>
+            </button>
           </div>
         </div>
       `;
-      frag.appendChild(card);
+      frag.appendChild(div);
     });
+    cards.innerHTML = '';
+    cards.appendChild(frag);
 
-    dataCardsContainer.innerHTML = '';
-    dataCardsContainer.appendChild(frag);
-
-    // Bind select + RIS export
-    document.querySelectorAll('.select-record').forEach(cb => {
-      cb.addEventListener('change', e => {
+    document.querySelectorAll('.select-record').forEach(cb=>{
+      cb.addEventListener('change',(e)=>{
         const id = e.target.dataset.id;
-        if (e.target.checked) state.selected.add(id);
-        else state.selected.delete(id);
+        if (e.target.checked) state.selected.add(id); else state.selected.delete(id);
       });
     });
-    document.querySelectorAll('.ris-btn').forEach(btn => {
-      btn.addEventListener('click', () => exportRIS([findRecord(btn.dataset.id)]));
+    document.querySelectorAll('.ris-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>exportRIS([findRecord(btn.dataset.id)]));
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Filters */
-  /* ------------------------------------------------------------------ */
-  function buildFilterControls() {
-    filtersWrapper.innerHTML = '';
-    const facets = state.facets;
-    if (!facets || Object.keys(facets).length === 0) return;
+  // Filters
+  function buildFilters() {
+    filtersMount.innerHTML = '';
+    const f = state.facets || {};
+    if (!Object.keys(f).length) return;
 
-    const yearSel = createSelect('Year', facets.years, v => applyFilter('year', v));
-    const repoSel = createSelect('Repository', facets.repositories, v => applyFilter('source', v));
-    const typeSel = createSelect('Type', facets.types, v => applyFilter('type', v));
-    const authSel = createSelect('Author', facets.authors, v => applyFilter('author', v));
+    const wrap = document.createElement('div');
+    wrap.className = 'filters';
 
-    filtersWrapper.append(yearSel, repoSel, typeSel, authSel);
+    const selYear  = makeSelect('Year', f.years,   v => applyFilter('year', v));
+    const selRepo  = makeSelect('Repository', f.repositories, v => applyFilter('source', v));
+    const selType  = makeSelect('Type', f.types,  v => applyFilter('type', v));
+    const selAuth  = makeSelect('Author', f.authors, v => applyFilter('author', v));
 
-    const risAllBtn = document.createElement('button');
-    risAllBtn.textContent = 'Export Selected to RIS';
-    risAllBtn.className = 'btn sm harvest-btn';
-    risAllBtn.onclick = () => {
-      const selectedRecords = Array.from(state.selected).map(id => findRecord(id));
-      if (selectedRecords.length === 0) return alert('No records selected.');
-      exportRIS(selectedRecords);
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'btn harvest-btn';
+    exportBtn.textContent = 'Export Selected to RIS';
+    exportBtn.onclick = () => {
+      const selected = Array.from(state.selected).map(id => findRecord(id)).filter(Boolean);
+      if (!selected.length) return alert('No records selected.');
+      exportRIS(selected);
     };
-    filtersWrapper.appendChild(risAllBtn);
+
+    wrap.append(selYear, selRepo, selType, selAuth, exportBtn);
+    filtersMount.appendChild(wrap);
   }
 
-  function createSelect(label, items, onChange) {
-    const div = document.createElement('div');
-    div.className = 'filter';
-    const lbl = document.createElement('label');
-    lbl.textContent = label;
-    const sel = document.createElement('select');
-    sel.innerHTML = `<option value="">All</option>` +
-      (items || []).map(x => `<option value="${x.name}">${x.name} (${x.count})</option>`).join('');
-    sel.addEventListener('change', () => onChange(sel.value));
-    div.append(lbl, sel);
-    return div;
+  function makeSelect(label, items, onChange) {
+    const d = document.createElement('div'); d.className = 'filter';
+    d.innerHTML = `<label>${label}</label>
+      <select>
+        <option value="">All</option>
+        ${(items||[]).map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)} (${x.count})</option>`).join('')}
+      </select>`;
+    d.querySelector('select').addEventListener('change', e => onChange(e.target.value));
+    return d;
   }
 
   function applyFilter(field, value) {
-    if (!value) {
-      state.filtered = state.allData;
-    } else {
-      state.filtered = state.allData.filter(r => {
-        if (field === 'year') return r.year == value;
-        if (field === 'source') return r.source === value;
-        if (field === 'type') return r.type === value;
-        if (field === 'author') return (r.authors || []).includes(value);
+    let list = state.allData;
+    if (value) {
+      list = state.allData.filter(r => {
+        if (field==='year') return String(r.year) === String(value);
+        if (field==='source') return r.source === value;
+        if (field==='type') return r.type === value;
+        if (field==='author') return (r.authors||[]).includes(value);
         return true;
       });
     }
-    displayResults(state.filtered);
-    resultsCount.textContent = `${state.filtered.length.toLocaleString()} results (filtered)`;
+    renderCards(list);
   }
 
-  /* ------------------------------------------------------------------ */
-  /* RIS Export */
-  /* ------------------------------------------------------------------ */
+  // RIS export
   async function exportRIS(records) {
     try {
       const res = await fetch(`${WORKER_URL}/api/ris`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records })
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ records })
       });
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'qdata-export.ris';
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('RIS export failed: ' + err.message);
+      a.href = url; a.download = 'qdata-export.ris'; a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) {
+      alert('RIS export failed: ' + e.message);
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Helpers */
-  /* ------------------------------------------------------------------ */
-  function findRecord(id) {
-    return state.allData.find(r => r.id === id);
-  }
-
-  function clearResults() {
-    dataCardsContainer.innerHTML = noResultsCard();
-    resultsCount.textContent = '0 results';
-    harvestStatus.textContent = 'Ready';
+  // misc
+  function clearResults(){
+    cards.innerHTML = '';
+    filtersMount.innerHTML = '';
+    state.allData = []; state.selected.clear();
     progressBar.style.width = '0%';
+    clearBtn.style.display = 'none';
   }
-
-  function escapeHtml(text) {
-    return text?.replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c])) || '';
-  }
-
-  function loadingCard(cat) {
-    return `
-      <div class="no-results">
-        <i class="fas fa-spinner fa-spin"></i>
-        <h3>Harvesting in progress...</h3>
-        <p>Fetching ${cat.toUpperCase()} data. Please wait...</p>
-      </div>`;
-  }
-
-  function errorCard(msg) {
-    return `
-      <div class="no-results">
-        <i class="fas fa-exclamation-triangle"></i>
-        <h3>Harvest Failed</h3>
-        <p>${msg}</p>
-      </div>`;
-  }
-
-  function noResultsCard() {
-    return `
-      <div class="no-results">
-        <i class="fas fa-database"></i>
-        <h3>No data available</h3>
-        <p>Click “Harvest” to load records.</p>
-      </div>`;
-  }
+  function findRecord(id){return state.allData.find(r=>r.id===id)}
+  function escapeHtml(t){return t?.replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))||''}
+  function errorCard(msg){return `<div class="data-card" style="padding:24px;text-align:center;color:#a00;">
+    <i class="fa fa-triangle-exclamation"></i> ${escapeHtml(msg)}</div>`}
 });
