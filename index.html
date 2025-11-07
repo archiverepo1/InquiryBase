@@ -6,6 +6,24 @@
   <title>Q Data Research Hub</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* --- Cache Info Bar --- */
+    .cache-info-bar {
+      background: var(--primary);
+      color: #fff;
+      text-align: center;
+      font-size: 14px;
+      padding: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .cache-info-bar span {
+      font-weight: 600;
+      color: var(--secondary);
+    }
+    @media (max-width: 640px) {
+      .cache-info-bar { font-size: 13px; padding: 8px; }
+    }
+  </style>
 </head>
 <body>
   <!-- HEADER -->
@@ -18,6 +36,11 @@
       <div class="header-spacer"></div>
     </div>
   </header>
+
+  <!-- CACHE INFO BAR -->
+  <div class="cache-info-bar" id="cacheInfoBar">
+    <i class="fas fa-circle-notch fa-spin"></i> Checking cache status...
+  </div>
 
   <!-- MAIN CONTAINER -->
   <div class="container">
@@ -49,7 +72,7 @@
       <div class="progress-bar"><div class="progress"></div></div>
       <div class="harvest-status">Ready to harvest</div>
 
-      <!-- Filters (built dynamically by script.js) -->
+      <!-- FILTER BAR -->
       <div class="filters"></div>
 
       <div class="results-content">
@@ -120,5 +143,22 @@
   </footer>
 
   <script src="script.js"></script>
+  <script>
+    // Update the Cache Info Bar based on last harvest
+    async function updateCacheInfo() {
+      const bar = document.getElementById('cacheInfoBar');
+      try {
+        const response = await fetch('https://inquirybase.archiverepo1.workers.dev/api/cache-status');
+        if (!response.ok) throw new Error('Network error');
+        const data = await response.json();
+        bar.innerHTML = `🗓️ <strong>Last Harvest:</strong> <span>${data.lastUpdated || 'Unknown'}</span> • 
+                         <strong>Status:</strong> ${data.cached ? '⚡ Cached (Weekly)' : '🔄 Live Harvest'} • 
+                         <strong>Records:</strong> ${data.total || 0}`;
+      } catch {
+        bar.innerHTML = '⚠️ Unable to fetch cache status. Using fallback.';
+      }
+    }
+    updateCacheInfo();
+  </script>
 </body>
 </html>
