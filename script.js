@@ -1,4 +1,4 @@
-const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
+fetch('https://inquirybase.archiverepo1.workers.dev/api/harvest', { ... })
 
 document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.querySelector(".search-input");
