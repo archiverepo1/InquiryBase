@@ -1,15 +1,13 @@
 // ============================================================================
-// InquiryBase Frontend – production
-// - Filters drive backend (year/repo/type/author)
-// - Cached-first results from Worker, with live re-fetch as needed
-// - Pagination (Prev/Next + totals)
-// - Per-card RIS + bulk RIS
+// InquiryBase Frontend (Stable v2)
+// - Auto retries, no browser caching
+// - Filters trigger backend re-query
+// - Full pagination, RIS export, clear/reset
 // ============================================================================
 
 const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Controls
   const searchInput = document.querySelector(".search-input");
   const searchBtn   = document.querySelector(".search-btn");
   const tabs        = document.querySelectorAll(".tab");
@@ -20,7 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const filtersWrap    = document.getElementById("filtersWrap");
   const bulkRisBtn = document.getElementById("bulkRisButton");
 
-  // pagination bar (create if not present)
   let pager = document.getElementById("paginationBar");
   if (!pager) {
     pager = document.createElement("div");
@@ -31,7 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
     cardsEl.after(pager);
   }
 
-  // App state
   const state = {
     activeCategory: "all",
     isHarvesting: false,
@@ -44,9 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     total: 0
   };
 
-  // ---------------------------------------------------------------------------
-  // EVENTS
-  // ---------------------------------------------------------------------------
+  // ========== EVENTS ==========
 
   searchBtn.addEventListener("click", () => startHarvest(true));
   searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") startHarvest(true); });
@@ -67,11 +61,23 @@ document.addEventListener("DOMContentLoaded", () => {
     exportRIS(records);
   });
 
-  // ---------------------------------------------------------------------------
-  // HARVEST (calls backend, honors filters, paginated)
-  // ---------------------------------------------------------------------------
+  // ========== HARVEST ==========
 
-  async function startHarvest(resetPage=false) {
+  async function safeFetch(url, options, retries = 3) {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const res = await fetch(url, { ...options, cache: "no-store" });
+        if (!res.ok) throw new Error(`Server ${res.status}`);
+        return res;
+      } catch (err) {
+        console.warn("Fetch retry", i + 1, err.message);
+        if (i === retries) throw err;
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+  }
+
+  async function startHarvest(resetPage = false) {
     if (state.isHarvesting) return;
     state.isHarvesting = true;
     if (resetPage) state.page = 1;
@@ -90,30 +96,29 @@ document.addEventListener("DOMContentLoaded", () => {
         perSourceLimit: 1000
       };
 
-      const res = await fetch(`${WORKER_URL}/api/harvest`, {
+      const res = await safeFetch(`${WORKER_URL}/api/harvest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
-      if (!res.ok) throw new Error(`Worker responded with ${res.status}`);
       const data = await res.json();
-      if (!data.success && !Array.isArray(data.results)) throw new Error(data.error || "Unknown error");
 
+      if (!data.success) throw new Error(data.error || "Unknown error");
       state.allData = data.results || [];
       state.total   = data.total || 0;
       state.facets  = data.facets || {};
 
       progressEl.style.width = "65%";
-      buildFilters();              // rebuild facets UI
+      buildFilters();
       displayResults(state.allData);
-      renderPager();               // show pager
+      renderPager();
 
       clearBtn.style.display   = state.allData.length ? "inline-flex" : "none";
       filtersSidebar.style.display = state.allData.length ? "block" : "none";
       progressEl.style.width = "100%";
     } catch (err) {
       console.error(err);
-      cardsEl.innerHTML = errorCard(err.message);
+      cardsEl.innerHTML = errorCard(err.message.includes("fetch") ? "Network error – please retry." : err.message);
       clearBtn.style.display = "inline-flex";
       filtersSidebar.style.display = "none";
       pager.style.display = "none";
@@ -123,9 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // FILTERS (backend-driven)
-  // ---------------------------------------------------------------------------
+  // ========== FILTERS ==========
 
   function buildFilters() {
     filtersWrap.innerHTML = "";
@@ -137,13 +140,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     filtersWrap.append(yearSel, repoSel, typeSel, authSel);
 
-    // Restore current selections
     setSelectValue("filterYear",  state.filters.year);
     setSelectValue("filterRepo",  state.filters.repository);
     setSelectValue("filterType",  state.filters.type);
     setSelectValue("filterAuthor",state.filters.author);
 
-    // Wire change -> re-fetch
     ["filterYear","filterRepo","filterType","filterAuthor"].forEach(id => {
       document.getElementById(id).addEventListener("change", () => {
         state.filters = {
@@ -172,18 +173,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return box;
   }
 
-  function valueOrEmpty(id){ const v = document.getElementById(id)?.value || ""; return v === "All" ? "" : v; }
-  function setSelectValue(id, v){ const el = document.getElementById(id); if (el) el.value = v || ""; }
+  const valueOrEmpty = id => {
+    const v = document.getElementById(id)?.value || "";
+    return v === "All" ? "" : v;
+  };
+  const setSelectValue = (id,v)=>{const el=document.getElementById(id);if(el)el.value=v||"";};
 
-  // ---------------------------------------------------------------------------
-  // RESULTS RENDER
-  // ---------------------------------------------------------------------------
+  // ========== RESULTS ==========
 
   function displayResults(records) {
     if (!records || !records.length) { cardsEl.innerHTML = noResultsCard(); return; }
 
     const frag = document.createDocumentFragment();
-    records.forEach(item => {
+    for (const item of records) {
       const card = document.createElement("div");
       card.className = "data-card";
       card.innerHTML = `
@@ -191,54 +193,42 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="card-type">${escapeHtml(item.type || "")}</div>
           <div class="card-source">${escapeHtml(item.source || "")}</div>
         </div>
-
         <div class="card-body">
           <input type="checkbox" class="select-record" data-id="${item.id}" title="Select for bulk RIS" style="float:right;margin-left:8px">
           <h3 class="card-title">${escapeHtml(item.title || "Untitled")}</h3>
           <div class="card-authors">${escapeHtml((item.authors || []).join(", "))}</div>
-          <p class="card-description">${escapeHtml((item.description || "").slice(0, 320))}${(item.description||"").length>320?"…":""}</p>
+          <p class="card-description">${escapeHtml((item.description || "").slice(0,320))}${(item.description||"").length>320?"…":""}</p>
         </div>
-
         <div class="card-footer">
           <div class="card-meta">
             <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(item.year || "")}</span>
-            ${item.identifier ? `<span>${escapeHtml(item.identifierType || "")}: <a href="${escapeHtml(item.url || "#")}" target="_blank" class="doi-link">${escapeHtml(item.identifier)}</a></span>` : ""}
+            ${item.identifier ? `<span>${escapeHtml(item.identifierType || "")}: <a href="${escapeHtml(item.url || "#")}" target="_blank">${escapeHtml(item.identifier)}</a></span>` : ""}
           </div>
           <div class="card-actions">
-            <button class="btn sm" title="Open record" onclick="window.open('${item.url || "#"}','_blank')">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            </button>
-            <button class="btn sm ris-btn" title="Export RIS" data-id="${item.id}">
-              <i class="fa-solid fa-file-export"></i> Export RIS
-            </button>
+            <button class="btn sm" onclick="window.open('${item.url || "#"}','_blank')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <button class="btn sm ris-btn" data-id="${item.id}"><i class="fa-solid fa-file-export"></i> Export RIS</button>
           </div>
-        </div>
-      `;
+        </div>`;
       frag.appendChild(card);
-    });
-
+    }
     cardsEl.innerHTML = "";
     cardsEl.appendChild(frag);
 
-    // bind per-card RIS + selection
-    cardsEl.querySelectorAll(".ris-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const rec = state.allData.find(r => r.id === btn.dataset.id);
-        if (rec) exportRIS([rec]);
-      });
-    });
+    cardsEl.querySelectorAll(".ris-btn").forEach(btn => btn.addEventListener("click", () => {
+      const rec = state.allData.find(r => r.id === btn.dataset.id);
+      if (rec) exportRIS([rec]);
+    }));
+
     cardsEl.querySelectorAll(".select-record").forEach(cb => {
       cb.addEventListener("change", e => {
         const id = e.target.dataset.id;
-        if (e.target.checked) state.selected.add(id); else state.selected.delete(id);
+        e.target.checked ? state.selected.add(id) : state.selected.delete(id);
         toggleBulkButton();
       });
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // PAGINATION
-  // ---------------------------------------------------------------------------
+  // ========== PAGINATION ==========
 
   function renderPager() {
     if (!state.total) { pager.style.display = "none"; return; }
@@ -253,38 +243,29 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("nextPage").onclick = () => { if (state.page<totalPages) { state.page++; startHarvest(false); } };
   }
 
-  // ---------------------------------------------------------------------------
-  // RIS EXPORT (single & bulk)
-  // ---------------------------------------------------------------------------
+  // ========== RIS EXPORT ==========
 
   async function exportRIS(records) {
     try {
-      const res = await fetch(`${WORKER_URL}/api/ris`, {
+      const res = await safeFetch(`${WORKER_URL}/api/ris`, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ records })
       });
-      if (!res.ok) throw new Error("RIS export failed");
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
+      const a = document.createElement("a");
       a.href = url; a.download = "inquirybase-export.ris"; a.click();
       URL.revokeObjectURL(url);
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert("RIS export failed: " + e.message); }
   }
 
-  // ---------------------------------------------------------------------------
-  // HELPERS
-  // ---------------------------------------------------------------------------
+  // ========== HELPERS ==========
 
   function clearResults() {
-    state.allData = [];
-    state.facets  = {};
-    state.total   = 0;
-    state.page    = 1;
+    state.allData = []; state.facets = {}; state.total = 0; state.page = 1;
     state.filters = { year:"", repository:"", type:"", author:"" };
     state.selected.clear(); toggleBulkButton();
-
     searchInput.value = "";
     cardsEl.innerHTML = noResultsCard();
     filtersSidebar.style.display = "none";
@@ -292,35 +273,14 @@ document.addEventListener("DOMContentLoaded", () => {
     pager.style.display = "none";
   }
 
-  function showLoadingCard(cat){
-    cardsEl.innerHTML = `
-      <div class="no-results">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-        <h3>Harvesting in progress…</h3>
-        <p>Fetching ${escapeHtml((cat||"").toUpperCase())} data. Please wait…</p>
-      </div>`;
-  }
-  function errorCard(msg){
-    return `<div class="no-results">
-      <i class="fa-solid fa-triangle-exclamation"></i>
-      <h3>Harvest Failed</h3>
-      <p>${escapeHtml(msg || "Unknown error")}</p>
-    </div>`;
-  }
-  function noResultsCard(){
-    return `<div class="no-results">
-      <i class="fa-regular fa-circle-question"></i>
-      <h3>No data available</h3>
-      <p>Use the search or select a category to harvest records.</p>
-    </div>`;
-  }
-  function escapeHtml(t){
-    if (t === null || t === undefined) return "";
-    const s = typeof t === "string" ? t : String(t);
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-  function toggleBulkButton(){ bulkRisBtn.style.display = state.selected.size ? "inline-flex" : "none"; }
+  const showLoadingCard = (cat)=>cardsEl.innerHTML=`
+    <div class="no-results"><i class="fa-solid fa-spinner fa-spin"></i>
+      <h3>Harvesting in progress…</h3>
+      <p>Fetching ${escapeHtml((cat||"").toUpperCase())} data. Please wait…</p></div>`;
+  const errorCard = msg => `<div class="no-results"><i class="fa-solid fa-triangle-exclamation"></i><h3>Harvest Failed</h3><p>${escapeHtml(msg)}</p></div>`;
+  const noResultsCard = ()=>`<div class="no-results"><i class="fa-regular fa-circle-question"></i><h3>No data available</h3><p>Use the search or select a category to harvest records.</p></div>`;
+  const escapeHtml = s => String(s||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const toggleBulkButton = ()=>bulkRisBtn.style.display = state.selected.size ? "inline-flex" : "none";
 
-  // kick off with current tab (All)
   startHarvest(true);
 });
