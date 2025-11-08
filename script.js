@@ -1,11 +1,30 @@
-// ============================================================================
-// InquiryBase Frontend (Production Ready)
-// ============================================================================
 
 const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
 
-document.addEventListener("DOMContentLoaded", () => {
+// Test worker connection on load
+async function testWorkerConnection() {
+    try {
+        console.log('Testing worker connection...');
+        const response = await fetch(`${WORKER_URL}/api/health`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        console.log('Worker connection successful:', data);
+        return true;
+    } catch (error) {
+        console.error('Worker connection failed:', error);
+        return false;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
     console.log('InquiryBase frontend initializing...');
+
+    // Test worker connection first
+    const isWorkerOnline = await testWorkerConnection();
+    if (!isWorkerOnline) {
+        showFatalError('Cannot connect to the server. Please ensure the backend service is running.');
+        return;
+    }
 
     // DOM elements
     const searchInput = document.getElementById("searchBox");
@@ -17,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const filtersSide = document.getElementById("filtersSidebar");
     const filtersWrap = document.getElementById("filtersWrap");
     const bulkRisBtn = document.getElementById("bulkRisButton");
-    const paginationEl = document.getElementById("pagination");
 
     // State
     const state = {
@@ -88,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 perSourceLimit: 1000
             };
 
-            console.log("Harvest request:", body);
+            console.log("Sending harvest request:", body);
 
             currentAbort = new AbortController();
             const timeoutId = setTimeout(() => {
@@ -113,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             
             const data = await response.json();
-            console.log("Harvest response:", data);
+            console.log("Harvest response received");
 
             if (!data.success) {
                 throw new Error(data.error || "Request failed");
@@ -167,6 +185,29 @@ document.addEventListener("DOMContentLoaded", () => {
         hidePagination();
         if (filtersSide) filtersSide.style.display = "none";
         if (clearBtn) clearBtn.style.display = "inline-flex";
+    }
+
+    function showFatalError(message) {
+        if (cardsEl) {
+            cardsEl.innerHTML = `
+                <div class="no-results">
+                    <i class="fa-solid fa-unlink" style="color: #dc2626; font-size: 48px;"></i>
+                    <h3 style="color: #dc2626;">Connection Failed</h3>
+                    <p>${message}</p>
+                    <div style="margin-top: 20px;">
+                        <button class="btn" onclick="window.location.reload()" style="margin: 5px;">
+                            <i class="fa-solid fa-refresh"></i> Reload Page
+                        </button>
+                        <button class="btn" onclick="testConnection()" style="margin: 5px;">
+                            <i class="fa-solid fa-wifi"></i> Test Connection
+                        </button>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 14px; color: #666;">
+                        <p>Worker URL: <code>${WORKER_URL}</code></p>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     // ----------------------- Filters UI -----------------------
@@ -339,7 +380,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // ----------------------- Pagination -----------------------
 
     function updatePagination() {
-        if (!paginationEl) return;
+        const paginationEl = document.getElementById("pagination");
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+        const pageInfo = document.getElementById("pageInfo");
+        const totalInfo = document.getElementById("totalInfo");
+        
+        if (!paginationEl || !prevBtn || !nextBtn || !pageInfo || !totalInfo) return;
         
         if (!state.total) {
             hidePagination();
@@ -349,39 +396,31 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
         
         // Update display
-        const pageInfo = document.getElementById("pageInfo");
-        const totalInfo = document.getElementById("totalInfo");
-        const prevBtn = document.getElementById("prevBtn");
-        const nextBtn = document.getElementById("nextBtn");
-        
-        if (pageInfo) pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
-        if (totalInfo) totalInfo.textContent = `${state.total} records`;
-        if (prevBtn) prevBtn.disabled = state.page <= 1;
-        if (nextBtn) nextBtn.disabled = state.page >= totalPages;
+        pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
+        totalInfo.textContent = `${state.total} records`;
+        prevBtn.disabled = state.page <= 1;
+        nextBtn.disabled = state.page >= totalPages;
         
         paginationEl.style.display = "flex";
         
         // Update event handlers
-        if (prevBtn) {
-            prevBtn.onclick = () => {
-                if (state.page > 1) {
-                    state.page--;
-                    harvest();
-                }
-            };
-        }
+        prevBtn.onclick = () => {
+            if (state.page > 1) {
+                state.page--;
+                harvest();
+            }
+        };
         
-        if (nextBtn) {
-            nextBtn.onclick = () => {
-                if (state.page < totalPages) {
-                    state.page++;
-                    harvest();
-                }
-            };
-        }
+        nextBtn.onclick = () => {
+            if (state.page < totalPages) {
+                state.page++;
+                harvest();
+            }
+        };
     }
 
     function hidePagination() {
+        const paginationEl = document.getElementById("pagination");
         if (paginationEl) {
             paginationEl.style.display = "none";
         }
@@ -409,7 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         } catch (error) {
-            alert("Export failed: " + (error.message || "Unknown error"));
+            alert("RIS export failed: " + (error.message || "Unknown error"));
         }
     }
 
@@ -506,6 +545,17 @@ document.addEventListener("DOMContentLoaded", () => {
     function escapeAttr(text) {
         return escapeHtml(String(text || "").replace(/"/g, ""));
     }
+
+    // Global function for testing connection
+    window.testConnection = async function() {
+        const isOnline = await testWorkerConnection();
+        if (isOnline) {
+            alert('Connection successful! The worker is responding.');
+            window.location.reload();
+        } else {
+            alert('Still cannot connect to the server. Please check the Worker deployment.');
+        }
+    };
 
     // Bulk RIS button handler
     bulkRisBtn?.addEventListener("click", () => {
