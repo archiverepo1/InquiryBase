@@ -9,11 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const progressEl  = document.getElementById('progressBar');
   const cardsEl     = document.getElementById('dataCardsContainer');
-  const resultsSec  = document.getElementById('resultsSection');
-
   const filtersSidebar = document.getElementById('filtersSidebar');
   const filtersWrap    = document.getElementById('filtersWrap');
-
   const bulkRisBtn = document.getElementById('bulkRisButton');
 
   // App state
@@ -26,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     selected: new Set()
   };
 
-  // Events
+  // ---------------------------------------------------------------------------
+  // EVENTS
+  // ---------------------------------------------------------------------------
+
   searchBtn.addEventListener('click', () => startHarvest(state.activeCategory, searchInput.value.trim()));
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') startHarvest(state.activeCategory, searchInput.value.trim());
@@ -47,7 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
     exportRIS(records);
   });
 
-  // ---- Harvest ----
+  // ---------------------------------------------------------------------------
+  // HARVEST LOGIC
+  // ---------------------------------------------------------------------------
+
   async function startHarvest(category='all', query='') {
     if (state.isHarvesting) return;
     state.isHarvesting = true;
@@ -82,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       progressEl.style.width = '100%';
     } catch (err) {
+      console.error(err);
       cardsEl.innerHTML = errorCard(err.message);
       clearBtn.style.display = 'inline-flex';
       filtersSidebar.style.display = 'none';
@@ -91,7 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ---- Filters ----
+  // ---------------------------------------------------------------------------
+  // FILTERS
+  // ---------------------------------------------------------------------------
+
   function buildFilters() {
     filtersWrap.innerHTML = '';
 
@@ -133,7 +140,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return box;
   }
 
-  // ---- Display ----
+  // ---------------------------------------------------------------------------
+  // DISPLAY RESULTS
+  // ---------------------------------------------------------------------------
+
   function displayResults(records) {
     if (!records || !records.length) {
       cardsEl.innerHTML = noResultsCard();
@@ -154,14 +164,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="card-body">
           <input type="checkbox" class="select-record" data-id="${item.id}" title="Select for bulk RIS" style="float:right;margin-left:8px">
           <h3 class="card-title">${escapeHtml(item.title || 'Untitled')}</h3>
-          <div class="card-authors">${(item.authors || []).join(', ')}</div>
+          <div class="card-authors">${escapeHtml((item.authors || []).join(', '))}</div>
           <p class="card-description">${escapeHtml((item.description || '').slice(0, 320))}${(item.description||'').length>320?'…':''}</p>
         </div>
 
         <div class="card-footer">
           <div class="card-meta">
-            <span><i class="fa-regular fa-calendar"></i> ${item.year || ''}</span>
-            ${item.identifier ? `<span>${item.identifierType || ''}: <a href="${item.url || '#'}" target="_blank" class="doi-link">${escapeHtml(item.identifier)}</a></span>` : ''}
+            <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(item.year || '')}</span>
+            ${item.identifier ? `<span>${escapeHtml(item.identifierType || '')}: <a href="${escapeHtml(item.url || '#')}" target="_blank" class="doi-link">${escapeHtml(item.identifier)}</a></span>` : ''}
           </div>
           <div class="card-actions">
             <button class="btn sm" title="Open record" onclick="window.open('${item.url || '#'}','_blank')">
@@ -197,7 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ---- RIS Export ----
+  // ---------------------------------------------------------------------------
+  // RIS EXPORT
+  // ---------------------------------------------------------------------------
+
   async function exportRIS(records) {
     try {
       const res = await fetch(`${WORKER_URL}/api/ris`, {
@@ -216,7 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ---- Helpers ----
+  // ---------------------------------------------------------------------------
+  // HELPERS
+  // ---------------------------------------------------------------------------
+
   function clearResults() {
     state.allData = [];
     state.filtered = [];
@@ -254,8 +270,13 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>`;
   }
 
+  // ✅ FIXED escapeHtml
   function escapeHtml(t){
-    return (t||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    if (t === null || t === undefined) return '';
+    const s = typeof t === 'string' ? t : String(t);
+    return s.replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])
+    );
   }
 
   function toggleBulkButton(){
