@@ -1,25 +1,23 @@
 // ============================================================================
 // InquiryBase Frontend – production
-// - Filters drive backend (year/repo/type/author)
-// - Cached-first results from Worker, with live re-fetch as needed
-// - Pagination (Prev/Next + totals)
-// - Per-card RIS + bulk RIS
-// - Cancels in-flight searches to avoid "Failed to fetch" after multiple clicks
+// - Filters (Year/Repo/Type/Author) + Keyword box (last element)
+// - 50 results per page, server-side filtering & pagination
+// - Research: auto live fetch on cache miss; DSpace from 3-day cache
+// - Abort in-flight harvests to avoid network errors on rapid searches
 // ============================================================================
 
 const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Controls
-  const searchInput = document.querySelector(".search-input");
-  const searchBtn   = document.querySelector(".search-btn");
-  const tabs        = document.querySelectorAll(".tab");
-  const clearBtn    = document.getElementById("clearBtn");
-  const progressEl  = document.getElementById("progressBar");
-  const cardsEl     = document.getElementById("dataCardsContainer");
-  const filtersSidebar = document.getElementById("filtersSidebar");
-  const filtersWrap    = document.getElementById("filtersWrap");
-  const bulkRisBtn = document.getElementById("bulkRisButton");
+  const searchInput   = document.querySelector(".search-input"); // top search (optional)
+  const searchBtn     = document.querySelector(".search-btn");
+  const tabs          = document.querySelectorAll(".tab");
+  const clearBtn      = document.getElementById("clearBtn");
+  const progressEl    = document.getElementById("progressBar");
+  const cardsEl       = document.getElementById("dataCardsContainer");
+  const filtersSidebar= document.getElementById("filtersSidebar");
+  const filtersWrap   = document.getElementById("filtersWrap");
+  const bulkRisBtn    = document.getElementById("bulkRisButton");
 
   // pagination bar
   let pager = document.getElementById("paginationBar");
@@ -32,33 +30,38 @@ document.addEventListener("DOMContentLoaded", () => {
     cardsEl.after(pager);
   }
 
-  // in-flight abort handle
+  // a dedicated keyword box at bottom of filters
+  const keywordBox = document.createElement("div");
+  keywordBox.className = "filter";
+  keywordBox.innerHTML = `
+    <label>Keyword</label>
+    <input id="filterKeyword" type="text" placeholder="title, abstract, keywords, author…" />
+    <button id="applyFilterBtn" class="btn sm" style="margin-top:8px">Search</button>
+  `;
+
   let currentAbort = null;
 
-  // App state
   const state = {
     activeCategory: "all",
     isHarvesting: false,
     page: 1,
-    pageSize: 24,
+    pageSize: 50,
     allData: [],
     facets: {},
-    filters: { year:"", repository:"", type:"", author:"" },
+    filters: { year:"", repository:"", type:"", author:"", keyword:"" },
     selected: new Set(),
     total: 0
   };
 
-  // ---------------------------------------------------------------------------
-  // EVENTS
-  // ---------------------------------------------------------------------------
+  /* EVENTS */
 
-  searchBtn.addEventListener("click", () => startHarvest(true));
-  searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") startHarvest(true); });
+  searchBtn.addEventListener("click", () => { state.page = 1; startHarvest(true); });
+  searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { state.page = 1; startHarvest(true); }});
 
   tabs.forEach(t => t.addEventListener("click", () => {
     tabs.forEach(x => x.classList.remove("active"));
     t.classList.add("active");
-    state.activeCategory = t.dataset.type;
+    state.activeCategory = t.dataset.type; // all | articles | theses | research
     state.page = 1;
     startHarvest(true);
   }));
@@ -71,15 +74,10 @@ document.addEventListener("DOMContentLoaded", () => {
     exportRIS(records);
   });
 
-  // ---------------------------------------------------------------------------
-  // HARVEST (calls backend, honors filters, paginated)
-  // ---------------------------------------------------------------------------
+  /* HARVEST */
 
   async function startHarvest(resetPage=false) {
-    if (state.isHarvesting) {
-      // cancel previous to avoid race + "Failed to fetch"
-      if (currentAbort) currentAbort.abort();
-    }
+    if (state.isHarvesting && currentAbort) currentAbort.abort();
     state.isHarvesting = true;
     if (resetPage) state.page = 1;
 
@@ -90,11 +88,16 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const body = {
         category: state.activeCategory,
-        query: (searchInput.value || "").trim(),
+        // combine top search and keyword box: top search acts as baseline query
+        query: (state.filters.keyword || searchInput.value || "").trim(),
         page: state.page,
         pageSize: state.pageSize,
-        filters: state.filters,
-        perSourceLimit: 1000
+        filters: {
+          year: state.filters.year,
+          repository: state.filters.repository,
+          type: state.filters.type,
+          author: state.filters.author
+        }
       };
 
       currentAbort = new AbortController();
@@ -118,14 +121,14 @@ document.addEventListener("DOMContentLoaded", () => {
       renderPager();
 
       clearBtn.style.display   = state.allData.length ? "inline-flex" : "none";
-      filtersSidebar.style.display = state.allData.length ? "block" : "none";
+      filtersSidebar.style.display = "block";
       progressEl.style.width = "100%";
     } catch (err) {
-      if (err.name === "AbortError") return; // a new request started, ignore
+      if (err.name === "AbortError") return;
       console.error(err);
-      cardsEl.innerHTML = errorCard(err.message);
+      cardsEl.innerHTML = errorCard(err.message || "Network error — please retry.");
       clearBtn.style.display = "inline-flex";
-      filtersSidebar.style.display = "none";
+      filtersSidebar.style.display = "block";
       pager.style.display = "none";
     } finally {
       state.isHarvesting = false;
@@ -134,9 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // FILTERS (backend-driven)
-  // ---------------------------------------------------------------------------
+  /* FILTERS UI */
 
   function buildFilters() {
     filtersWrap.innerHTML = "";
@@ -146,27 +147,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const typeSel  = createSelect("Type",        "filterType",  state.facets.types);
     const authSel  = createSelect("Author",      "filterAuthor",state.facets.authors);
 
-    filtersWrap.append(yearSel, repoSel, typeSel, authSel);
+    filtersWrap.append(yearSel, repoSel, typeSel, authSel, keywordBox);
 
     // Restore selections
     setSelectValue("filterYear",  state.filters.year);
     setSelectValue("filterRepo",  state.filters.repository);
     setSelectValue("filterType",  state.filters.type);
     setSelectValue("filterAuthor",state.filters.author);
+    document.getElementById("filterKeyword").value = state.filters.keyword || "";
 
-    // Wire change -> re-fetch
+    // Wire dropdown changes (do not auto-search; user clicks Search)
     ["filterYear","filterRepo","filterType","filterAuthor"].forEach(id => {
       document.getElementById(id).addEventListener("change", () => {
-        state.filters = {
-          year:        valueOrEmpty("filterYear"),
-          repository:  valueOrEmpty("filterRepo"),
-          type:        valueOrEmpty("filterType"),
-          author:      valueOrEmpty("filterAuthor")
-        };
-        state.page = 1;
-        startHarvest(false);
+        state.filters.year        = valueOrEmpty("filterYear");
+        state.filters.repository  = valueOrEmpty("filterRepo");
+        state.filters.type        = valueOrEmpty("filterType");
+        state.filters.author      = valueOrEmpty("filterAuthor");
       });
     });
+
+    // Keyword button triggers fetch
+    document.getElementById("applyFilterBtn").onclick = () => {
+      state.filters.keyword = (document.getElementById("filterKeyword").value || "").trim();
+      state.page = 1;
+      startHarvest(false);
+    };
   }
 
   function createSelect(label, id, items) {
@@ -186,9 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function valueOrEmpty(id){ const v = document.getElementById(id)?.value || ""; return v === "All" ? "" : v; }
   function setSelectValue(id, v){ const el = document.getElementById(id); if (el) el.value = v || ""; }
 
-  // ---------------------------------------------------------------------------
-  // RESULTS RENDER
-  // ---------------------------------------------------------------------------
+  /* RESULTS */
 
   function displayResults(records) {
     if (!records || !records.length) { cardsEl.innerHTML = noResultsCard(); return; }
@@ -231,7 +234,6 @@ document.addEventListener("DOMContentLoaded", () => {
     cardsEl.innerHTML = "";
     cardsEl.appendChild(frag);
 
-    // bind per-card RIS + selection
     cardsEl.querySelectorAll(".ris-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const rec = state.allData.find(r => r.id === btn.dataset.id);
@@ -247,9 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // PAGINATION
-  // ---------------------------------------------------------------------------
+  /* PAGINATION */
 
   function renderPager() {
     if (!state.total) { pager.style.display = "none"; return; }
@@ -264,9 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("nextPage").onclick = () => { if (state.page<totalPages) { state.page++; startHarvest(false); } };
   }
 
-  // ---------------------------------------------------------------------------
-  // RIS EXPORT (single & bulk)
-  // ---------------------------------------------------------------------------
+  /* RIS */
 
   async function exportRIS(records) {
     try {
@@ -284,22 +282,19 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) { alert(e.message); }
   }
 
-  // ---------------------------------------------------------------------------
-  // HELPERS
-  // ---------------------------------------------------------------------------
+  /* HELPERS */
 
   function clearResults() {
     state.allData = [];
     state.facets  = {};
     state.total   = 0;
     state.page    = 1;
-    state.filters = { year:"", repository:"", type:"", author:"" };
+    state.filters = { year:"", repository:"", type:"", author:"", keyword:"" };
     state.selected.clear(); toggleBulkButton();
 
     searchInput.value = "";
+    document.getElementById("filterKeyword")?.value = "";
     cardsEl.innerHTML = noResultsCard();
-    filtersSidebar.style.display = "none";
-    clearBtn.style.display = "none";
     pager.style.display = "none";
   }
 
@@ -332,6 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function toggleBulkButton(){ bulkRisBtn.style.display = state.selected.size ? "inline-flex" : "none"; }
 
-  // kick off
+  // initial load
   startHarvest(true);
 });
