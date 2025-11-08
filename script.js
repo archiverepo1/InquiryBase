@@ -17,12 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const filtersSide = document.getElementById("filtersSidebar");
     const filtersWrap = document.getElementById("filtersWrap");
     const bulkRisBtn = document.getElementById("bulkRisButton");
-
-    // Remove any conflicting inline pagination handlers
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const pageInfo = document.getElementById("pageInfo");
-    const totalInfo = document.getElementById("totalInfo");
     const paginationEl = document.getElementById("pagination");
 
     // State
@@ -345,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ----------------------- Pagination -----------------------
 
     function updatePagination() {
-        if (!paginationEl || !prevBtn || !nextBtn || !pageInfo || !totalInfo) return;
+        if (!paginationEl) return;
         
         if (!state.total) {
             hidePagination();
@@ -355,34 +349,36 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
         
         // Update display
-        pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
-        totalInfo.textContent = `${state.total} records`;
-        prevBtn.disabled = state.page <= 1;
-        nextBtn.disabled = state.page >= totalPages;
+        const pageInfo = document.getElementById("pageInfo");
+        const totalInfo = document.getElementById("totalInfo");
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+        
+        if (pageInfo) pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
+        if (totalInfo) totalInfo.textContent = `${state.total} records`;
+        if (prevBtn) prevBtn.disabled = state.page <= 1;
+        if (nextBtn) nextBtn.disabled = state.page >= totalPages;
         
         paginationEl.style.display = "flex";
         
-        // Update event handlers - remove old ones first
-        prevBtn.replaceWith(prevBtn.cloneNode(true));
-        nextBtn.replaceWith(nextBtn.cloneNode(true));
+        // Update event handlers
+        if (prevBtn) {
+            prevBtn.onclick = () => {
+                if (state.page > 1) {
+                    state.page--;
+                    harvest();
+                }
+            };
+        }
         
-        // Get new references
-        const newPrevBtn = document.getElementById("prevBtn");
-        const newNextBtn = document.getElementById("nextBtn");
-        
-        newPrevBtn.onclick = () => {
-            if (state.page > 1) {
-                state.page--;
-                harvest();
-            }
-        };
-        
-        newNextBtn.onclick = () => {
-            if (state.page < totalPages) {
-                state.page++;
-                harvest();
-            }
-        };
+        if (nextBtn) {
+            nextBtn.onclick = () => {
+                if (state.page < totalPages) {
+                    state.page++;
+                    harvest();
+                }
+            };
+        }
     }
 
     function hidePagination() {
@@ -521,5 +517,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial load
     console.log('Starting initial harvest...');
-    harvest();
+    setTimeout(() => harvest(), 100);
 });
