@@ -10,7 +10,53 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css"/>
+
+  <style>
+    /* ========== Header Logo Resize ========== */
+    .brand-logo {
+      height: 80px;           /* was smaller before */
+      width: auto;
+      object-fit: contain;
+      transition: transform 0.2s ease;
+    }
+    .brand-logo:hover {
+      transform: scale(1.05);
+    }
+
+    /* ========== Pagination ========== */
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin: 30px 0;
+      font-weight: 500;
+    }
+    .pagination-controls button {
+      background-color: #002c5f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+    .pagination-controls button:hover {
+      background-color: #01408b;
+    }
+    .pagination-controls button[disabled] {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .pagination-controls #pageInfo,
+    .pagination-controls #totalInfo {
+      color: #333;
+      font-size: 14px;
+    }
+  </style>
 </head>
+
 <body>
   <!-- HEADER -->
   <header class="site-header">
@@ -28,9 +74,9 @@
     <!-- SEARCH -->
     <section class="search-section">
       <div class="search-row">
-        <input class="search-input" type="text"
+        <input class="search-input" id="searchBox" type="text"
                placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'/>
-        <button class="btn search-btn"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+        <button class="btn search-btn" id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
       </div>
 
       <!-- Category tabs -->
@@ -62,6 +108,14 @@
           <div class="progress-bar"><div class="progress" id="progressBar"></div></div>
           <div class="data-cards-container" id="dataCardsContainer">
             <!-- JS will render -->
+          </div>
+
+          <!-- Pagination controls -->
+          <div id="pagination" class="pagination-controls" style="display:none;">
+            <button id="prevBtn" disabled>← Prev</button>
+            <span id="pageInfo">Page 1</span>
+            <button id="nextBtn" disabled>Next →</button>
+            <span id="totalInfo"></span>
           </div>
         </div>
       </div>
@@ -106,5 +160,56 @@
 
   <!-- Scripts -->
   <script src="script.js"></script>
+  <script>
+    /* ================= PAGINATION SCRIPT ================= */
+    let currentPage = 1;
+    let totalPages = 1;
+    const pageSize = 24;
+    const workerURL = "https://inquirybase.archiverepo1.workers.dev";
+
+    async function loadPage(page = 1) {
+      const query = document.querySelector("#searchBox").value.trim();
+      const activeTab = document.querySelector(".tab.active");
+      const category = activeTab ? activeTab.dataset.type : "all";
+
+      const res = await fetch(`${workerURL}/api/harvest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, query, page, pageSize })
+      });
+      const data = await res.json();
+
+      renderResults(data.results); // assumes your script.js has this function
+
+      updatePagination(data.page, Math.ceil(data.total / pageSize), data.total);
+      document.getElementById("pagination").style.display = "flex";
+    }
+
+    function updatePagination(page, totalPagesCalc, total) {
+      currentPage = page;
+      totalPages = totalPagesCalc;
+      document.getElementById("pageInfo").textContent = `Page ${page} of ${totalPages}`;
+      document.getElementById("totalInfo").textContent = `${total} records`;
+      document.getElementById("prevBtn").disabled = page <= 1;
+      document.getElementById("nextBtn").disabled = page >= totalPages;
+    }
+
+    document.getElementById("prevBtn").onclick = () => {
+      if (currentPage > 1) loadPage(currentPage - 1);
+    };
+    document.getElementById("nextBtn").onclick = () => {
+      if (currentPage < totalPages) loadPage(currentPage + 1);
+    };
+
+    // Attach search + tab click
+    document.getElementById("searchBtn").onclick = () => loadPage(1);
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        btn.classList.add("active");
+        loadPage(1);
+      });
+    });
+  </script>
 </body>
 </html>
