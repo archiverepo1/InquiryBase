@@ -1,16 +1,11 @@
 // ============================================================================
-// InquiryBase Frontend (Production)
-// - Works with your existing HTML/CSS
-// - Filters: Year/Repository/Type/Author + Keyword (last element, below filters)
-// - Tabs: all | research | articles | theses
-// - 50 per page, cached-first, live fallback handled by Worker
-// - In-flight cancellation to avoid "Failed to fetch" after multiple clicks
+// InquiryBase Frontend (Fixed Version - Compatible with Your HTML)
 // ============================================================================
 
 const WORKER_URL = "https://inquirybase.archiverepo1.workers.dev";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // DOM
+  // DOM elements
   const searchInput   = document.getElementById("searchBox");
   const searchBtn     = document.getElementById("searchBtn");
   const clearBtn      = document.getElementById("clearBtn");
@@ -21,28 +16,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const filtersWrap   = document.getElementById("filtersWrap");
   const bulkRisBtn    = document.getElementById("bulkRisButton");
 
-  // Build pagination container if missing
-  let pager = document.getElementById("paginationBar");
-  if (!pager) {
-    pager = document.createElement("div");
-    pager.id = "paginationBar";
-    pager.style.display = "none";
-    pager.style.margin = "16px 0";
-    pager.style.textAlign = "center";
-    cardsEl.after(pager);
-  }
-
   // State
   const state = {
     activeCategory: "all",
     page: 1,
-    pageSize: 50,
+    pageSize: 50, // Worker uses 50, inline script uses 24 - we'll use worker's pagination
     total: 0,
     allData: [],
     facets: {},
     filters: { year: "", repository: "", type: "", author: "" },
-    filterKeyword: "",      // from the Keyword box (below filters)
-    topQuery: "",           // from the top search bar
+    filterKeyword: "",
+    topQuery: "",
     isLoading: false,
     selected: new Set()
   };
@@ -51,13 +35,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ----------------------- Events -----------------------
 
-  // Top search
-  searchBtn.addEventListener("click", () => {
-    state.topQuery = (searchInput.value || "").trim();
+  searchBtn?.addEventListener("click", () => {
+    state.topQuery = (searchInput?.value || "").trim();
     state.page = 1;
     harvest();
   });
-  searchInput.addEventListener("keydown", (e) => {
+
+  searchInput?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       state.topQuery = (searchInput.value || "").trim();
       state.page = 1;
@@ -65,7 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Tabs
   tabs.forEach(t => t.addEventListener("click", () => {
     tabs.forEach(x => x.classList.remove("active"));
     t.classList.add("active");
@@ -74,8 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     harvest();
   }));
 
-  // Clear all UI
-  clearBtn.addEventListener("click", () => {
+  clearBtn?.addEventListener("click", () => {
     state.page = 1;
     state.total = 0;
     state.allData = [];
@@ -86,12 +68,12 @@ document.addEventListener("DOMContentLoaded", () => {
     state.selected.clear();
     toggleBulkButton();
 
-    searchInput.value = "";
-    filtersSide.style.display = "none";
-    clearBtn.style.display = "none";
-    pager.style.display = "none";
+    if (searchInput) searchInput.value = "";
+    if (filtersSide) filtersSide.style.display = "none";
+    if (clearBtn) clearBtn.style.display = "none";
+    hidePagination();
 
-    cardsEl.innerHTML = emptyCard();
+    if (cardsEl) cardsEl.innerHTML = emptyCard();
   });
 
   // ----------------------- Harvest -----------------------
@@ -100,12 +82,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (state.isLoading) {
       if (currentAbort) currentAbort.abort();
     }
+    
     state.isLoading = true;
     progress(0.12);
     showLoading();
 
     try {
-      // merge queries: filter keyword + top search bar
+      // Merge queries
       const combinedQuery = [state.topQuery, state.filterKeyword].filter(Boolean).join(" ").trim();
 
       const body = {
@@ -117,15 +100,30 @@ document.addEventListener("DOMContentLoaded", () => {
         perSourceLimit: 1000
       };
 
+      console.log("Sending harvest request:", body);
+
       currentAbort = new AbortController();
       const res = await fetch(`${WORKER_URL}/api/harvest?t=${Date.now()}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        headers: { 
+          "Content-Type": "application/json", 
+          "Cache-Control": "no-store" 
+        },
         body: JSON.stringify(body),
         signal: currentAbort.signal
       });
-      if (!res.ok) throw new Error(`Worker responded with ${res.status}`);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Worker responded with ${res.status}: ${errorText}`);
+      }
+      
       const data = await res.json();
+      console.log("Received data:", data);
+
+      if (!data.success) {
+        throw new Error(data.error || "Unknown error from worker");
+      }
 
       state.allData = Array.isArray(data.results) ? data.results : [];
       state.facets  = data.facets || {};
@@ -133,20 +131,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
       progress(0.7);
 
-      buildFilters();               // rebuild left filters + keyword box
-      renderCards(state.allData);   // page slice already handled by Worker
-      renderPager();                // prev/next
+      buildFilters();
+      renderCards(state.allData);
+      updatePagination();
 
-      // UI bits
-      filtersSide.style.display = state.allData.length ? "block" : "none";
-      clearBtn.style.display    = state.allData.length ? "inline-flex" : "none";
+      // Update UI visibility
+      if (filtersSide) {
+        filtersSide.style.display = state.allData.length ? "block" : "none";
+      }
+      if (clearBtn) {
+        clearBtn.style.display = state.allData.length ? "inline-flex" : "none";
+      }
       progress(1);
     } catch (e) {
+      console.error("Harvest error:", e);
       if (e.name !== "AbortError") {
-        cardsEl.innerHTML = errorCard(e.message || "Network error — please retry.");
-        pager.style.display = "none";
-        filtersSide.style.display = "none";
-        clearBtn.style.display = "inline-flex";
+        const errorMessage = e.message || "Network error — please retry.";
+        if (cardsEl) cardsEl.innerHTML = errorCard(errorMessage);
+        hidePagination();
+        if (filtersSide) filtersSide.style.display = "none";
+        if (clearBtn) clearBtn.style.display = "inline-flex";
       }
     } finally {
       state.isLoading = false;
@@ -158,6 +162,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ----------------------- Filters UI -----------------------
 
   function buildFilters() {
+    if (!filtersWrap) return;
+
     filtersWrap.innerHTML = "";
 
     const addSelect = (label, id, items) => {
@@ -189,22 +195,24 @@ document.addEventListener("DOMContentLoaded", () => {
     setVal("filterType", state.filters.type);
     setVal("filterAuthor", state.filters.author);
 
-    // Bind change -> re-harvest same category (server filters applied)
+    // Bind change events
     ["filterYear", "filterRepo", "filterType", "filterAuthor"].forEach(id => {
       const el = document.getElementById(id);
-      el.addEventListener("change", () => {
-        state.filters = {
-          year:        getVal("filterYear"),
-          repository:  getVal("filterRepo"),
-          type:        getVal("filterType"),
-          author:      getVal("filterAuthor")
-        };
-        state.page = 1;
-        harvest();
-      });
+      if (el) {
+        el.addEventListener("change", () => {
+          state.filters = {
+            year:        getVal("filterYear"),
+            repository:  getVal("filterRepo"),
+            type:        getVal("filterType"),
+            author:      getVal("filterAuthor")
+          };
+          state.page = 1;
+          harvest();
+        });
+      }
     });
 
-    // Keyword box (last element)
+    // Keyword box
     const kw = document.createElement("div");
     kw.className = "filter";
     kw.innerHTML = `
@@ -217,24 +225,35 @@ document.addEventListener("DOMContentLoaded", () => {
       <small style="color:#666;">Tip: use quotes for exact matches, e.g. "machine learning"</small>
     `;
     filtersWrap.appendChild(kw);
-    document.getElementById("filterKeyword").value = state.filterKeyword || "";
-    document.getElementById("filterKeyword").addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        state.filterKeyword = (document.getElementById("filterKeyword").value || "").trim();
+    
+    const keywordInput = document.getElementById("filterKeyword");
+    const keywordBtn = document.getElementById("filterSearchBtn");
+    
+    if (keywordInput) {
+      keywordInput.value = state.filterKeyword || "";
+      keywordInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          state.filterKeyword = (keywordInput.value || "").trim();
+          state.page = 1;
+          harvest();
+        }
+      });
+    }
+    
+    if (keywordBtn) {
+      keywordBtn.addEventListener("click", () => {
+        state.filterKeyword = (keywordInput?.value || "").trim();
         state.page = 1;
         harvest();
-      }
-    });
-    document.getElementById("filterSearchBtn").addEventListener("click", () => {
-      state.filterKeyword = (document.getElementById("filterKeyword").value || "").trim();
-      state.page = 1;
-      harvest();
-    });
+      });
+    }
   }
 
   // ----------------------- Cards -----------------------
 
   function renderCards(records) {
+    if (!cardsEl) return;
+    
     if (!records || !records.length) {
       cardsEl.innerHTML = emptyCard();
       return;
@@ -246,15 +265,15 @@ document.addEventListener("DOMContentLoaded", () => {
       card.className = "data-card";
       card.innerHTML = `
         <div class="card-header">
-          <div class="card-type">${escapeHtml(item.type || "")}</div>
-          <div class="card-source">${escapeHtml(item.source || "")}</div>
+          <div class="card-type">${escapeHtml(item.type || "Unknown")}</div>
+          <div class="card-source">${escapeHtml(item.source || "Unknown")}</div>
         </div>
 
         <div class="card-body">
           <input type="checkbox" class="select-record" data-id="${item.id}"
                  title="Select for bulk RIS" style="float:right;margin-left:8px">
           <h3 class="card-title">${escapeHtml(item.title || "Untitled")}</h3>
-          <div class="card-authors">${escapeHtml((item.authors || []).join(", "))}</div>
+          <div class="card-authors">${escapeHtml(formatAuthors(item.authors))}</div>
           <p class="card-description">
             ${escapeHtml((item.description || "").slice(0, 320))}
             ${(item.description || "").length > 320 ? "…" : ""}
@@ -263,9 +282,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         <div class="card-footer">
           <div class="card-meta">
-            <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(item.year || "")}</span>
+            <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(item.year || "Unknown")}</span>
             ${item.identifier
-              ? `<span>${escapeHtml(item.identifierType || "")}: 
+              ? `<span>${escapeHtml(item.identifierType || "ID")}: 
                    <a href="${escapeAttr(item.url || "#")}" target="_blank" class="doi-link">
                      ${escapeHtml(item.identifier)}
                    </a>
@@ -289,13 +308,14 @@ document.addEventListener("DOMContentLoaded", () => {
     cardsEl.innerHTML = "";
     cardsEl.appendChild(frag);
 
-    // Bind RIS + selection
+    // Bind events
     cardsEl.querySelectorAll(".ris-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const rec = state.allData.find(r => r.id === btn.dataset.id);
         if (rec) exportRIS([rec]);
       });
     });
+    
     cardsEl.querySelectorAll(".select-record").forEach(cb => {
       cb.addEventListener("change", e => {
         const id = e.target.dataset.id;
@@ -308,25 +328,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ----------------------- Pagination -----------------------
 
-  function renderPager() {
+  function updatePagination() {
+    const paginationEl = document.getElementById("pagination");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const pageInfo = document.getElementById("pageInfo");
+    const totalInfo = document.getElementById("totalInfo");
+    
+    if (!paginationEl || !prevBtn || !nextBtn || !pageInfo || !totalInfo) return;
+    
     if (!state.total) {
-      pager.style.display = "none";
+      paginationEl.style.display = "none";
       return;
     }
+    
     const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
-    pager.style.display = "block";
-    pager.innerHTML = `
-      <button class="btn sm" id="prevPage" ${state.page <= 1 ? "disabled" : ""}>Prev</button>
-      <span style="margin:0 10px">Page ${state.page} of ${totalPages} • ${state.total.toLocaleString()} results</span>
-      <button class="btn sm" id="nextPage" ${state.page >= totalPages ? "disabled" : ""}>Next</button>
-    `;
-    document.getElementById("prevPage").onclick = () => {
-      if (state.page > 1) { state.page--; harvest(); }
+    
+    // Update display
+    pageInfo.textContent = `Page ${state.page} of ${totalPages}`;
+    totalInfo.textContent = `${state.total} records`;
+    prevBtn.disabled = state.page <= 1;
+    nextBtn.disabled = state.page >= totalPages;
+    
+    paginationEl.style.display = "flex";
+    
+    // Update event handlers
+    prevBtn.onclick = () => {
+      if (state.page > 1) {
+        state.page--;
+        harvest();
+      }
     };
-    document.getElementById("nextPage").onclick = () => {
-      const totalPages2 = Math.max(1, Math.ceil(state.total / state.pageSize));
-      if (state.page < totalPages2) { state.page++; harvest(); }
+    
+    nextBtn.onclick = () => {
+      if (state.page < totalPages) {
+        state.page++;
+        harvest();
+      }
     };
+  }
+
+  function hidePagination() {
+    const paginationEl = document.getElementById("pagination");
+    if (paginationEl) {
+      paginationEl.style.display = "none";
+    }
   }
 
   // ----------------------- RIS Export -----------------------
@@ -338,22 +384,28 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ records })
       });
+      
       if (!res.ok) throw new Error("RIS export failed");
+      
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "inquirybase-export.ris";
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(e.message || "RIS export failed");
+      alert("RIS export failed: " + (e.message || "Unknown error"));
     }
   }
 
   // ----------------------- Helpers -----------------------
 
   function showLoading() {
+    if (!cardsEl) return;
+    
     cardsEl.innerHTML = `
       <div class="no-results">
         <i class="fa-solid fa-spinner fa-spin"></i>
@@ -362,15 +414,18 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `;
   }
+
   function errorCard(msg) {
     return `
       <div class="no-results">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <h3>Harvest Failed</h3>
         <p>${escapeHtml(msg || "Unknown error")}</p>
+        <button class="btn" onclick="location.reload()" style="margin-top: 10px;">Retry</button>
       </div>
     `;
   }
+
   function emptyCard() {
     return `
       <div class="no-results">
@@ -382,17 +437,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function toggleBulkButton() {
-    bulkRisBtn.style.display = state.selected.size ? "inline-flex" : "none";
+    if (bulkRisBtn) {
+      bulkRisBtn.style.display = state.selected.size ? "inline-flex" : "none";
+    }
   }
 
   function progress(ratio) {
-    progressEl.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+    if (progressEl) {
+      progressEl.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+    }
   }
 
   function setVal(id, v) {
     const el = document.getElementById(id);
     if (el) el.value = v || "";
   }
+
   function getVal(id) {
     const el = document.getElementById(id);
     if (!el) return "";
@@ -400,20 +460,26 @@ document.addEventListener("DOMContentLoaded", () => {
     return v === "All" ? "" : v;
   }
 
+  function formatAuthors(authors) {
+    if (!authors || !Array.isArray(authors)) return "Unknown author";
+    return authors.join(", ");
+  }
+
   function escapeHtml(t) {
     if (t === null || t === undefined) return "";
     const s = typeof t === "string" ? t : String(t);
     return s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
   }
+
   function escapeAttr(t) {
     return escapeHtml(String(t || "").replace(/"/g, ""));
   }
 
-  // Initial load (All Sources, first page)
-  harvest();
+  // Initial load
+  setTimeout(() => harvest(), 100);
 
-  // Floating bulk RIS button handler
-  bulkRisBtn.addEventListener("click", () => {
+  // Bulk RIS button handler
+  bulkRisBtn?.addEventListener("click", () => {
     const records = Array.from(state.selected)
       .map(id => state.allData.find(r => r.id === id))
       .filter(Boolean);
