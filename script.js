@@ -1,8 +1,8 @@
 /* ============================================================================
-   InquiryBase Frontend v3.3 (Production)
-   Connects to Cloudflare Worker backend for live harvesting + cached results
-   Author: UFS Digital Scholarship | InquiryBase Project
-   ============================================================================ */
+   InquiryBase Frontend v3.4 (Production)
+   Connects to Cloudflare Worker backend
+   Maintains UI from index.html + style.css
+   ========================================================================= */
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 let currentCategory = "all";
@@ -11,14 +11,14 @@ let currentPage = 1;
 let totalPages = 1;
 const PAGE_SIZE = 24;
 
-/* ------------------------- Helpers ------------------------- */
-function qs(sel) { return document.querySelector(sel); }
-function qsa(sel) { return [...document.querySelectorAll(sel)]; }
-function html(el, v) { el.innerHTML = v; }
-function show(el) { el.style.display = ""; }
-function hide(el) { el.style.display = "none"; }
+/* ---------------- Utility Shortcuts ---------------- */
+const qs = (sel) => document.querySelector(sel);
+const qsa = (sel) => [...document.querySelectorAll(sel)];
+const html = (el, v) => (el.innerHTML = v);
+const show = (el) => (el.style.display = "");
+const hide = (el) => (el.style.display = "none");
 
-/* ------------------------- Fetch Results ------------------------- */
+/* ---------------- Fetch + Render Data ---------------- */
 async function fetchResults(category = "all", query = "", filters = {}, page = 1, pageSize = PAGE_SIZE) {
   const progress = qs("#progressBar");
   if (progress) progress.style.width = "25%";
@@ -27,24 +27,23 @@ async function fetchResults(category = "all", query = "", filters = {}, page = 1
     const res = await fetch(`${API_BASE}/harvest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, query, filters, page, pageSize })
+      body: JSON.stringify({ category, query, filters, page, pageSize }),
     });
 
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || "Failed to fetch data");
+    if (!data.success) throw new Error(data.error || "No data returned");
 
     renderResults(data.results);
     updatePagination(data.page, Math.ceil(data.total / pageSize), data.total);
     if (progress) progress.style.width = "100%";
-
   } catch (err) {
-    console.error("❌ Harvest error:", err);
+    console.error("❌ Fetch error:", err);
     showError(`⚠️ ${err.message}`);
     if (progress) progress.style.width = "0";
   }
 }
 
-/* ------------------------- Render Results ------------------------- */
+/* ---------------- Render Cards ---------------- */
 function renderResults(records = []) {
   const container = qs("#dataCardsContainer");
   if (!container) return;
@@ -54,8 +53,8 @@ function renderResults(records = []) {
     html(container, `
       <div class="no-results">
         <i class="fas fa-database"></i>
-        <h3>Harvest Failed or No Results</h3>
-        <p>No data retrieved. Try another category or search again.</p>
+        <h3>No Results Found</h3>
+        <p>The harvest cache may be empty. Try again later or adjust filters.</p>
       </div>
     `);
     hide(qs("#pagination"));
@@ -92,7 +91,7 @@ function renderResults(records = []) {
   show(qs("#pagination"));
 }
 
-/* ------------------------- Pagination ------------------------- */
+/* ---------------- Pagination ---------------- */
 function updatePagination(page, totalPagesCalc, total) {
   currentPage = page;
   totalPages = totalPagesCalc;
@@ -109,16 +108,16 @@ qs("#nextBtn")?.addEventListener("click", () => {
   if (currentPage < totalPages) fetchResults(currentCategory, currentQuery, {}, currentPage + 1);
 });
 
-/* ------------------------- Search & Tabs ------------------------- */
+/* ---------------- Search + Tabs ---------------- */
 qs("#searchBtn")?.addEventListener("click", () => {
   const query = qs("#searchBox")?.value.trim() || "";
   currentQuery = query;
   fetchResults(currentCategory, currentQuery, {}, 1);
 });
 
-qsa(".tab").forEach(btn => {
+qsa(".tab").forEach((btn) => {
   btn.addEventListener("click", () => {
-    qsa(".tab").forEach(t => t.classList.remove("active"));
+    qsa(".tab").forEach((t) => t.classList.remove("active"));
     btn.classList.add("active");
     currentCategory = btn.dataset.type;
     currentPage = 1;
@@ -126,27 +125,24 @@ qsa(".tab").forEach(btn => {
   });
 });
 
-/* ------------------------- Bulk RIS Export ------------------------- */
+/* ---------------- Bulk RIS Export ---------------- */
 qs("#bulkRisButton")?.addEventListener("click", async () => {
-  const selected = qsa(".select-record:checked").map(c => c.dataset.id);
-  if (!selected.length) return alert("Select some records first.");
+  const selected = qsa(".select-record:checked");
+  if (!selected.length) return alert("Select at least one record.");
 
-  const cards = qsa(".data-card");
-  const records = [];
-  cards.forEach((c, i) => {
-    const chk = c.querySelector(".select-record");
-    if (chk && chk.checked) {
-      const title = c.querySelector(".card-title")?.textContent;
-      const authors = c.querySelector(".card-authors")?.textContent?.split(",") || [];
-      const year = c.querySelector(".card-meta span b")?.nextSibling?.textContent?.trim() || "";
-      records.push({ title, authors, year });
-    }
+  const records = selected.map((chk) => {
+    const card = chk.closest(".data-card");
+    return {
+      title: card.querySelector(".card-title")?.textContent || "",
+      authors: (card.querySelector(".card-authors")?.textContent || "").split(", "),
+      year: card.querySelector(".card-meta")?.textContent.match(/\d{4}/)?.[0] || "",
+    };
   });
 
   const res = await fetch(`${API_BASE}/ris`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ records })
+    body: JSON.stringify({ records }),
   });
 
   const blob = await res.blob();
@@ -158,7 +154,7 @@ qs("#bulkRisButton")?.addEventListener("click", async () => {
   URL.revokeObjectURL(url);
 });
 
-/* ------------------------- Selection toggle ------------------------- */
+/* ---------------- Toggle Floating RIS Button ---------------- */
 document.addEventListener("change", (e) => {
   if (e.target.classList.contains("select-record")) {
     const anyChecked = qsa(".select-record:checked").length > 0;
@@ -166,20 +162,20 @@ document.addEventListener("change", (e) => {
   }
 });
 
-/* ------------------------- Error Handler ------------------------- */
+/* ---------------- Error Handling ---------------- */
 function showError(msg) {
   const container = qs("#dataCardsContainer");
   html(container, `
     <div class="no-results">
       <i class="fas fa-exclamation-triangle"></i>
-      <h3>Harvest Failed</h3>
+      <h3>Error</h3>
       <p>${msg}</p>
     </div>
   `);
   hide(qs("#pagination"));
 }
 
-/* ------------------------- On load ------------------------- */
+/* ---------------- Auto-load Cached Harvest ---------------- */
 window.addEventListener("DOMContentLoaded", () => {
   fetchResults("all", "");
 });
