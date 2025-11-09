@@ -1,9 +1,3 @@
-/* ============================================================================
-   InquiryBase Frontend v3.8.1 (Production - Fixed)
-   - Fixed API response handling
-   - Better error management
-   - Enhanced debugging
-   ========================================================================== */
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
@@ -110,6 +104,10 @@ function renderResults(records = []) {
       const identifier = r.identifier || "—";
       const url = r.url || "#";
 
+      // Enhanced URL validation for DSpace records
+      const hasValidUrl = url && url !== '#' && url.startsWith('http');
+      const displayUrl = hasValidUrl ? url : "#";
+      
       c.insertAdjacentHTML("beforeend", `
         <div class="data-card">
           <div class="card-header">
@@ -127,7 +125,7 @@ function renderResults(records = []) {
               <span><b>ID:</b> ${identifier}</span>
             </div>
             <div class="card-actions">
-              ${url !== '#' ? `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Open</a>` : ''}
+              ${hasValidUrl ? `<a class="btn sm" href="${displayUrl}" target="_blank" rel="noopener">Open</a>` : '<span class="btn sm disabled">No URL</span>'}
               <input class="select-record" type="checkbox" data-record="${recJSON}">
             </div>
           </div>
@@ -363,7 +361,7 @@ function renderError(msg) {
 
 /* ---------- initial load ---------- */
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("InquiryBase Frontend initialized");
+  console.log("InquiryBase Frontend v3.9.0 initialized (DSpace URI Fix)");
   initializeEventListeners();
   fetchResults(1);
 });
