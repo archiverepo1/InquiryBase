@@ -14,14 +14,12 @@
   <style>
     /* ========== Header Logo Resize ========== */
     .brand-logo {
-      height: 80px;           /* was smaller before */
+      height: 80px;
       width: auto;
       object-fit: contain;
       transition: transform 0.2s ease;
     }
-    .brand-logo:hover {
-      transform: scale(1.05);
-    }
+    .brand-logo:hover { transform: scale(1.05); }
 
     /* ========== Pagination ========== */
     .pagination-controls {
@@ -42,9 +40,7 @@
       font-size: 14px;
       transition: background-color 0.2s ease;
     }
-    .pagination-controls button:hover {
-      background-color: #01408b;
-    }
+    .pagination-controls button:hover { background-color: #01408b; }
     .pagination-controls button[disabled] {
       opacity: 0.4;
       cursor: not-allowed;
@@ -76,7 +72,9 @@
       <div class="search-row">
         <input class="search-input" id="searchBox" type="text"
                placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'/>
-        <button class="btn search-btn" id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+        <button class="btn search-btn" id="searchBtn">
+          <i class="fa-solid fa-magnifying-glass"></i> Search
+        </button>
       </div>
 
       <!-- Category tabs -->
@@ -97,7 +95,7 @@
       </div>
 
       <div class="results-layout">
-        <!-- Sticky transparent filters sidebar (hidden until results exist) -->
+        <!-- Filters sidebar -->
         <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
           <h4 class="filters-title"><i class="fa-solid fa-filter"></i> Filters</h4>
           <div class="filters" id="filtersWrap"><!-- built by JS --></div>
@@ -106,11 +104,9 @@
         <!-- Results column -->
         <div class="results-main">
           <div class="progress-bar"><div class="progress" id="progressBar"></div></div>
-          <div class="data-cards-container" id="dataCardsContainer">
-            <!-- JS will render -->
-          </div>
+          <div class="data-cards-container" id="dataCardsContainer"></div>
 
-          <!-- Pagination controls -->
+          <!-- Pagination -->
           <div id="pagination" class="pagination-controls" style="display:none;">
             <button id="prevBtn" disabled>← Prev</button>
             <span id="pageInfo">Page 1</span>
@@ -146,70 +142,34 @@
     <div class="top-footer-content">
       <div class="copyright">© 2025 Excellence University. All rights reserved.</div>
       <button class="email-button"
-              onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'">
+        onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'">
         Email Us
       </button>
     </div>
   </div>
   <footer class="footer">Research Data Harvesting System</footer>
 
-  <!-- Floating bulk RIS export (appears when items selected) -->
+  <!-- Floating bulk RIS export -->
   <button id="bulkRisButton" class="bulk-ris-btn" style="display:none;">
     <i class="fa-solid fa-file-export"></i> Export Selected RIS
   </button>
 
   <!-- Scripts -->
   <script src="script.js"></script>
+
+  <!--
+  ======================== DEPRECATED INLINE SCRIPT (DISABLED) ========================
+  The old static pagination logic below is now handled by script.js.
+  It’s preserved here for version history and reference only.
+  -------------------------------------------------------------------------------------
   <script>
-    /* ================= PAGINATION SCRIPT ================= */
     let currentPage = 1;
     let totalPages = 1;
     const pageSize = 24;
     const workerURL = "https://inquirybase.archiverepo1.workers.dev";
-
-    async function loadPage(page = 1) {
-      const query = document.querySelector("#searchBox").value.trim();
-      const activeTab = document.querySelector(".tab.active");
-      const category = activeTab ? activeTab.dataset.type : "all";
-
-      const res = await fetch(`${workerURL}/api/harvest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, query, page, pageSize })
-      });
-      const data = await res.json();
-
-      renderResults(data.results); // assumes your script.js has this function
-
-      updatePagination(data.page, Math.ceil(data.total / pageSize), data.total);
-      document.getElementById("pagination").style.display = "flex";
-    }
-
-    function updatePagination(page, totalPagesCalc, total) {
-      currentPage = page;
-      totalPages = totalPagesCalc;
-      document.getElementById("pageInfo").textContent = `Page ${page} of ${totalPages}`;
-      document.getElementById("totalInfo").textContent = `${total} records`;
-      document.getElementById("prevBtn").disabled = page <= 1;
-      document.getElementById("nextBtn").disabled = page >= totalPages;
-    }
-
-    document.getElementById("prevBtn").onclick = () => {
-      if (currentPage > 1) loadPage(currentPage - 1);
-    };
-    document.getElementById("nextBtn").onclick = () => {
-      if (currentPage < totalPages) loadPage(currentPage + 1);
-    };
-
-    // Attach search + tab click
-    document.getElementById("searchBtn").onclick = () => loadPage(1);
-    document.querySelectorAll(".tab").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        btn.classList.add("active");
-        loadPage(1);
-      });
-    });
+    ...
   </script>
+  =====================================================================================
+  -->
 </body>
 </html>
