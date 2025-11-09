@@ -1,3 +1,9 @@
+/* ============================================================================
+   InquiryBase Frontend v3.8.1 (Production - Fixed)
+   - Fixed API response handling
+   - Better error management
+   - Enhanced debugging
+   ========================================================================== */
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
