@@ -2,14 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Library</title>
 
   <!-- Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
 
   <style>
     /* ========== Header Logo Resize ========== */
@@ -19,7 +22,9 @@
       object-fit: contain;
       transition: transform 0.2s ease;
     }
-    .brand-logo:hover { transform: scale(1.05); }
+    .brand-logo:hover {
+      transform: scale(1.05);
+    }
 
     /* ========== Pagination ========== */
     .pagination-controls {
@@ -40,7 +45,9 @@
       font-size: 14px;
       transition: background-color 0.2s ease;
     }
-    .pagination-controls button:hover { background-color: #01408b; }
+    .pagination-controls button:hover {
+      background-color: #01408b;
+    }
     .pagination-controls button[disabled] {
       opacity: 0.4;
       cursor: not-allowed;
@@ -58,8 +65,11 @@
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="#">
-        <img class="brand-logo" alt="Logo"
-             src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png"/>
+        <img
+          class="brand-logo"
+          alt="Logo"
+          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png"
+        />
       </a>
       <div class="header-title">Library</div>
       <div class="header-spacer"></div>
@@ -70,8 +80,12 @@
     <!-- SEARCH -->
     <section class="search-section">
       <div class="search-row">
-        <input class="search-input" id="searchBox" type="text"
-               placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'/>
+        <input
+          class="search-input"
+          id="searchBox"
+          type="text"
+          placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'
+        />
         <button class="btn search-btn" id="searchBtn">
           <i class="fa-solid fa-magnifying-glass"></i> Search
         </button>
@@ -97,14 +111,20 @@
       <div class="results-layout">
         <!-- Filters sidebar -->
         <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
-          <h4 class="filters-title"><i class="fa-solid fa-filter"></i> Filters</h4>
+          <h4 class="filters-title">
+            <i class="fa-solid fa-filter"></i> Filters
+          </h4>
           <div class="filters" id="filtersWrap"><!-- built by JS --></div>
         </aside>
 
         <!-- Results column -->
         <div class="results-main">
-          <div class="progress-bar"><div class="progress" id="progressBar"></div></div>
-          <div class="data-cards-container" id="dataCardsContainer"></div>
+          <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+          </div>
+          <div class="data-cards-container" id="dataCardsContainer">
+            <!-- JS renders here -->
+          </div>
 
           <!-- Pagination -->
           <div id="pagination" class="pagination-controls" style="display:none;">
@@ -124,15 +144,26 @@
         <div class="zotero-copy">
           <h3>Your Referencing Manager: Zotero</h3>
           <p>
-            Zotero is a free, open-source tool for collecting, organizing, citing, and sharing research.
-            Save references directly from your browser, organize them into collections, and sync across devices.
+            Zotero is a free, open-source tool for collecting, organizing,
+            citing, and sharing research. Save references directly from your
+            browser, organize them into collections, and sync across devices.
           </p>
         </div>
       </div>
       <div class="zotero-actions">
-        <a href="https://www.zotero.org/" target="_blank"><i class="fa-solid fa-globe"></i> Visit Zotero</a>
-        <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank"><i class="fa-brands fa-youtube"></i> Tutorial 1</a>
-        <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank"><i class="fa-brands fa-youtube"></i> Tutorial 2</a>
+        <a href="https://www.zotero.org/" target="_blank"
+          ><i class="fa-solid fa-globe"></i> Visit Zotero</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=JG7Uq_JFDzE"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 1</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=9tnWWiX7VbU"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 2</a
+        >
       </div>
     </section>
   </main>
@@ -140,13 +171,18 @@
   <!-- FOOTER -->
   <div class="top-footer">
     <div class="top-footer-content">
-      <div class="copyright">© 2025 Excellence University. All rights reserved.</div>
-      <button class="email-button"
-        onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'">
+      <div class="copyright">
+        © 2025 Excellence University. All rights reserved.
+      </div>
+      <button
+        class="email-button"
+        onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'"
+      >
         Email Us
       </button>
     </div>
   </div>
+
   <footer class="footer">Research Data Harvesting System</footer>
 
   <!-- Floating bulk RIS export -->
@@ -154,22 +190,7 @@
     <i class="fa-solid fa-file-export"></i> Export Selected RIS
   </button>
 
-  <!-- Scripts -->
+  <!-- Main app script -->
   <script src="script.js"></script>
-
-  <!--
-  ======================== DEPRECATED INLINE SCRIPT (DISABLED) ========================
-  The old static pagination logic below is now handled by script.js.
-  It’s preserved here for version history and reference only.
-  -------------------------------------------------------------------------------------
-  <script>
-    let currentPage = 1;
-    let totalPages = 1;
-    const pageSize = 24;
-    const workerURL = "https://inquirybase.archiverepo1.workers.dev";
-    ...
-  </script>
-  =====================================================================================
-  -->
 </body>
 </html>
