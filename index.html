@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="style.css" />
 
   <style>
-    /* Header logo */
+    /* ========== Header Logo Resize ========== */
     .brand-logo {
       height: 80px;
       width: auto;
@@ -24,47 +24,41 @@
     }
     .brand-logo:hover { transform: scale(1.05); }
 
-    /* Pagination */
+    /* ========== Pagination ========== */
     .pagination-controls {
-      display: flex; justify-content: center; align-items: center;
-      gap: 1rem; margin: 30px 0; font-weight: 500;
+      display: flex; justify-content: center; align-items: center; gap: 1rem;
+      margin: 30px 0; font-weight: 500;
     }
     .pagination-controls button {
-      background-color: #002c5f; color: white;
-      border: none; border-radius: 6px; padding: 8px 14px;
-      cursor: pointer; font-size: 14px;
-      transition: background-color 0.2s ease;
+      background-color: #002c5f; color: white; border: none; border-radius: 6px;
+      padding: 8px 14px; cursor: pointer; font-size: 14px; transition: background-color 0.2s ease;
     }
     .pagination-controls button:hover { background-color: #01408b; }
     .pagination-controls button[disabled] { opacity: 0.4; cursor: not-allowed; }
-    .pagination-controls #pageInfo, .pagination-controls #totalInfo {
-      color: #333; font-size: 14px;
-    }
+    .pagination-controls #pageInfo, .pagination-controls #totalInfo { color: #333; font-size: 14px; }
 
-    /* E-LIS block */
+    /* ========== E-LIS mini search ========== */
     .elis-wrap {
-      margin-top: 10px; padding: 12px 14px;
-      border: 1px solid #e5e7eb; border-radius: 8px;
-      background: #fafafa;
+      margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
-    .elis-head {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 8px; font-weight: 600; color: #002c5f;
+    .elis-label {
+      font-size: 13px; font-weight: 600; color: #444; display: inline-flex; align-items: center; gap: 6px;
     }
     .elis-row {
-      display: flex; gap: 8px; align-items: center;
+      display: flex; gap: 6px; align-items: center;
     }
-    .elis-row .search-input { flex: 1; }
+    .elis-input {
+      height: 34px; padding: 6px 10px; border: 1px solid #d5dbe1; border-radius: 6px; font-size: 13px; width: 260px;
+    }
+    .btn-elis {
+      height: 34px; padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+      background: #eef3f9; color: #163a5f; cursor: pointer;
+    }
+    .btn-elis:hover { background: #e2edf8; }
     .elis-browse {
-      margin-top: 10px;
-      font-size: 14px;
+      font-size: 12px; color: #0b5bd3; text-decoration: none; font-weight: 600;
     }
-    .elis-browse a {
-      color: #002c5f;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .elis-browse a:hover { text-decoration: underline; }
+    .elis-browse:hover { text-decoration: underline; }
   </style>
 </head>
 
@@ -73,8 +67,11 @@
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="#">
-        <img class="brand-logo" alt="Logo"
-             src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png" />
+        <img
+          class="brand-logo"
+          alt="Logo"
+          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png"
+        />
       </a>
       <div class="header-title">Library</div>
       <div class="header-spacer"></div>
@@ -85,64 +82,66 @@
     <!-- SEARCH -->
     <section class="search-section">
       <div class="search-row">
-        <input class="search-input" id="searchBox" type="text"
-               placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'/>
+        <input
+          class="search-input"
+          id="searchBox"
+          type="text"
+          placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'
+        />
         <button class="btn search-btn" id="searchBtn">
           <i class="fa-solid fa-magnifying-glass"></i> Search
         </button>
       </div>
 
-      <!-- Simplified E-LIS search -->
-      <div class="elis-wrap">
-        <div class="elis-head">
-          <i class="fa-solid fa-book-open"></i>
-          E-LIS: E-prints in Library & Information Science
-        </div>
+      <!-- E-prints (E-LIS) mini search -->
+      <div class="elis-wrap" aria-label="E-prints mini search">
+        <span class="elis-label">
+          <i class="fa-solid fa-book-open-reader"></i> E-prints (E-LIS):
+        </span>
         <div class="elis-row">
-          <input class="search-input" id="elisBox" type="text"
-                 placeholder="Search harvested E-LIS metadata…" />
-          <button class="btn search-btn" id="elisSearchBtn">
-            <i class="fa-solid fa-magnifying-glass"></i> Search E-LIS
+          <input id="elisBox" class="elis-input" type="text" placeholder="Search E-LIS (E-prints in LIS)..." />
+          <button id="elisSearchBtn" class="btn-elis" title="Search E-LIS">
+            Search
           </button>
-        </div>
-        <div class="elis-browse">
-          <a href="http://eprints.rclis.org/" target="_blank" rel="noopener">
-            Browse full E-LIS e-prints site →
-          </a>
+          <a class="elis-browse" href="http://eprints.rclis.org/" target="_blank" rel="noopener">Browse E-LIS</a>
         </div>
       </div>
 
       <!-- Category tabs -->
-      <div class="source-tabs">
+      <div class="source-tabs" style="margin-top:14px;">
         <button class="tab active" data-type="all">All Sources</button>
         <button class="tab" data-type="research">Research Data</button>
         <button class="tab" data-type="articles">Journal Articles</button>
         <button class="tab" data-type="theses">Theses</button>
+        <!-- Note: E-prints is external (mini search above); not a cached category -->
       </div>
     </section>
 
-    <!-- RESULTS + FILTERS -->
+    <!-- RESULTS + FILTERS LAYOUT -->
     <section class="results-section" id="resultsSection">
       <div class="results-header">
-        <!-- Clear Results hidden -->
-        <!-- <button class="btn refresh-btn" id="clearBtn">
+        <button class="btn refresh-btn" id="clearBtn" style="display:none;">
           <i class="fa-solid fa-trash"></i> Clear Results
-        </button> -->
+        </button>
       </div>
 
       <div class="results-layout">
+        <!-- Filters sidebar -->
         <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
           <h4 class="filters-title">
             <i class="fa-solid fa-filter"></i> Filters
           </h4>
-          <div class="filters" id="filtersWrap"></div>
+          <div class="filters" id="filtersWrap"><!-- built by JS --></div>
         </aside>
 
+        <!-- Results column -->
         <div class="results-main">
           <div class="progress-bar">
             <div class="progress" id="progressBar"></div>
           </div>
-          <div class="data-cards-container" id="dataCardsContainer"></div>
+          <div class="data-cards-container" id="dataCardsContainer">
+            <!-- JS renders here -->
+          </div>
 
           <!-- Pagination -->
           <div id="pagination" class="pagination-controls" style="display:none;">
@@ -169,15 +168,19 @@
         </div>
       </div>
       <div class="zotero-actions">
-        <a href="https://www.zotero.org/" target="_blank">
-          <i class="fa-solid fa-globe"></i> Visit Zotero
-        </a>
-        <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank">
-          <i class="fa-brands fa-youtube"></i> Tutorial 1
-        </a>
-        <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank">
-          <i class="fa-brands fa-youtube"></i> Tutorial 2
-        </a>
+        <a href="https://www.zotero.org/" target="_blank"
+          ><i class="fa-solid fa-globe"></i> Visit Zotero</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=JG7Uq_JFDzE"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 1</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=9tnWWiX7VbU"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 2</a
+        >
       </div>
     </section>
   </main>
@@ -185,9 +188,13 @@
   <!-- FOOTER -->
   <div class="top-footer">
     <div class="top-footer-content">
-      <div class="copyright">© 2025 Excellence University. All rights reserved.</div>
-      <button class="email-button"
-              onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'">
+      <div class="copyright">
+        © 2025 Excellence University. All rights reserved.
+      </div>
+      <button
+        class="email-button"
+        onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'"
+      >
         Email Us
       </button>
     </div>
