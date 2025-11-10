@@ -1,136 +1,132 @@
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
+const PAGE_SIZE = 24;
+
 let currentCategory = "all";
-let currentPage = 1;
 let currentQuery = "";
+let currentPage = 1;
+let currentFilters = {};
+let totalPages = 1;
 let currentResults = [];
 let selectedRecords = [];
 
-/* ----------------- Helpers ----------------- */
-const qs = (sel) => document.querySelector(sel);
-const qsa = (sel) => document.querySelectorAll(sel);
+/* ---------- helpers ---------- */
+const qs  = (s) => document.querySelector(s);
+const qsa = (s) => [...document.querySelectorAll(s)];
+const show = (el) => el && (el.style.display = "");
+const hide = (el) => el && (el.style.display = "none");
 
-/* ----------------- Core Fetch ----------------- */
+/* ---------- fetch ---------- */
 async function fetchResults(page = 1) {
-  const body = {
-    category: currentCategory,     // all | research | articles | theses
-    query: currentQuery.trim(),
-    page: page,
-    pageSize: 24,
-    filters: getCurrentFilters()
-  };
-
-  const container = qs("#dataCardsContainer");
+  currentPage = page;
   const progress = qs("#progressBar");
-  const pagination = qs("#pagination");
-
-  container.innerHTML = "";
-  pagination.style.display = "none";
-  if (progress) progress.style.width = "20%";
+  if (progress) progress.style.width = "25%";
 
   try {
     const res = await fetch(`${API_BASE}/harvest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        category: currentCategory,
+        query: currentQuery,
+        page: currentPage,
+        pageSize: PAGE_SIZE,
+        filters: currentFilters
+      })
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const data = await res.json();
+    if (!data.success) throw new Error(data.error || "API returned failure");
+    if (!Array.isArray(data.results)) throw new Error("Invalid response format");
 
-    if (!data.success) throw new Error(data.error || "Harvest failed");
-    currentResults = data.results || [];
-    renderResults(data.results, data.page, data.total);
-    renderFilters(data.facets);
+    currentResults = data.results;
+    renderResults(data.results);
 
+    const totalRecords = data.total || 0;
+    totalPages = Math.ceil(totalRecords / PAGE_SIZE);
+    updatePagination(data.page, totalPages, totalRecords);
+
+    show(qs("#filtersSidebar"));
+    if (progress) progress.style.width = "100%";
   } catch (e) {
-    container.innerHTML = `<div class="no-results">
-      <i class="fas fa-exclamation-triangle"></i>
-      <h3>Error Loading Data</h3>
-      <p>${e.message}</p>
-    </div>`;
-  } finally {
-    if (progress) {
-      progress.style.width = "100%";
-      setTimeout(() => (progress.style.width = "0%"), 400);
-    }
+    renderError(e.message);
+    if (progress) progress.style.width = "0";
   }
 }
 
-/* ----------------- Render ----------------- */
-function renderResults(records, page, total) {
-  const container = qs("#dataCardsContainer");
-  const pagination = qs("#pagination");
-  container.innerHTML = "";
+/* ---------- render: results (classic clean card) ---------- */
+function renderResults(records = []) {
+  const c = qs("#dataCardsContainer");
+  if (!c) return;
+  c.innerHTML = "";
 
-  if (!records?.length) {
-    container.innerHTML = `<div class="no-results">
-      <i class="fas fa-database"></i>
-      <h3>No Results Found</h3>
-      <p>Try another category, search term, or adjust filters.</p>
-    </div>`;
-    pagination.style.display = "none";
+  if (!records.length) {
+    c.innerHTML = `
+      <div class="no-results">
+        <i class="fas fa-database"></i>
+        <h3>No Results Found</h3>
+        <p>Try another category, search term, or adjust filters.</p>
+      </div>`;
+    hide(qs("#pagination"));
     return;
   }
 
-  const cards = records
-    .map((r) => {
-      const title = r.title || "Untitled";
-      const source = r.source || "";
-      const desc = (r.description || "").slice(0, 280);
-      const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
-      const year = r.year || "";
-      const type = r.type || "";
-      const url = r.url || "#";
+  for (const r of records) {
+    const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
+    const desc = (r.description || "").trim();
+    const title = r.title || "Untitled";
+    const source = r.source || "";
+    const type = r.type || "";
+    const year = r.year || "";
+    const url = r.url || "#";
 
-      return `
+    const recJSON = encodeURIComponent(JSON.stringify(r));
+
+    c.insertAdjacentHTML("beforeend", `
       <div class="data-card">
-        <div class="data-header">
-          <h3>${title}</h3>
-          <span class="source-tag">${source}</span>
+        <div class="card-header">
+          <h3 class="card-title">${title}</h3>
+          <span class="card-source">${source}</span>
         </div>
-        <div class="data-body">
-          <p>${desc}${desc.length >= 280 ? "…" : ""}</p>
+        <div class="card-body">
+          ${desc ? `<p class="card-description">${desc.length > 400 ? desc.slice(0,400) + "…" : desc}</p>` : ""}
         </div>
-        <div class="data-meta">
-          <small>${authors || "Unknown author"} • ${year} • ${type}</small>
+        <div class="card-footer">
+          <div class="card-meta">
+            ${authors ? `<span>${authors}</span>` : ""}
+            <span>${[year, type].filter(Boolean).join(" • ")}</span>
+          </div>
+          <div class="card-actions">
+            ${url && url !== "#" ? `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Open</a>` : ""}
+            <button class="btn sm select-btn" data-record="${recJSON}">Select</button>
+          </div>
         </div>
-        <div class="data-actions">
-          ${url !== "#" ? `<a href="${url}" target="_blank" rel="noopener" class="btn-sm">Open</a>` : ""}
-          <button class="btn-sm select-btn" data-id="${r.id}">
-            <i class="fa-solid fa-circle-plus"></i> Select
-          </button>
-        </div>
-      </div>`;
-    })
-    .join("");
+      </div>
+    `);
+  }
 
-  container.innerHTML = cards;
+  // selection button wiring
+  qsa(".select-btn").forEach(btn => {
+    btn.onclick = () => {
+      try {
+        const record = JSON.parse(decodeURIComponent(btn.dataset.record));
+        const idx = selectedRecords.findIndex(r => r.id === record.id);
+        if (idx >= 0) selectedRecords.splice(idx, 1);
+        else selectedRecords.push(record);
+        toggleRISButton();
+        btn.textContent = idx >= 0 ? "Select" : "Selected";
+      } catch {}
+    };
+  });
 
-  // Pagination
-  const pageInfo = qs("#pageInfo");
-  const totalInfo = qs("#totalInfo");
-  const prevBtn = qs("#prevBtn");
-  const nextBtn = qs("#nextBtn");
-
-  const pageSize = 24;
-  const totalPages = Math.ceil(total / pageSize);
-
-  pageInfo.textContent = `Page ${page}`;
-  totalInfo.textContent = `${total} records`;
-  pagination.style.display = "flex";
-  prevBtn.disabled = page <= 1;
-  nextBtn.disabled = page >= totalPages;
-
-  prevBtn.onclick = () => { currentPage--; fetchResults(currentPage); };
-  nextBtn.onclick = () => { currentPage++; fetchResults(currentPage); };
-
-  updateSelectButtons();
+  toggleRISButton();
+  show(qs("#pagination"));
 }
 
-/* ----------------- Filters ----------------- */
+/* ---------- filters ---------- */
 function renderFilters(facets) {
   const wrap = qs("#filtersWrap");
-  const sidebar = qs("#filtersSidebar");
-  if (!wrap || !facets) return;
+  if (!facets || !wrap) return;
 
   const years = facets.years || [];
   const repositories = facets.repositories || [];
@@ -165,93 +161,127 @@ function renderFilters(facets) {
     <button id="applyFilters" class="btn sm"><i class="fa-solid fa-filter"></i> Apply Filters</button>
   `;
 
-  sidebar.style.display = "block";
-  qs("#applyFilters").onclick = () => fetchResults(1);
+  qs("#applyFilters").onclick = () => {
+    currentFilters = {
+      year: qs("#fltYear").value,
+      repository: qs("#fltRepo").value,
+      type: qs("#fltType").value,
+      author: qs("#fltAuthor").value
+    };
+    fetchResults(1);
+  };
 }
 
-function getCurrentFilters() {
-  const year = qs("#fltYear")?.value || "";
-  const repository = qs("#fltRepo")?.value || "";
-  const type = qs("#fltType")?.value || "";
-  const author = qs("#fltAuthor")?.value || "";
-  return { year, repository, type, author };
+/* ---------- pagination ---------- */
+function updatePagination(page, computedTotalPages, total) {
+  currentPage = page;
+  totalPages = computedTotalPages || 1;
+
+  const pageInfo = qs("#pageInfo");
+  const totalInfo = qs("#totalInfo");
+  const prevBtn = qs("#prevBtn");
+  const nextBtn = qs("#nextBtn");
+
+  if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+  if (totalInfo) totalInfo.textContent = `${total} records`;
+  if (prevBtn) prevBtn.disabled = currentPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+
+  prevBtn.onclick = () => { if (currentPage > 1) fetchResults(currentPage - 1); };
+  nextBtn.onclick = () => { if (currentPage < totalPages) fetchResults(currentPage + 1); };
 }
 
-/* ----------------- Category Tabs ----------------- */
-qsa(".tab").forEach((tab) =>
-  tab.addEventListener("click", (e) => {
-    qsa(".tab").forEach((t) => t.classList.remove("active"));
-    e.currentTarget.classList.add("active");
-    currentCategory = e.currentTarget.dataset.type; // all | research | articles | theses
-    currentPage = 1;
-    fetchResults();
-  })
-);
-
-/* ----------------- Main Search ----------------- */
-qs("#searchBtn").addEventListener("click", () => {
-  currentQuery = qs("#searchBox").value || "";
-  currentPage = 1;
-  fetchResults();
-});
-
-/* ----------------- E-prints (E-LIS) mini search ----------------- */
-/* Opens E-LIS in a new tab (no backend required) */
-qs("#elisSearchBtn")?.addEventListener("click", () => {
-  const q = (qs("#elisBox")?.value || "").trim();
-  const url = q
-    ? `http://eprints.rclis.org/cgi/search/simple?q=${encodeURIComponent(q)}`
-    : `http://eprints.rclis.org/`;
-  window.open(url, "_blank", "noopener");
-});
-
-/* ----------------- Selection + RIS Export ----------------- */
-document.body.addEventListener("click", (e) => {
-  const btn = e.target.closest?.(".select-btn");
-  if (!btn) return;
-  const id = btn.dataset.id;
-  const record = currentResults.find((r) => r.id === id);
-  if (!record) return;
-
-  const index = selectedRecords.findIndex((r) => r.id === id);
-  if (index >= 0) selectedRecords.splice(index, 1);
-  else selectedRecords.push(record);
-
-  updateSelectButtons();
-});
-
-function updateSelectButtons() {
-  qsa(".select-btn").forEach((b) => {
-    const id = b.dataset.id;
-    const isSelected = selectedRecords.some((r) => r.id === id);
-    b.innerHTML = isSelected
-      ? `<i class="fa-solid fa-check-circle"></i> Selected`
-      : `<i class="fa-solid fa-circle-plus"></i> Select`;
-    b.classList.toggle("selected", isSelected);
+/* ---------- search & tabs ---------- */
+function initializeEventListeners() {
+  qs("#searchBtn").addEventListener("click", () => {
+    currentQuery = (qs("#searchBox")?.value || "").trim();
+    fetchResults(1);
   });
 
-  const bulkBtn = qs("#bulkRisButton");
-  bulkBtn.style.display = selectedRecords.length ? "block" : "none";
+  const searchBox = qs("#searchBox");
+  if (searchBox) {
+    searchBox.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        currentQuery = searchBox.value.trim();
+        fetchResults(1);
+      }
+    });
+  }
+
+  qsa(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      qsa(".tab").forEach(t => t.classList.remove("active"));
+      btn.classList.add("active");
+      currentCategory = btn.dataset.type;
+      currentPage = 1;
+      fetchResults(1);
+    });
+  });
+
+  // E-LIS mini search (exact-match handled server side too)
+  const elisBtn = qs("#elisSearchBtn");
+  if (elisBtn) {
+    elisBtn.addEventListener("click", () => {
+      currentCategory = "elis";
+      currentQuery = (qs("#elisBox")?.value || "").trim();
+      currentPage = 1;
+      fetchResults(1);
+    });
+  }
+
+  // Bulk RIS
+  const risBtn = qs("#bulkRisButton");
+  if (risBtn) risBtn.addEventListener("click", exportRIS);
 }
 
-/* ----------------- RIS Export ----------------- */
-qs("#bulkRisButton").addEventListener("click", async () => {
-  if (!selectedRecords.length) return alert("No records selected.");
+function toggleRISButton() {
+  const risBtn = qs("#bulkRisButton");
+  if (!risBtn) return;
+  risBtn.style.display = selectedRecords.length ? "inline-flex" : "none";
+}
+
+/* ---------- RIS Export ---------- */
+async function exportRIS() {
+  if (!selectedRecords.length) {
+    alert("Select at least one record.");
+    return;
+  }
   try {
     const res = await fetch(`${API_BASE}/ris`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ records: selectedRecords })
     });
+    if (!res.ok) throw new Error(`Export failed: HTTP ${res.status}`);
     const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = "inquirybase_export.ris";
+    document.body.appendChild(a);
     a.click();
-  } catch (err) {
-    alert("Failed to export RIS: " + err.message);
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Export failed: " + e.message);
   }
-});
+}
 
-/* ----------------- Auto-load ----------------- */
-window.addEventListener("DOMContentLoaded", () => fetchResults());
+/* ---------- error ---------- */
+function renderError(msg) {
+  const c = qs("#dataCardsContainer");
+  if (!c) return;
+  c.innerHTML = `
+    <div class="no-results">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Error Loading Data</h3>
+      <p>${msg}</p>
+    </div>`;
+  hide(qs("#pagination"));
+}
+
+/* ---------- init ---------- */
+window.addEventListener("DOMContentLoaded", () => {
+  initializeEventListeners();
+  fetchResults(1);
+});
