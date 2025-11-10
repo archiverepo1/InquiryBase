@@ -1,4 +1,9 @@
-
+/* ============================================================================
+   InquiryBase Frontend v5.0.0 (Production Ready - Fixed DSpace & Research)
+   - Enhanced URL validation and display
+   - Better error handling
+   - Improved debugging
+   ========================================================================== */
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
@@ -93,6 +98,7 @@ function renderResults(records = []) {
 
   console.log(`Rendering ${records.length} records`);
   let validUrlCount = 0;
+  let dspaceRecords = 0;
 
   for (const r of records) {
     try {
@@ -106,11 +112,18 @@ function renderResults(records = []) {
       const identifier = r.identifier || "—";
       const url = r.url || "#";
 
-      // Enhanced URL validation
+      // Enhanced URL validation for DSpace and research repositories
+      const isDSpace = source.includes('University') && !source.includes('Figshare');
       const hasValidUrl = url && url !== '#' && (url.startsWith('http://') || url.startsWith('https://'));
-      if (hasValidUrl) validUrlCount++;
       
-      console.log(`📄 Record: ${title.substring(0, 50)}... | URL: ${url} | Valid: ${hasValidUrl}`);
+      if (hasValidUrl) validUrlCount++;
+      if (isDSpace) dspaceRecords++;
+
+      console.log(`📄 ${isDSpace ? '🏛️' : '🔬'} ${title.substring(0, 50)}... | URL: ${url} | Valid: ${hasValidUrl}`);
+      
+      // Truncate long URLs for display
+      const displayUrl = hasValidUrl ? url : "#";
+      const truncatedUrl = hasValidUrl ? (url.length > 50 ? url.substring(0, 50) + '...' : url) : 'No URL available';
 
       c.insertAdjacentHTML("beforeend", `
         <div class="data-card">
@@ -130,8 +143,12 @@ function renderResults(records = []) {
             </div>
             <div class="card-actions">
               ${hasValidUrl ? 
-                `<a class="btn sm" href="${url}" target="_blank" rel="noopener" title="${url}">Open</a>` : 
-                `<span class="btn sm disabled" title="No valid URL available">No URL</span>`
+                `<a class="btn sm" href="${displayUrl}" target="_blank" rel="noopener" title="${url}">
+                  <i class="fas fa-external-link-alt"></i> Open
+                </a>` : 
+                `<span class="btn sm disabled" title="${truncatedUrl}">
+                  <i class="fas fa-unlink"></i> No URL
+                </span>`
               }
               <input class="select-record" type="checkbox" data-record="${recJSON}">
             </div>
@@ -144,6 +161,7 @@ function renderResults(records = []) {
   }
 
   console.log(`✅ ${validUrlCount}/${records.length} records have valid URLs`);
+  console.log(`🏛️ ${dspaceRecords} DSpace repository records`);
 
   // Add event listeners to checkboxes
   qsa(".select-record").forEach(cb => {
@@ -370,7 +388,7 @@ function renderError(msg) {
 
 /* ---------- initial load ---------- */
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("InquiryBase Frontend v4.0.0 initialized (DSpace URI Fix)");
+  console.log("InquiryBase Frontend v5.0.0 initialized (Fixed DSpace & Research)");
   initializeEventListeners();
   fetchResults(1);
 });
