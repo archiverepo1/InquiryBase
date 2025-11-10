@@ -1,3 +1,4 @@
+
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 let currentCategory = "all";
 let currentPage = 1;
@@ -9,18 +10,18 @@ let selectedRecords = [];
 const qs = (sel) => document.querySelector(sel);
 const qsa = (sel) => document.querySelectorAll(sel);
 
-/* ----------------- Core Fetch ----------------- */
+/* ----------------- Fetch ----------------- */
 async function fetchResults(page = 1) {
   const body = {
-    category: currentCategory,     // all | research | articles | theses
+    category: currentCategory, // all | research | articles | theses
     query: currentQuery.trim(),
-    page: page,
+    page,
     pageSize: 24,
     filters: getCurrentFilters()
   };
 
-  const container = qs("#dataCardsContainer");
-  const progress = qs("#progressBar");
+  const container  = qs("#dataCardsContainer");
+  const progress   = qs("#progressBar");
   const pagination = qs("#pagination");
 
   container.innerHTML = "";
@@ -34,18 +35,18 @@ async function fetchResults(page = 1) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-
     if (!data.success) throw new Error(data.error || "Harvest failed");
     currentResults = data.results || [];
+
     renderResults(data.results, data.page, data.total);
     renderFilters(data.facets);
-
   } catch (e) {
-    container.innerHTML = `<div class="no-results">
-      <i class="fas fa-exclamation-triangle"></i>
-      <h3>Error Loading Data</h3>
-      <p>${e.message}</p>
-    </div>`;
+    container.innerHTML = `
+      <div class="no-results">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h3>Error Loading Data</h3>
+        <p>${e.message}</p>
+      </div>`;
   } finally {
     if (progress) {
       progress.style.width = "100%";
@@ -56,84 +57,103 @@ async function fetchResults(page = 1) {
 
 /* ----------------- Render ----------------- */
 function renderResults(records, page, total) {
-  const container = qs("#dataCardsContainer");
+  const container  = qs("#dataCardsContainer");
   const pagination = qs("#pagination");
   container.innerHTML = "";
 
   if (!records?.length) {
-    container.innerHTML = `<div class="no-results">
-      <i class="fas fa-database"></i>
-      <h3>No Results Found</h3>
-      <p>Try another category, search term, or adjust filters.</p>
-    </div>`;
+    container.innerHTML = `
+      <div class="no-results">
+        <i class="fas fa-database"></i>
+        <h3>No Results Found</h3>
+        <p>Try another category, search term, or adjust filters.</p>
+      </div>`;
     pagination.style.display = "none";
+    updateBulkButton();
     return;
   }
 
-  const cards = records
-    .map((r) => {
-      const title = r.title || "Untitled";
-      const source = r.source || "";
-      const desc = (r.description || "").slice(0, 280);
-      const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
-      const year = r.year || "";
-      const type = r.type || "";
-      const url = r.url || "#";
+  const html = records.map((r) => {
+    const title   = r.title || "Untitled";
+    const source  = r.source || "";
+    const desc    = (r.description || "").trim();
+    const short   = desc.length > 300 ? desc.slice(0, 300) + "…" : desc;
+    const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
+    const year    = r.year || "—";
+    const type    = r.type || "";
+    const url     = r.url || "#";
 
-      return `
-      <div class="data-card">
-        <div class="data-header">
-          <h3>${title}</h3>
-          <span class="source-tag">${source}</span>
+    return `
+    <div class="data-card">
+      <div class="card-header">
+        <span class="card-type">${type || "Record"}</span>
+        <span class="card-source">${source}</span>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${title}</h3>
+        ${authors ? `<p class="card-authors">${authors}</p>` : ""}
+        ${short ? `<p class="card-description">${short}</p>` : ""}
+      </div>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span><b>Year:</b> ${year}</span>
         </div>
-        <div class="data-body">
-          <p>${desc}${desc.length >= 280 ? "…" : ""}</p>
-        </div>
-        <div class="data-meta">
-          <small>${authors || "Unknown author"} • ${year} • ${type}</small>
-        </div>
-        <div class="data-actions">
-          ${url !== "#" ? `<a href="${url}" target="_blank" rel="noopener" class="btn-sm">Open</a>` : ""}
-          <button class="btn-sm select-btn" data-id="${r.id}">
+        <div class="card-actions">
+          ${url !== "#" ? `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Open</a>` : ""}
+          <button class="btn sm select-btn" data-id="${r.id}">
             <i class="fa-solid fa-circle-plus"></i> Select
           </button>
         </div>
-      </div>`;
-    })
-    .join("");
+      </div>
+    </div>`;
+  }).join("");
 
-  container.innerHTML = cards;
+  container.innerHTML = html;
 
-  // Pagination
-  const pageInfo = qs("#pageInfo");
+  // Pagination controls
+  const pageInfo  = qs("#pageInfo");
   const totalInfo = qs("#totalInfo");
-  const prevBtn = qs("#prevBtn");
-  const nextBtn = qs("#nextBtn");
+  const prevBtn   = qs("#prevBtn");
+  const nextBtn   = qs("#nextBtn");
 
-  const pageSize = 24;
-  const totalPages = Math.ceil(total / pageSize);
+  const pageSize  = 24;
+  const totalPages= Math.ceil(total / pageSize);
 
-  pageInfo.textContent = `Page ${page}`;
+  pageInfo.textContent = `Page ${page} of ${totalPages}`;
   totalInfo.textContent = `${total} records`;
   pagination.style.display = "flex";
   prevBtn.disabled = page <= 1;
   nextBtn.disabled = page >= totalPages;
 
-  prevBtn.onclick = () => { currentPage--; fetchResults(currentPage); };
-  nextBtn.onclick = () => { currentPage++; fetchResults(currentPage); };
+  prevBtn.onclick = () => { currentPage = Math.max(1, page - 1); fetchResults(currentPage); };
+  nextBtn.onclick = () => { currentPage = Math.min(totalPages, page + 1); fetchResults(currentPage); };
+
+  // Selection handler
+  qsa(".select-btn").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const record = currentResults.find(r => r.id === id);
+      if (!record) return;
+      const idx = selectedRecords.findIndex(r => r.id === id);
+      if (idx >= 0) selectedRecords.splice(idx, 1);
+      else selectedRecords.push(record);
+      updateSelectButtons();
+    };
+  });
 
   updateSelectButtons();
 }
 
 /* ----------------- Filters ----------------- */
 function renderFilters(facets) {
-  const wrap = qs("#filtersWrap");
+  const wrap    = qs("#filtersWrap");
   const sidebar = qs("#filtersSidebar");
   if (!wrap || !facets) return;
 
-  const years = facets.years || [];
-  const repositories = facets.repositories || [];
-  const types = facets.types || [];
+  const years   = facets.years || [];
+  const repos   = facets.repositories || [];
+  const types   = facets.types || [];
+  const langs   = facets.languages || [];
 
   wrap.innerHTML = `
     <div class="filter">
@@ -147,7 +167,7 @@ function renderFilters(facets) {
       <label>Repository</label>
       <select id="fltRepo">
         <option value="">All Repositories</option>
-        ${repositories.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join("")}
+        ${repos.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join("")}
       </select>
     </div>
     <div class="filter">
@@ -161,31 +181,39 @@ function renderFilters(facets) {
       <label>Author contains</label>
       <input id="fltAuthor" type="text" placeholder="e.g. Smith" />
     </div>
+    <div class="filter">
+      <label>Language</label>
+      <select id="fltLanguage">
+        <option value="">All Languages</option>
+        ${langs.map(l => `<option value="${l.name}">${l.name} (${l.count})</option>`).join("")}
+      </select>
+    </div>
     <button id="applyFilters" class="btn sm"><i class="fa-solid fa-filter"></i> Apply Filters</button>
   `;
 
   sidebar.style.display = "block";
-  qs("#applyFilters").onclick = () => fetchResults(1);
+  qs("#applyFilters").onclick = () => { currentPage = 1; fetchResults(1); };
 }
 
 function getCurrentFilters() {
-  const year = qs("#fltYear")?.value || "";
+  const year       = qs("#fltYear")?.value || "";
   const repository = qs("#fltRepo")?.value || "";
-  const type = qs("#fltType")?.value || "";
-  const author = qs("#fltAuthor")?.value || "";
-  return { year, repository, type, author };
+  const type       = qs("#fltType")?.value || "";
+  const author     = qs("#fltAuthor")?.value || "";
+  const language   = qs("#fltLanguage")?.value || "";
+  return { year, repository, type, author, language };
 }
 
-/* ----------------- Category Tabs ----------------- */
-qsa(".tab").forEach((tab) =>
+/* ----------------- Tabs ----------------- */
+qsa(".tab").forEach((tab) => {
   tab.addEventListener("click", (e) => {
-    qsa(".tab").forEach((t) => t.classList.remove("active"));
+    qsa(".tab").forEach(t => t.classList.remove("active"));
     e.currentTarget.classList.add("active");
     currentCategory = e.currentTarget.dataset.type; // all | research | articles | theses
     currentPage = 1;
     fetchResults();
-  })
-);
+  });
+});
 
 /* ----------------- Main Search ----------------- */
 qs("#searchBtn").addEventListener("click", () => {
@@ -194,8 +222,7 @@ qs("#searchBtn").addEventListener("click", () => {
   fetchResults();
 });
 
-/* ----------------- E-prints (E-LIS) mini search ----------------- */
-/* Opens E-LIS in a new tab (no backend required) */
+/* ----------------- E-prints (E-LIS) mini search (redirect) ----------------- */
 qs("#elisSearchBtn")?.addEventListener("click", () => {
   const q = (qs("#elisBox")?.value || "").trim();
   const url = q
@@ -205,35 +232,25 @@ qs("#elisSearchBtn")?.addEventListener("click", () => {
 });
 
 /* ----------------- Selection + RIS Export ----------------- */
-document.body.addEventListener("click", (e) => {
-  const btn = e.target.closest?.(".select-btn");
-  if (!btn) return;
-  const id = btn.dataset.id;
-  const record = currentResults.find((r) => r.id === id);
-  if (!record) return;
-
-  const index = selectedRecords.findIndex((r) => r.id === id);
-  if (index >= 0) selectedRecords.splice(index, 1);
-  else selectedRecords.push(record);
-
-  updateSelectButtons();
-});
-
 function updateSelectButtons() {
   qsa(".select-btn").forEach((b) => {
     const id = b.dataset.id;
-    const isSelected = selectedRecords.some((r) => r.id === id);
+    const isSelected = selectedRecords.some(r => r.id === id);
     b.innerHTML = isSelected
       ? `<i class="fa-solid fa-check-circle"></i> Selected`
       : `<i class="fa-solid fa-circle-plus"></i> Select`;
     b.classList.toggle("selected", isSelected);
   });
-
-  const bulkBtn = qs("#bulkRisButton");
-  bulkBtn.style.display = selectedRecords.length ? "block" : "none";
+  updateBulkButton();
 }
 
-/* ----------------- RIS Export ----------------- */
+function updateBulkButton() {
+  const bulkBtn = qs("#bulkRisButton");
+  const n = selectedRecords.length;
+  bulkBtn.style.display = n ? "inline-flex" : "none";
+  bulkBtn.innerHTML = `<i class="fa-solid fa-file-export"></i> Export Selected (${n})`;
+}
+
 qs("#bulkRisButton").addEventListener("click", async () => {
   if (!selectedRecords.length) return alert("No records selected.");
   try {
