@@ -1,9 +1,3 @@
-/* ============================================================================
-   InquiryBase Frontend v5.0.0 (Production Ready - Fixed DSpace & Research)
-   - Enhanced URL validation and display
-   - Better error handling
-   - Improved debugging
-   ========================================================================== */
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
