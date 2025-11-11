@@ -1,19 +1,21 @@
 
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
-let currentCategory = "all";
+
+// UI state
+let currentCategory = "all";   // all | research | articles | theses
 let currentPage = 1;
 let currentQuery = "";
 let currentResults = [];
 let selectedRecords = [];
 
-/* ----------------- Helpers ----------------- */
-const qs = (sel) => document.querySelector(sel);
-const qsa = (sel) => document.querySelectorAll(sel);
+// Shortcuts
+const qs  = (s) => document.querySelector(s);
+const qsa = (s) => document.querySelectorAll(s);
 
-/* ----------------- Fetch ----------------- */
+/* ============================== Fetch ============================== */
 async function fetchResults(page = 1) {
-  const body = {
-    category: currentCategory, // all | research | articles | theses
+  const payload = {
+    category: currentCategory,
     query: currentQuery.trim(),
     page,
     pageSize: 24,
@@ -25,27 +27,28 @@ async function fetchResults(page = 1) {
   const pagination = qs("#pagination");
 
   container.innerHTML = "";
-  pagination.style.display = "none";
+  if (pagination) pagination.style.display = "none";
   if (progress) progress.style.width = "20%";
 
   try {
-    const res = await fetch(`${API_BASE}/harvest`, {
+    const res  = await fetch(`${API_BASE}/harvest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || "Harvest failed");
+
+    if (!data.success) throw new Error(data.error || "Failed to load records.");
     currentResults = data.results || [];
 
     renderResults(data.results, data.page, data.total);
     renderFilters(data.facets);
-  } catch (e) {
+  } catch (err) {
     container.innerHTML = `
       <div class="no-results">
         <i class="fas fa-exclamation-triangle"></i>
         <h3>Error Loading Data</h3>
-        <p>${e.message}</p>
+        <p>${err.message}</p>
       </div>`;
   } finally {
     if (progress) {
@@ -55,7 +58,7 @@ async function fetchResults(page = 1) {
   }
 }
 
-/* ----------------- Render ----------------- */
+/* ============================== Render: Cards ============================== */
 function renderResults(records, page, total) {
   const container  = qs("#dataCardsContainer");
   const pagination = qs("#pagination");
@@ -68,67 +71,33 @@ function renderResults(records, page, total) {
         <h3>No Results Found</h3>
         <p>Try another category, search term, or adjust filters.</p>
       </div>`;
-    pagination.style.display = "none";
+    if (pagination) pagination.style.display = "none";
     updateBulkButton();
     return;
   }
 
-  const html = records.map((r) => {
-    const title   = r.title || "Untitled";
-    const source  = r.source || "";
-    const desc    = (r.description || "").trim();
-    const short   = desc.length > 300 ? desc.slice(0, 300) + "…" : desc;
-    const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
-    const year    = r.year || "—";
-    const type    = r.type || "";
-    const url     = r.url || "#";
-
-    return `
-    <div class="data-card">
-      <div class="card-header">
-        <span class="card-type">${type || "Record"}</span>
-        <span class="card-source">${source}</span>
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">${title}</h3>
-        ${authors ? `<p class="card-authors">${authors}</p>` : ""}
-        ${short ? `<p class="card-description">${short}</p>` : ""}
-      </div>
-      <div class="card-footer">
-        <div class="card-meta">
-          <span><b>Year:</b> ${year}</span>
-        </div>
-        <div class="card-actions">
-          ${url !== "#" ? `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Open</a>` : ""}
-          <button class="btn sm select-btn" data-id="${r.id}">
-            <i class="fa-solid fa-circle-plus"></i> Select
-          </button>
-        </div>
-      </div>
-    </div>`;
-  }).join("");
-
+  const html = records.map(cardHTML).join("");
   container.innerHTML = html;
 
-  // Pagination controls
-  const pageInfo  = qs("#pageInfo");
-  const totalInfo = qs("#totalInfo");
-  const prevBtn   = qs("#prevBtn");
-  const nextBtn   = qs("#nextBtn");
+  // Pagination
+  const pageInfo   = qs("#pageInfo");
+  const totalInfo  = qs("#totalInfo");
+  const prevBtn    = qs("#prevBtn");
+  const nextBtn    = qs("#nextBtn");
+  const pageSize   = 24;
+  const totalPages = Math.ceil(total / pageSize);
 
-  const pageSize  = 24;
-  const totalPages= Math.ceil(total / pageSize);
+  if (pageInfo)  pageInfo.textContent = `Page ${page} of ${Math.max(totalPages, 1)}`;
+  if (totalInfo) totalInfo.textContent = `${total} records`;
 
-  pageInfo.textContent = `Page ${page} of ${totalPages}`;
-  totalInfo.textContent = `${total} records`;
-  pagination.style.display = "flex";
-  prevBtn.disabled = page <= 1;
-  nextBtn.disabled = page >= totalPages;
+  if (pagination) pagination.style.display = "flex";
+  if (prevBtn) prevBtn.disabled = page <= 1;
+  if (nextBtn) nextBtn.disabled = page >= totalPages;
 
-  prevBtn.onclick = () => { currentPage = Math.max(1, page - 1); fetchResults(currentPage); };
-  nextBtn.onclick = () => { currentPage = Math.min(totalPages, page + 1); fetchResults(currentPage); };
+  if (prevBtn) prevBtn.onclick = () => { currentPage = Math.max(1, page - 1); fetchResults(currentPage); };
+  if (nextBtn) nextBtn.onclick = () => { currentPage = Math.min(totalPages, page + 1); fetchResults(currentPage); };
 
-  // Selection handler
+  // “Select” buttons
   qsa(".select-btn").forEach(btn => {
     btn.onclick = () => {
       const id = btn.dataset.id;
@@ -144,16 +113,51 @@ function renderResults(records, page, total) {
   updateSelectButtons();
 }
 
-/* ----------------- Filters ----------------- */
+function cardHTML(r) {
+  const title   = escapeHTML(r.title || "Untitled");
+  const source  = escapeHTML(r.source || "");
+  const descRaw = String(r.description || "").trim();
+  const desc    = escapeHTML(descRaw.length > 300 ? descRaw.slice(0, 300) + "…" : descRaw);
+  const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
+  const year    = r.year || "—";
+  const type    = r.type || "";
+  const url     = r.url || "#";
+
+  return `
+    <div class="data-card">
+      <div class="card-header">
+        <span class="card-type">${escapeHTML(type || "Record")}</span>
+        <span class="card-source">${source}</span>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${title}</h3>
+        ${authors ? `<p class="card-authors">${escapeHTML(authors)}</p>` : ""}
+        ${desc ? `<p class="card-description">${desc}</p>` : ""}
+      </div>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span><b>Year:</b> ${escapeHTML(String(year))}</span>
+        </div>
+        <div class="card-actions">
+          ${url !== "#" ? `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Open</a>` : ""}
+          <button class="btn sm select-btn" data-id="${r.id}">
+            <i class="fa-solid fa-circle-plus"></i> Select
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ============================== Render: Filters ============================== */
 function renderFilters(facets) {
   const wrap    = qs("#filtersWrap");
   const sidebar = qs("#filtersSidebar");
   if (!wrap || !facets) return;
 
-  const years   = facets.years || [];
-  const repos   = facets.repositories || [];
-  const types   = facets.types || [];
-  const langs   = facets.languages || [];
+  const years = facets.years || [];
+  const repos = (facets.repositories || []).filter(r => !/zenodo/i.test(r.name)); // hard-remove any stray Zenodo label
+  const types = facets.types || [];
+  const langs = facets.languages || [];
 
   wrap.innerHTML = `
     <div class="filter">
@@ -167,14 +171,14 @@ function renderFilters(facets) {
       <label>Repository</label>
       <select id="fltRepo">
         <option value="">All Repositories</option>
-        ${repos.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join("")}
+        ${repos.map(r => `<option value="${escapeHTML(r.name)}">${escapeHTML(r.name)} (${r.count})</option>`).join("")}
       </select>
     </div>
     <div class="filter">
       <label>Type</label>
       <select id="fltType">
         <option value="">All Types</option>
-        ${types.map(t => `<option value="${t.name}">${t.name} (${t.count})</option>`).join("")}
+        ${types.map(t => `<option value="${escapeHTML(t.name)}">${escapeHTML(t.name)} (${t.count})</option>`).join("")}
       </select>
     </div>
     <div class="filter">
@@ -185,7 +189,7 @@ function renderFilters(facets) {
       <label>Language</label>
       <select id="fltLanguage">
         <option value="">All Languages</option>
-        ${langs.map(l => `<option value="${l.name}">${l.name} (${l.count})</option>`).join("")}
+        ${langs.map(l => `<option value="${escapeHTML(l.name)}">${escapeHTML(l.name)} (${l.count})</option>`).join("")}
       </select>
     </div>
     <button id="applyFilters" class="btn sm"><i class="fa-solid fa-filter"></i> Apply Filters</button>
@@ -204,7 +208,7 @@ function getCurrentFilters() {
   return { year, repository, type, author, language };
 }
 
-/* ----------------- Tabs ----------------- */
+/* ============================== Tabs & Search ============================== */
 qsa(".tab").forEach((tab) => {
   tab.addEventListener("click", (e) => {
     qsa(".tab").forEach(t => t.classList.remove("active"));
@@ -215,14 +219,24 @@ qsa(".tab").forEach((tab) => {
   });
 });
 
-/* ----------------- Main Search ----------------- */
+// Main search (exact or non-quoted) — accuracy handled by backend scorer
 qs("#searchBtn").addEventListener("click", () => {
   currentQuery = qs("#searchBox").value || "";
   currentPage = 1;
   fetchResults();
 });
 
-/* ----------------- E-prints (E-LIS) mini search (redirect) ----------------- */
+// Press Enter in search box
+qs("#searchBox").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    currentQuery = qs("#searchBox").value || "";
+    currentPage = 1;
+    fetchResults();
+  }
+});
+
+/* ============================== E-LIS (E-prints) ============================== */
+// Redirect — keep live search externally; accurate results controlled by E-LIS
 qs("#elisSearchBtn")?.addEventListener("click", () => {
   const q = (qs("#elisBox")?.value || "").trim();
   const url = q
@@ -231,7 +245,7 @@ qs("#elisSearchBtn")?.addEventListener("click", () => {
   window.open(url, "_blank", "noopener");
 });
 
-/* ----------------- Selection + RIS Export ----------------- */
+/* ============================== Selection + Export ============================== */
 function updateSelectButtons() {
   qsa(".select-btn").forEach((b) => {
     const id = b.dataset.id;
@@ -247,6 +261,7 @@ function updateSelectButtons() {
 function updateBulkButton() {
   const bulkBtn = qs("#bulkRisButton");
   const n = selectedRecords.length;
+  if (!bulkBtn) return;
   bulkBtn.style.display = n ? "inline-flex" : "none";
   bulkBtn.innerHTML = `<i class="fa-solid fa-file-export"></i> Export Selected (${n})`;
 }
@@ -269,5 +284,19 @@ qs("#bulkRisButton").addEventListener("click", async () => {
   }
 });
 
-/* ----------------- Auto-load ----------------- */
-window.addEventListener("DOMContentLoaded", () => fetchResults());
+/* ============================== Utils ============================== */
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/* ============================== Boot ============================== */
+window.addEventListener("DOMContentLoaded", () => {
+  // Smaller, professional placeholder (if your CSS doesn’t already handle it)
+  const searchBox = qs("#searchBox");
+  if (searchBox) searchBox.setAttribute("placeholder", "Search by keyword, title, or author…");
+
+  fetchResults();
+});
