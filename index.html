@@ -1,196 +1,1293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Library</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Library Harvester</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
 
-  <!-- Icons -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
 
-  <style>
-    /* ========== Header Logo Resize ========== */
-    .brand-logo {
-      height: 80px;
-      width: auto;
-      object-fit: contain;
-      transition: transform 0.2s ease;
-    }
-    .brand-logo:hover {
-      transform: scale(1.05);
-    }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
 
-    /* ========== Pagination ========== */
-    .pagination-controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1rem;
-      margin: 30px 0;
-      font-weight: 500;
-    }
-    .pagination-controls button {
-      background-color: #002c5f;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 14px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.2s ease;
-    }
-    .pagination-controls button:hover {
-      background-color: #01408b;
-    }
-    .pagination-controls button[disabled] {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .pagination-controls #pageInfo,
-    .pagination-controls #totalInfo {
-      color: #333;
-      font-size: 14px;
-    }
-  </style>
+        /* Header */
+        .site-header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand-logo {
+            height: 60px;
+            width: auto;
+            object-fit: contain;
+            transition: transform 0.2s ease;
+        }
+
+        .brand-logo:hover {
+            transform: scale(1.05);
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .search-section {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            box-shadow: var(--shadow);
+        }
+
+        .search-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Main Layout */
+        .results-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .results-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sidebar */
+        .filters-sidebar {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .source-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            text-align: left;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab:hover {
+            background: var(--bg);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tab.elis.active {
+            background: #8b5cf6;
+        }
+
+        .filters-title {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: var(--secondary);
+        }
+
+        .filter {
+            margin-bottom: 1rem;
+        }
+
+        .filter label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .filter select, .filter input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        /* Main Content */
+        .results-main {
+            min-height: 600px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .progress {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* Source Indicator */
+        .source-indicator {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+            font-style: italic;
+        }
+
+        .live-badge {
+            background: var(--success);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+
+        /* Cards Grid */
+        .data-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .data-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: fit-content;
+        }
+
+        .data-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            gap: 0.5rem;
+        }
+
+        .card-type {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .card-source {
+            color: var(--secondary);
+            font-size: 0.8rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+            color: var(--text);
+        }
+
+        .card-authors {
+            color: var(--secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            font-style: italic;
+        }
+
+        .card-description {
+            color: var(--text);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn.primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn.sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .select-record {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Pagination */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin: 30px 0;
+            font-weight: 500;
+        }
+
+        .pagination-controls button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+
+        .pagination-controls button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .pagination-controls button[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* System Controls */
+        .system-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .control-btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-btn:hover {
+            opacity: 0.9;
+        }
+
+        .control-btn.success {
+            background: var(--success);
+        }
+
+        .control-btn.elis {
+            background: #8b5cf6;
+        }
+
+        /* Zotero Card */
+        .zotero-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            box-shadow: var(--shadow);
+        }
+
+        .zotero-head {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .zotero-mark {
+            background: #e74c3c;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .zotero-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .zotero-actions a {
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .zotero-actions a:hover {
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .top-footer {
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+        }
+
+        .top-footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer {
+            background: var(--text);
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.9rem;
+        }
+
+        /* Bulk Actions */
+        .bulk-ris-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            background: var(--success);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            border: none;
+            cursor: pointer;
+            display: none;
+        }
+
+        .bulk-ris-btn:hover {
+            background: #0da271;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Loading and Error States */
+        .loading-state, .no-results, .error-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--secondary);
+            grid-column: 1 / -1;
+        }
+
+        .loading-state i, .no-results i, .error-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .loading-state h3, .no-results h3, .error-state h3 {
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-inner {
+                flex-direction: column;
+            }
+
+            .search-row {
+                flex-direction: column;
+            }
+
+            .data-cards-container {
+                grid-template-columns: 1fr;
+            }
+
+            .top-footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .bulk-ris-btn {
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .system-controls {
+                justify-content: center;
+                width: 100%;
+            }
+        }
+    </style>
 </head>
-
 <body>
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="#">
-        <img
-          class="brand-logo"
-          alt="Logo"
-          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png"
-        />
-      </a>
-      <div class="header-title">Library</div>
-      <div class="header-spacer"></div>
-    </div>
-  </header>
-
-  <main class="container">
-    <!-- SEARCH -->
-    <section class="search-section">
-      <div class="search-row">
-        <input
-          class="search-input"
-          id="searchBox"
-          type="text"
-          placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'
-        />
-        <button class="btn search-btn" id="searchBtn">
-          <i class="fa-solid fa-magnifying-glass"></i> Search
-        </button>
-      </div>
-
-      <!-- Category tabs -->
-      <div class="source-tabs">
-        <button class="tab active" data-type="all">All Sources</button>
-        <button class="tab" data-type="research">Research Data</button>
-        <button class="tab" data-type="articles">Journal Articles</button>
-        <button class="tab" data-type="theses">Theses</button>
-      </div>
-    </section>
-
-    <!-- RESULTS + FILTERS LAYOUT -->
-    <section class="results-section" id="resultsSection">
-      <div class="results-header">
-        <button class="btn refresh-btn" id="clearBtn" style="display:none;">
-          <i class="fa-solid fa-trash"></i> Clear Results
-        </button>
-      </div>
-
-      <div class="results-layout">
-        <!-- Filters sidebar -->
-        <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
-          <h4 class="filters-title">
-            <i class="fa-solid fa-filter"></i> Filters
-          </h4>
-          <div class="filters" id="filtersWrap"><!-- built by JS --></div>
-        </aside>
-
-        <!-- Results column -->
-        <div class="results-main">
-          <div class="progress-bar">
-            <div class="progress" id="progressBar"></div>
-          </div>
-          <div class="data-cards-container" id="dataCardsContainer">
-            <!-- JS renders here -->
-          </div>
-
-          <!-- Pagination -->
-          <div id="pagination" class="pagination-controls" style="display:none;">
-            <button id="prevBtn" disabled>← Prev</button>
-            <span id="pageInfo">Page 1</span>
-            <button id="nextBtn" disabled>Next →</button>
-            <span id="totalInfo"></span>
-          </div>
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="container">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <img class="brand-logo" alt="Logo" src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png">
+                </a>
+                <div class="header-title">Academic Library Harvester</div>
+                
+                <div class="system-controls">
+                    <button id="harvestNowBtn" class="btn sm success">
+                        <i class="fas fa-sync-alt"></i> Harvest Now
+                    </button>
+                    <button id="testEliSBtn" class="btn sm elis">
+                        <i class="fas fa-book"></i> Test E-LIS
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-    </section>
+    </header>
 
-    <!-- ZOTERO CARD -->
-    <section class="zotero-card">
-      <div class="zotero-head">
-        <div class="zotero-mark">Z</div>
-        <div class="zotero-copy">
-          <h3>Your Referencing Manager: Zotero</h3>
-          <p>
-            Zotero is a free, open-source tool for collecting, organizing,
-            citing, and sharing research. Save references directly from your
-            browser, organize them into collections, and sync across devices.
-          </p>
+    <main class="container">
+        <!-- SEARCH SECTION -->
+        <section class="search-section">
+            <div class="search-row">
+                <input class="search-input" id="searchBox" type="text" placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'>
+                <button class="btn primary" id="searchBtn">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+
+            <!-- Source Indicator -->
+            <div id="sourceIndicator" class="source-indicator" style="display: none;">
+                Searching: <span id="currentSource">All Sources</span>
+                <span id="liveBadge" class="live-badge" style="display: none;">Live Search</span>
+            </div>
+
+            <!-- Category tabs -->
+            <div class="source-tabs">
+                <button class="tab active" data-type="all">
+                    <i class="fas fa-layer-group"></i> All Sources
+                </button>
+                <button class="tab" data-type="research">
+                    <i class="fas fa-flask"></i> Research Data
+                </button>
+                <button class="tab" data-type="articles">
+                    <i class="fas fa-file-alt"></i> Journal Articles
+                </button>
+                <button class="tab" data-type="theses">
+                    <i class="fas fa-graduation-cap"></i> Theses
+                </button>
+                <button class="tab elis" data-type="elis">
+                    <i class="fas fa-book"></i> E-LIS Repository
+                </button>
+            </div>
+        </section>
+
+        <!-- RESULTS SECTION -->
+        <section class="results-section">
+            <div class="results-layout">
+                <!-- Filters sidebar -->
+                <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
+                    <h4 class="filters-title">
+                        <i class="fas fa-filter"></i> Filters
+                    </h4>
+                    <div class="filters" id="filtersWrap">
+                        <!-- Filters will be populated dynamically -->
+                    </div>
+                    
+                    <div class="system-status" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                        <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--secondary);">
+                            <i class="fas fa-info-circle"></i> System Info
+                        </h4>
+                        <div id="systemInfo" style="font-size: 0.8rem; color: var(--secondary); line-height: 1.4;">
+                            Loading system status...
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Results column -->
+                <div class="results-main">
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                    
+                    <div class="data-cards-container" id="dataCardsContainer">
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <h3>Loading Research Data</h3>
+                            <p>Harvesting from academic repositories...</p>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="pagination" class="pagination-controls" style="display:none;">
+                        <button id="prevBtn" disabled>← Previous</button>
+                        <span id="pageInfo">Page 1 of 1</span>
+                        <button id="nextBtn" disabled>Next →</button>
+                        <span id="totalInfo">0 records</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ZOTERO CARD -->
+        <section class="zotero-card">
+            <div class="zotero-head">
+                <div class="zotero-mark">Z</div>
+                <div class="zotero-copy">
+                    <h3>Your Referencing Manager: Zotero</h3>
+                    <p>
+                        Zotero is a free, open-source tool for collecting, organizing,
+                        citing, and sharing research. Save references directly from your
+                        browser, organize them into collections, and sync across devices.
+                    </p>
+                </div>
+            </div>
+            <div class="zotero-actions">
+                <a href="https://www.zotero.org/" target="_blank">
+                    <i class="fa-solid fa-globe"></i> Visit Zotero
+                </a>
+                <a href="https://www.youtube.com/watch?v=JG7Uq_JFDzE" target="_blank">
+                    <i class="fa-brands fa-youtube"></i> Tutorial 1
+                </a>
+                <a href="https://www.youtube.com/watch?v=9tnWWiX7VbU" target="_blank">
+                    <i class="fa-brands fa-youtube"></i> Tutorial 2
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <div class="top-footer">
+        <div class="container">
+            <div class="top-footer-content">
+                <div class="copyright">
+                    © 2025 Academic Library Harvester. All rights reserved.
+                </div>
+                <button class="btn" onclick="window.location.href='mailto:contact@example.com?subject=Library%20Harvester%20Inquiry'">
+                    <i class="fas fa-envelope"></i> Contact Us
+                </button>
+            </div>
         </div>
-      </div>
-      <div class="zotero-actions">
-        <a href="https://www.zotero.org/" target="_blank"
-          ><i class="fa-solid fa-globe"></i> Visit Zotero</a
-        >
-        <a
-          href="https://www.youtube.com/watch?v=JG7Uq_JFDzE"
-          target="_blank"
-          ><i class="fa-brands fa-youtube"></i> Tutorial 1</a
-        >
-        <a
-          href="https://www.youtube.com/watch?v=9tnWWiX7VbU"
-          target="_blank"
-          ><i class="fa-brands fa-youtube"></i> Tutorial 2</a
-        >
-      </div>
-    </section>
-  </main>
-
-  <!-- FOOTER -->
-  <div class="top-footer">
-    <div class="top-footer-content">
-      <div class="copyright">
-        © 2025 Excellence University. All rights reserved.
-      </div>
-      <button
-        class="email-button"
-        onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Q%20Data%20Platform%20Inquiry'"
-      >
-        Email Us
-      </button>
     </div>
-  </div>
 
-  <footer class="footer">Research Data Harvesting System</footer>
+    <footer class="footer">
+        Research Data Harvesting System with E-LIS Integration
+    </footer>
 
-  <!-- Floating bulk RIS export -->
-  <button id="bulkRisButton" class="bulk-ris-btn" style="display:none;">
-    <i class="fa-solid fa-file-export"></i> Export Selected RIS
-  </button>
+    <!-- Bulk Actions -->
+    <button id="bulkRisButton" class="bulk-ris-btn">
+        <i class="fas fa-download"></i> Export RIS
+    </button>
 
-  <!-- Main app script -->
-  <script src="script.js"></script>
+    <script>
+        const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
+        const PAGE_SIZE = 24;
+
+        let currentCategory = "all";
+        let currentQuery = "";
+        let currentPage = 1;
+        let currentFilters = {};
+        let totalPages = 1;
+        let selectedCount = 0;
+
+        /* ---------- Enhanced Helpers ---------- */
+        const qs = (s) => document.querySelector(s);
+        const qsa = (s) => [...document.querySelectorAll(s)];
+        const show = (el) => el && (el.style.display = "");
+        const hide = (el) => el && (el.style.display = "none");
+
+        /* ---------- Enhanced Fetch with Progress ---------- */
+        async function fetchResults(page = 1) {
+            currentPage = page;
+            const progress = qs("#progressBar");
+            const progressContainer = qs(".progress-bar");
+            const sourceIndicator = qs("#sourceIndicator");
+            const currentSource = qs("#currentSource");
+            const liveBadge = qs("#liveBadge");
+            
+            if (progress && progressContainer) {
+                progressContainer.style.display = "block";
+                progress.style.width = "25%";
+            }
+
+            // Update source indicator
+            show(sourceIndicator);
+            if (currentCategory === "elis") {
+                currentSource.textContent = "E-LIS Repository";
+                show(liveBadge);
+            } else {
+                currentSource.textContent = getCategoryDisplayName(currentCategory);
+                hide(liveBadge);
+            }
+
+            showLoadingState();
+
+            console.log(`🔍 Fetching: category=${currentCategory}, page=${page}, query="${currentQuery}"`);
+
+            try {
+                const startTime = Date.now();
+                let apiUrl, requestBody;
+                
+                if (currentCategory === "elis") {
+                    apiUrl = `${API_BASE}/elis-live-search`;
+                    requestBody = {
+                        query: currentQuery,
+                        page: currentPage,
+                        pageSize: PAGE_SIZE
+                    };
+                } else {
+                    apiUrl = `${API_BASE}/harvest`;
+                    requestBody = {
+                        category: currentCategory,
+                        query: currentQuery,
+                        page: currentPage,
+                        pageSize: PAGE_SIZE,
+                        filters: currentFilters
+                    };
+                }
+
+                const res = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const data = await res.json();
+                console.log("📦 API Response:", data);
+                
+                if (!data.success) {
+                    throw new Error(data.error || "API returned failure");
+                }
+
+                if (!data.results || !Array.isArray(data.results)) {
+                    throw new Error("Invalid response format: results array missing");
+                }
+
+                renderResults(data.results);
+                
+                if (currentCategory !== "elis") {
+                    renderFilters(data.facets);
+                    show(qs("#filtersSidebar"));
+                } else {
+                    hide(qs("#filtersSidebar"));
+                }
+                
+                const totalRecords = data.total || 0;
+                totalPages = Math.ceil(totalRecords / PAGE_SIZE);
+                updatePagination(data.page, totalPages, totalRecords);
+
+                if (progress) {
+                    progress.style.width = "100%";
+                    setTimeout(() => {
+                        progressContainer.style.display = "none";
+                        progress.style.width = "0%";
+                    }, 500);
+                }
+                
+            } catch (e) {
+                console.error("❌ Fetch error:", e);
+                renderError(e.message);
+                if (progress) {
+                    progress.style.width = "0%";
+                    progressContainer.style.display = "none";
+                }
+            }
+        }
+
+        function getCategoryDisplayName(category) {
+            const names = {
+                all: "All Sources",
+                research: "Research Data", 
+                articles: "Journal Articles",
+                theses: "Theses",
+                elis: "E-LIS Repository"
+            };
+            return names[category] || category;
+        }
+
+        function showLoadingState() {
+            const c = qs("#dataCardsContainer");
+            if (!c) return;
+            
+            if (currentCategory === "elis") {
+                c.innerHTML = `
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Searching E-LIS Repository</h3>
+                        <p>Performing live search in Library and Information Science e-prints...</p>
+                    </div>`;
+            } else {
+                c.innerHTML = `
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Loading Research Data</h3>
+                        <p>Searching ${getCategoryDisplayName(currentCategory)} records...</p>
+                    </div>`;
+            }
+        }
+
+        /* ---------- Enhanced Results Rendering ---------- */
+        function renderResults(records = []) {
+            const c = qs("#dataCardsContainer");
+            if (!c) {
+                console.error("Could not find dataCardsContainer");
+                return;
+            }
+
+            c.innerHTML = "";
+
+            if (!records.length) {
+                const noResultsMessage = currentCategory === "elis" 
+                    ? "No E-LIS records found. Try a different search term or check your connection."
+                    : "Try another category, search term, or check your filters.";
+                    
+                c.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-database"></i>
+                        <h3>No Results Found</h3>
+                        <p>${noResultsMessage}</p>
+                        <p><small>Current category: ${getCategoryDisplayName(currentCategory)}</small></p>
+                    </div>`;
+                hide(qs("#pagination"));
+                return;
+            }
+
+            console.log(`🎨 Rendering ${records.length} records`);
+
+            for (const r of records) {
+                try {
+                    const recJSON = encodeURIComponent(JSON.stringify(r));
+                    const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
+                    const desc = (r.description || "").trim();
+                    const title = r.title || "Untitled";
+                    const source = r.source || "Unknown";
+                    const type = r.type || "Record";
+                    const year = r.year || "—";
+                    const identifier = r.identifier || "—";
+                    const url = r.url || "#";
+
+                    // Enhanced URL validation
+                    const hasValidUrl = url && url !== '#' && (url.startsWith('http://') || url.startsWith('https://'));
+
+                    c.insertAdjacentHTML("beforeend", `
+                        <div class="data-card">
+                            <div class="card-header">
+                                <span class="card-type">${type}</span>
+                                <span class="card-source">${source}</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title">${title}</h3>
+                                ${authors ? `<p class="card-authors">${authors}</p>` : ''}
+                                ${desc ? `<p class="card-description">${desc.length > 300 ? desc.slice(0,300) + "…" : desc}</p>` : ''}
+                            </div>
+                            <div class="card-footer">
+                                <div class="card-meta">
+                                    <span><b>Year:</b> ${year}</span>
+                                    <span><b>ID:</b> ${identifier}</span>
+                                </div>
+                                <div class="card-actions">
+                                    ${hasValidUrl ? 
+                                        `<a class="btn sm primary" href="${url}" target="_blank" rel="noopener" title="${url}">
+                                            <i class="fas fa-external-link-alt"></i> Open
+                                        </a>` : 
+                                        `<span class="btn sm disabled" title="No URL available">
+                                            <i class="fas fa-unlink"></i> No URL
+                                        </span>`
+                                    }
+                                    <input class="select-record" type="checkbox" data-record="${recJSON}">
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                } catch (err) {
+                    console.error("Error rendering record:", err, r);
+                }
+            }
+
+            // Add event listeners to checkboxes
+            qsa(".select-record").forEach(cb => {
+                cb.addEventListener("change", updateSelectedCount);
+            });
+
+            updateSelectedCount();
+            show(qs("#pagination"));
+        }
+
+        /* ---------- Selected Records Count ---------- */
+        function updateSelectedCount() {
+            selectedCount = qsa(".select-record:checked").length;
+            const risBtn = qs("#bulkRisButton");
+            
+            if (risBtn) {
+                if (selectedCount > 0) {
+                    risBtn.style.display = "flex";
+                    risBtn.innerHTML = `<i class="fas fa-download"></i> Export RIS (${selectedCount})`;
+                } else {
+                    risBtn.style.display = "none";
+                }
+            }
+        }
+
+        /* ---------- Filters ---------- */
+        function renderFilters(facets) {
+            const wrap = qs("#filtersWrap");
+            if (!facets || !wrap) return;
+
+            const years = facets.years || [];
+            const repositories = facets.repositories || [];
+            const types = facets.types || [];
+
+            wrap.innerHTML = `
+                <div class="filter">
+                    <label><i class="fas fa-calendar"></i> Year</label>
+                    <select id="fltYear">
+                        <option value="">All Years</option>
+                        ${years.map(y => `<option value="${y.name}">${y.name} (${y.count})</option>`).join("")}
+                    </select>
+                </div>
+                <div class="filter">
+                    <label><i class="fas fa-university"></i> Repository</label>
+                    <select id="fltRepo">
+                        <option value="">All Repositories</option>
+                        ${repositories.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join("")}
+                    </select>
+                </div>
+                <div class="filter">
+                    <label><i class="fas fa-tag"></i> Type</label>
+                    <select id="fltType">
+                        <option value="">All Types</option>
+                        ${types.map(t => `<option value="${t.name}">${t.name} (${t.count})</option>`).join("")}
+                    </select>
+                </div>
+                <div class="filter">
+                    <label><i class="fas fa-user"></i> Author contains</label>
+                    <input id="fltAuthor" type="text" placeholder="e.g. Smith" />
+                </div>
+                <button id="applyFilters" class="btn primary" style="width: 100%; margin-top: 1rem;">
+                    <i class="fa-solid fa-filter"></i> Apply Filters
+                </button>
+            `;
+
+            const applyBtn = qs("#applyFilters");
+            if (applyBtn) {
+                applyBtn.onclick = () => {
+                    currentFilters = {
+                        year: qs("#fltYear").value,
+                        repository: qs("#fltRepo").value,
+                        type: qs("#fltType").value,
+                        author: qs("#fltAuthor").value
+                    };
+                    console.log("🎯 Applying filters:", currentFilters);
+                    fetchResults(1);
+                };
+            }
+        }
+
+        /* ---------- Pagination ---------- */
+        function updatePagination(page, computedTotalPages, total) {
+            currentPage = page;
+            totalPages = computedTotalPages || 1;
+            
+            const pageInfo = qs("#pageInfo");
+            const totalInfo = qs("#totalInfo");
+            const prevBtn = qs("#prevBtn");
+            const nextBtn = qs("#nextBtn");
+            
+            if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            if (totalInfo) totalInfo.textContent = `${total.toLocaleString()} records`;
+            if (prevBtn) prevBtn.disabled = currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+        }
+
+        /* ---------- Enhanced Search Function ---------- */
+        function performSearch() {
+            const searchBox = qs("#searchBox");
+            if (searchBox) {
+                currentQuery = searchBox.value.trim();
+                console.log("🔍 Performing search:", currentQuery);
+                
+                // Add visual feedback
+                const searchBtn = qs("#searchBtn");
+                const originalHTML = searchBtn.innerHTML;
+                searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+                searchBtn.disabled = true;
+                
+                fetchResults(1);
+                
+                // Reset button after a short delay
+                setTimeout(() => {
+                    searchBtn.innerHTML = originalHTML;
+                    searchBtn.disabled = false;
+                }, 1000);
+            }
+        }
+
+        /* ---------- System Health Monitoring ---------- */
+        async function checkSystemHealth() {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                const data = await res.json();
+                updateSystemInfo(data);
+            } catch (e) {
+                console.error("Health check failed:", e);
+                updateSystemInfo({ error: "Health check failed" });
+            }
+        }
+
+        function updateSystemInfo(data) {
+            const el = qs("#systemInfo");
+            if (!el) return;
+
+            if (data.error) {
+                el.innerHTML = `<span style="color: var(--error);">❌ ${data.error}</span>`;
+                return;
+            }
+
+            const healthData = data.data || {};
+            const lastHarvest = data.harvest?.last_harvest ? new Date(data.harvest.last_harvest).toLocaleDateString() : 'Never';
+            
+            el.innerHTML = `
+                <div><b>Records:</b> ${healthData.total_records?.toLocaleString() || 0}</div>
+                <div><b>Theses:</b> ${healthData.theses?.toLocaleString() || 0}</div>
+                <div><b>Articles:</b> ${healthData.articles?.toLocaleString() || 0}</div>
+                <div><b>Research Data:</b> ${healthData.research?.toLocaleString() || 0}</div>
+                <div><b>Last Harvest:</b> ${lastHarvest}</div>
+                <div><b>Includes E-LIS:</b> ${data.repositories?.includes_elis ? '✅' : '❌'}</div>
+            `;
+        }
+
+        /* ---------- Manual Harvesting ---------- */
+        async function triggerManualHarvest() {
+            const harvestBtn = qs("#harvestNowBtn");
+            const originalText = harvestBtn.innerHTML;
+            
+            harvestBtn.disabled = true;
+            harvestBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Harvesting...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/harvest-now`, { 
+                    method: 'POST' 
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Harvest completed successfully! New data is now available.');
+                    // Refresh the current view after a short delay
+                    setTimeout(() => {
+                        fetchResults(currentPage);
+                        checkSystemHealth();
+                    }, 2000);
+                } else {
+                    alert('Harvest failed: ' + result.error);
+                }
+            } catch (error) {
+                alert('Harvest request failed: ' + error.message);
+            } finally {
+                harvestBtn.disabled = false;
+                harvestBtn.innerHTML = originalText;
+            }
+        }
+
+        async function testEliSConnection() {
+            const testBtn = qs("#testEliSBtn");
+            const originalText = testBtn.innerHTML;
+            
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/test-elis`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('E-LIS connection successful! Repository is accessible.');
+                } else {
+                    alert('E-LIS test failed: ' + (result.message || result.error));
+                }
+            } catch (error) {
+                alert('E-LIS test failed: ' + error.message);
+            } finally {
+                testBtn.disabled = false;
+                testBtn.innerHTML = originalText;
+            }
+        }
+
+        /* ---------- Bulk RIS Export ---------- */
+        async function exportRIS() {
+            const selected = qsa(".select-record:checked").map(cb => {
+                try {
+                    return JSON.parse(decodeURIComponent(cb.dataset.record));
+                } catch (e) {
+                    console.error("Error parsing record:", e);
+                    return null;
+                }
+            }).filter(record => record !== null);
+
+            if (!selected.length) {
+                alert("Please select at least one record to export.");
+                return;
+            }
+
+            console.log(`📤 Exporting ${selected.length} records to RIS`);
+
+            try {
+                const res = await fetch(`${API_BASE}/ris`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ records: selected })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Export failed: HTTP ${res.status}`);
+                }
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `library-export-${new Date().toISOString().split('T')[0]}.ris`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+            } catch (e) {
+                console.error("❌ RIS export error:", e);
+                alert("Export failed: " + e.message);
+            }
+        }
+
+        /* ---------- Error Handling ---------- */
+        function renderError(msg) {
+            const c = qs("#dataCardsContainer");
+            if (!c) return;
+
+            c.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error Loading Data</h3>
+                    <p>${msg}</p>
+                    <p><small>Check the console for more details.</small></p>
+                    <button class="btn primary" onclick="fetchResults(1)" style="margin-top: 1rem;">
+                        <i class="fas fa-refresh"></i> Retry
+                    </button>
+                </div>`;
+                
+            hide(qs("#pagination"));
+        }
+
+        /* ---------- Enhanced Event Listeners ---------- */
+        function initializeEventListeners() {
+            // Search button
+            const searchBtn = qs("#searchBtn");
+            if (searchBtn) {
+                searchBtn.addEventListener("click", performSearch);
+            }
+
+            // Enter key in search box
+            const searchBox = qs("#searchBox");
+            if (searchBox) {
+                searchBox.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        performSearch();
+                    }
+                });
+            }
+
+            // Tabs
+            qsa(".tab").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    qsa(".tab").forEach(t => t.classList.remove("active"));
+                    btn.classList.add("active");
+                    currentCategory = btn.dataset.type;
+                    currentPage = 1;
+                    console.log("📁 Switching to category:", currentCategory);
+                    fetchResults(1);
+                });
+            });
+
+            // Pagination
+            const prevBtn = qs("#prevBtn");
+            const nextBtn = qs("#nextBtn");
+            
+            if (prevBtn) {
+                prevBtn.addEventListener("click", () => {
+                    if (currentPage > 1) {
+                        fetchResults(currentPage - 1);
+                    }
+                });
+            }
+            
+            if (nextBtn) {
+                nextBtn.addEventListener("click", () => {
+                    if (currentPage < totalPages) {
+                        fetchResults(currentPage + 1);
+                    }
+                });
+            }
+
+            // Harvest controls
+            const harvestBtn = qs("#harvestNowBtn");
+            const testEliSBtn = qs("#testEliSBtn");
+            
+            if (harvestBtn) harvestBtn.addEventListener("click", triggerManualHarvest);
+            if (testEliSBtn) testEliSBtn.addEventListener("click", testEliSConnection);
+
+            // RIS Export
+            const risBtn = qs("#bulkRisButton");
+            if (risBtn) {
+                risBtn.addEventListener("click", exportRIS);
+            }
+        }
+
+        /* ---------- Initial Load ---------- */
+        window.addEventListener("DOMContentLoaded", () => {
+            console.log("🚀 Academic Library Harvester initialized with E-LIS Live Search");
+            initializeEventListeners();
+            checkSystemHealth();
+            fetchResults(1);
+            
+            // Refresh health every 5 minutes
+            setInterval(checkSystemHealth, 300000);
+        });
+    </script>
 </body>
 </html>
