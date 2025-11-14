@@ -1,717 +1,267 @@
-:root {
-  --primary: #0F204B;
-  --secondary: #A71930;
-  --light: #f5f5f5;
-  --mid: #e0e0e0;
-  --dark: #222;
-  --muted: #8B8D8E;
-  --shadow: 0 4px 12px rgba(0,0,0,.08);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,.12);
-}
 
-/* Base Reset */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--light);
-  color: var(--dark);
-  line-height: 1.6;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* Header */
-.site-header {
-  background: var(--primary);
-  color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 5px rgba(0,0,0,.15);
-}
-
-.header-inner {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 14px 20px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: #fff;
-}
-
-.brand-logo {
-  height: 56px;
-  width: auto;
-  display: block;
-  filter: brightness(0) invert(1);
-}
-
-.header-title {
-  justify-self: center;
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: .6px;
-}
-
-.header-spacer {
-  width: 56px;
-}
-
-/* Main Container */
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  flex: 1;
-}
-
-/* Buttons */
-.btn {
-  background: var(--primary);
-  color: #fff;
-  border: 0;
-  border-radius: 6px;
-  padding: 10px 14px;
-  cursor: pointer;
-  transition: .2s;
-  box-shadow: var(--shadow);
-  font-family: inherit;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-.btn:hover {
-  filter: brightness(.95);
-  transform: translateY(-1px);
-}
-
-.search-btn {
-  background: var(--muted);
-}
-
-.refresh-btn {
-  background: #2d2f33;
-}
-
-.refresh-btn:hover {
-  filter: brightness(1.2);
-}
-
-.btn.sm {
-  padding: 8px 10px;
-  font-size: 12px;
-}
-
-/* Search Section */
-.search-section {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 20px;
-  margin: 16px 0;
-}
-
-.search-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 240px;
-  border: 1px solid var(--mid);
-  border-radius: 6px;
-  padding: 14px 16px;
-  font-size: 18px;
-  font-family: inherit;
-}
-
-.search-input::placeholder {
-  color: #777;
-  text-align: center;
-  font-weight: 500;
-}
-
-/* Tabs */
-.source-tabs {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.tab {
-  background: var(--primary);
-  color: #fff;
-  border: 0;
-  border-radius: 1000px;
-  padding: 10px 18px;
-  cursor: pointer;
-  opacity: .9;
-  font-family: inherit;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.tab.active, .tab:hover {
-  opacity: 1;
-  background: var(--secondary);
-  transform: translateY(-1px);
-}
-
-.tab.elis.active {
-  background: #8b5cf6;
-}
-
-/* Results Section */
-.results-section {
-  margin-top: 10px;
-}
-
-.results-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-/* Progress Bar */
-.progress-bar {
-  height: 6px;
-  background: var(--mid);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 14px;
-}
-
-.progress {
-  height: 100%;
-  width: 0;
-  background: var(--secondary);
-  transition: width .35s ease;
-}
-
-/* Results Layout */
-.results-layout {
-  display: flex;
-  gap: 22px;
-  align-items: flex-start;
-}
-
-/* Filters Sidebar */
-.filters-sidebar {
-  width: 280px;
-  flex: 0 0 280px;
-  position: sticky;
-  top: 90px;
-  background: rgba(15, 32, 75, 0.08);
-  backdrop-filter: saturate(140%) blur(0px);
-  border: 1px solid rgba(15, 32, 75, 0.15);
-  border-radius: 12px;
-  padding: 14px;
-  box-shadow: var(--shadow);
-}
-
-.filters-title {
-  margin: 0 0 8px;
-  color: var(--primary);
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.filters {
-  display: grid;
-  gap: 12px;
-}
-
-.filter label {
-  display: block;
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 6px;
-  color: var(--primary);
-}
-
-.filter select,
-.filter input {
-  width: 100%;
-  border: 1px solid var(--mid);
-  border-radius: 6px;
-  padding: 10px;
-  background: #fff;
-  font-family: inherit;
-  font-size: 14px;
-}
-
-/* Results Main Column */
-.results-main {
-  flex: 1;
-  min-width: 0; /* Prevents flex item from overflowing */
-}
-
-/* Cards Grid */
-.data-cards-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 22px;
-  margin-top: 14px;
-}
-
-/* Data Cards */
-.data-card {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  transition: .2s;
-  overflow: hidden;
-}
-
-.data-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-.card-header {
-  background: var(--primary);
-  color: #fff;
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-type {
-  font-size: 12px;
-  background: rgba(255, 255, 255, .18);
-  padding: 2px 10px;
-  border-radius: 1000px;
-  font-weight: 600;
-}
-
-.card-source {
-  font-size: 12px;
-  opacity: .9;
-}
-
-.card-body {
-  padding: 16px;
-  flex: 1;
-}
-
-.card-title {
-  margin: 0 0 8px;
-  font-size: 18px;
-  line-height: 1.3;
-  color: var(--dark);
-}
-
-.card-authors {
-  color: var(--secondary);
-  font-style: italic;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.card-description {
-  color: #555;
-  margin: 0;
-  line-height: 1.5;
-  font-size: 14px;
-}
-
-.card-footer {
-  border-top: 1px solid var(--mid);
-  background: #fafafa;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-radius: 0 0 10px 10px;
-}
-
-.card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #666;
-}
-
-.card-meta span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.card-actions .btn {
-  box-shadow: none;
-  padding: 8px 10px;
-  border-radius: 6px;
-}
-
-.select-record {
-  accent-color: var(--secondary);
-  transform: scale(1.2);
-  margin: 2px 0 0 8px;
-  cursor: pointer;
-}
-
-/* Empty and Loading States */
-.no-results {
-  text-align: center;
-  color: #666;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 28px;
-  grid-column: 1 / -1;
-}
-
-.no-results i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: var(--muted);
-}
-
-.no-results h3 {
-  margin: 0 0 8px;
-  color: var(--dark);
-}
-
-.no-results p {
-  margin: 0;
-  color: #666;
-}
-
-.loading-state {
-  text-align: center;
-  color: #666;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 28px;
-  grid-column: 1 / -1;
-}
-
-.loading-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: var(--muted);
-}
-
-.loading-state h3 {
-  margin: 0 0 8px;
-  color: var(--dark);
-}
-
-.loading-state p {
-  margin: 0;
-  color: #666;
-}
-
-.error-state {
-  text-align: center;
-  color: #666;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 28px;
-  grid-column: 1 / -1;
-}
-
-.error-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: #dc3545;
-}
-
-.error-state h3 {
-  margin: 0 0 8px;
-  color: var(--dark);
-}
-
-.error-state p {
-  margin: 0;
-  color: #666;
-}
-
-/* Zotero Card */
-.zotero-card {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 24px;
-  margin: 24px 0;
-}
-
-.zotero-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.zotero-mark {
-  height: 44px;
-  width: 44px;
-  border-radius: 50%;
-  background: var(--secondary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.zotero-copy {
-  text-align: center;
-  width: 100%;
-}
-
-.zotero-copy h3 {
-  margin: 0 0 8px;
-  color: var(--dark);
-}
-
-.zotero-copy p {
-  margin: 0;
-  color: #666;
-  line-height: 1.5;
-}
-
-.zotero-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.zotero-actions a {
-  background: var(--primary);
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 6px;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-}
-
-.zotero-actions a:hover {
-  background: var(--secondary);
-  transform: translateY(-1px);
-}
-
-/* Footer */
-.top-footer {
-  background: var(--primary);
-  color: #fff;
-  text-align: center;
-  padding: 28px 0;
-  margin-top: 40px;
-  box-shadow: 0 -2px 5px rgba(0,0,0,.12);
-}
-
-.top-footer-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-
-.email-button {
-  background: var(--secondary);
-  color: #fff;
-  border: 0;
-  border-radius: 6px;
-  padding: 10px 16px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
-.email-button:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
-}
-
-.footer {
-  background: var(--primary);
-  color: #fff;
-  text-align: center;
-  padding: 12px 0;
-  font-size: 14px;
-  border-top: 1px solid rgba(255,255,255,.2);
-}
-
-/* Floating Bulk RIS Button */
-.bulk-ris-btn {
-  position: fixed;
-  right: 22px;
-  bottom: 22px;
-  background: var(--secondary);
-  color: #fff;
-  border: 0;
-  border-radius: 999px;
-  padding: 12px 18px;
-  font-weight: 700;
-  box-shadow: var(--shadow-lg);
-  cursor: pointer;
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s ease;
-  font-family: inherit;
-}
-
-.bulk-ris-btn:hover {
-  filter: brightness(1.05);
-  transform: translateY(-2px) scale(1.05);
-}
-
-/* Responsive Design */
-@media (max-width: 980px) {
-  .results-layout {
-    flex-direction: column;
-  }
-  
-  .filters-sidebar {
-    position: relative;
-    top: auto;
-    width: 100%;
-    flex: auto;
-  }
-  
-  .header-title {
-    font-size: 32px;
-  }
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 15px;
-  }
-  
-  .search-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-input {
-    min-width: auto;
-  }
-  
-  .data-cards-container {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .header-inner {
-    padding: 10px 15px;
-    grid-template-columns: auto 1fr;
-  }
-  
-  .header-spacer {
-    display: none;
-  }
-  
-  .brand-logo {
-    height: 48px;
-  }
-  
-  .header-title {
-    font-size: 28px;
-    justify-self: start;
-    margin-left: 10px;
-  }
-  
-  .source-tabs {
-    gap: 8px;
-  }
-  
-  .tab {
-    padding: 8px 14px;
-    font-size: 13px;
-  }
-  
-  .zotero-actions {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .zotero-actions a {
-    width: 200px;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-title {
-    font-size: 24px;
-  }
-  
-  .brand-logo {
-    height: 40px;
-  }
-  
-  .search-input {
-    font-size: 16px;
-    padding: 12px;
-  }
-  
-  .card-body {
-    padding: 12px;
-  }
-  
-  .card-title {
-    font-size: 16px;
-  }
-  
-  .pagination-controls {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  
-  .pagination-controls button {
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academic Library Harvester</title>
+
+  <!-- Icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* ========== Header Logo Resize ========== */
+    .brand-logo {
+      height: 80px;
+      width: auto;
+      object-fit: contain;
+      transition: transform 0.2s ease;
+    }
+    .brand-logo:hover {
+      transform: scale(1.05);
+    }
+
+    /* ========== Pagination ========== */
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin: 30px 0;
+      font-weight: 500;
+    }
+    .pagination-controls button {
+      background-color: #002c5f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+    .pagination-controls button:hover {
+      background-color: #01408b;
+    }
+    .pagination-controls button[disabled] {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .pagination-controls #pageInfo,
+    .pagination-controls #totalInfo {
+      color: #333;
+      font-size: 14px;
+    }
+
+    /* ========== Source Indicator ========== */
+    .source-indicator {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: #666;
+      font-style: italic;
+      padding: 0.5rem;
+      background: #f8f9fa;
+      border-radius: 6px;
+      display: none;
+    }
+
+    .live-badge {
+      background: #28a745;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+
+    /* ========== Harvest Notification ========== */
+    .harvest-notification {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: #28a745;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* ========== System Status ========== */
+    .system-status {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #dee2e6;
+    }
+
+    .system-status h4 {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .system-status div {
+      font-size: 0.8rem;
+      color: #666;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#">
+        <img
+          class="brand-logo"
+          alt="Logo"
+          src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png"
+        />
+      </a>
+      <div class="header-title">Academic Library Harvester</div>
+      <div class="header-spacer"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- SEARCH -->
+    <section class="search-section">
+      <div class="search-row">
+        <input
+          class="search-input"
+          id="searchBox"
+          type="text"
+          placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'
+        />
+        <button class="btn search-btn" id="searchBtn">
+          <i class="fa-solid fa-magnifying-glass"></i> Search
+        </button>
+      </div>
+
+      <!-- Source Indicator -->
+      <div id="sourceIndicator" class="source-indicator">
+        Searching: <span id="currentSource">All Sources</span>
+        <span id="liveBadge" class="live-badge" style="display: none;">Live Search</span>
+      </div>
+
+      <!-- Category tabs -->
+      <div class="source-tabs">
+        <button class="tab active" data-type="all">All Sources</button>
+        <button class="tab" data-type="research">Research Data</button>
+        <button class="tab" data-type="articles">Journal Articles</button>
+        <button class="tab" data-type="theses">Theses</button>
+        <button class="tab elis" data-type="elis">E-LIS Repository</button>
+      </div>
+    </section>
+
+    <!-- RESULTS + FILTERS LAYOUT -->
+    <section class="results-section" id="resultsSection">
+      <div class="results-header">
+        <button class="btn refresh-btn" id="clearBtn" style="display:none;">
+          <i class="fa-solid fa-trash"></i> Clear Results
+        </button>
+      </div>
+
+      <div class="results-layout">
+        <!-- Filters sidebar -->
+        <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
+          <h4 class="filters-title">
+            <i class="fa-solid fa-filter"></i> Filters
+          </h4>
+          <div class="filters" id="filtersWrap"><!-- built by JS --></div>
+          
+          <div class="system-status">
+            <h4><i class="fas fa-info-circle"></i> System Info</h4>
+            <div id="systemInfo">Loading system status...</div>
+          </div>
+        </aside>
+
+        <!-- Results column -->
+        <div class="results-main">
+          <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+          </div>
+          <div class="data-cards-container" id="dataCardsContainer">
+            <!-- JS renders here -->
+          </div>
+
+          <!-- Pagination -->
+          <div id="pagination" class="pagination-controls" style="display:none;">
+            <button id="prevBtn" disabled>← Prev</button>
+            <span id="pageInfo">Page 1</span>
+            <button id="nextBtn" disabled>Next →</button>
+            <span id="totalInfo"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ZOTERO CARD -->
+    <section class="zotero-card">
+      <div class="zotero-head">
+        <div class="zotero-mark">Z</div>
+        <div class="zotero-copy">
+          <h3>Your Referencing Manager: Zotero</h3>
+          <p>
+            Zotero is a free, open-source tool for collecting, organizing,
+            citing, and sharing research. Save references directly from your
+            browser, organize them into collections, and sync across devices.
+          </p>
+        </div>
+      </div>
+      <div class="zotero-actions">
+        <a href="https://www.zotero.org/" target="_blank"
+          ><i class="fa-solid fa-globe"></i> Visit Zotero</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=JG7Uq_JFDzE"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 1</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=9tnWWiX7VbU"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 2</a
+        >
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <div class="top-footer">
+    <div class="top-footer-content">
+      <div class="copyright">
+        © 2025 Academic Library Harvester. All rights reserved.
+      </div>
+      <button
+        class="email-button"
+        onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Academic%20Library%20Harvester%20Inquiry'"
+      >
+        Email Us
+      </button>
+    </div>
+  </div>
+
+  <footer class="footer">Research Data Harvesting System v2.0</footer>
+
+  <!-- Floating bulk RIS export -->
+  <button id="bulkRisButton" class="bulk-ris-btn" style="display:none;">
+    <i class="fa-solid fa-file-export"></i> Export Selected RIS
+  </button>
+
+  <!-- Harvest Notification -->
+  <div id="harvestNotification" class="harvest-notification"></div>
+
+  <!-- Main app script -->
+  <script src="script.js"></script>
+</body>
+</html>
