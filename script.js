@@ -6,6 +6,7 @@ let currentQuery = "";
 let currentPage = 1;
 let currentFilters = {};
 let totalPages = 1;
+let selectedCount = 0;
 
 /* ---------- helpers ---------- */
 const qs = (s) => document.querySelector(s);
@@ -90,8 +91,6 @@ function renderResults(records = []) {
   }
 
   console.log(`Rendering ${records.length} records`);
-  let validUrlCount = 0;
-  let dspaceRecords = 0;
 
   for (const r of records) {
     try {
@@ -105,18 +104,8 @@ function renderResults(records = []) {
       const identifier = r.identifier || "—";
       const url = r.url || "#";
 
-      // Enhanced URL validation for DSpace and research repositories
-      const isDSpace = source.includes('University') && !source.includes('Figshare');
+      // URL validation
       const hasValidUrl = url && url !== '#' && (url.startsWith('http://') || url.startsWith('https://'));
-      
-      if (hasValidUrl) validUrlCount++;
-      if (isDSpace) dspaceRecords++;
-
-      console.log(`📄 ${isDSpace ? '🏛️' : '🔬'} ${title.substring(0, 50)}... | URL: ${url} | Valid: ${hasValidUrl}`);
-      
-      // Truncate long URLs for display
-      const displayUrl = hasValidUrl ? url : "#";
-      const truncatedUrl = hasValidUrl ? (url.length > 50 ? url.substring(0, 50) + '...' : url) : 'No URL available';
 
       c.insertAdjacentHTML("beforeend", `
         <div class="data-card">
@@ -136,10 +125,10 @@ function renderResults(records = []) {
             </div>
             <div class="card-actions">
               ${hasValidUrl ? 
-                `<a class="btn sm" href="${displayUrl}" target="_blank" rel="noopener" title="${url}">
+                `<a class="btn sm" href="${url}" target="_blank" rel="noopener" title="${url}">
                   <i class="fas fa-external-link-alt"></i> Open
                 </a>` : 
-                `<span class="btn sm disabled" title="${truncatedUrl}">
+                `<span class="btn sm disabled" title="No URL available">
                   <i class="fas fa-unlink"></i> No URL
                 </span>`
               }
@@ -153,16 +142,39 @@ function renderResults(records = []) {
     }
   }
 
-  console.log(`✅ ${validUrlCount}/${records.length} records have valid URLs`);
-  console.log(`🏛️ ${dspaceRecords} DSpace repository records`);
-
   // Add event listeners to checkboxes
   qsa(".select-record").forEach(cb => {
-    cb.addEventListener("change", toggleRISButton);
+    cb.addEventListener("change", updateSelectedCount);
   });
 
-  toggleRISButton();
+  updateSelectedCount();
   show(qs("#pagination"));
+}
+
+/* ---------- selected records count ---------- */
+function updateSelectedCount() {
+  selectedCount = qsa(".select-record:checked").length;
+  const risBtn = qs("#bulkRisButton");
+  
+  if (risBtn) {
+    if (selectedCount > 0) {
+      risBtn.style.display = "flex";
+      risBtn.innerHTML = `<i class="fas fa-download"></i> Export RIS (${selectedCount})`;
+    } else {
+      risBtn.style.display = "none";
+    }
+  }
+  
+  // Update selection info in stats bar
+  const selectionInfo = qs("#selectionInfo");
+  if (selectionInfo) {
+    if (selectedCount > 0) {
+      selectionInfo.textContent = `${selectedCount} record${selectedCount !== 1 ? 's' : ''} selected`;
+      selectionInfo.style.display = "block";
+    } else {
+      selectionInfo.style.display = "none";
+    }
+  }
 }
 
 /* ---------- filters ---------- */
@@ -308,17 +320,23 @@ function initializeEventListeners() {
   if (risBtn) {
     risBtn.addEventListener("click", exportRIS);
   }
-}
 
-/* ---------- bulk RIS ---------- */
-function toggleRISButton() {
-  const any = qsa(".select-record:checked").length > 0;
-  const risBtn = qs("#bulkRisButton");
-  if (risBtn) {
-    risBtn.style.display = any ? "flex" : "none";
+  // Add selection info element if it doesn't exist
+  if (!qs("#selectionInfo")) {
+    const statsBar = qs(".stats-bar");
+    if (statsBar) {
+      const selectionInfo = document.createElement("div");
+      selectionInfo.id = "selectionInfo";
+      selectionInfo.className = "stats-item";
+      selectionInfo.style.display = "none";
+      selectionInfo.style.color = "#10b981";
+      selectionInfo.style.fontWeight = "bold";
+      statsBar.appendChild(selectionInfo);
+    }
   }
 }
 
+/* ---------- bulk RIS ---------- */
 async function exportRIS() {
   const selected = qsa(".select-record:checked").map(cb => {
     try {
@@ -381,7 +399,7 @@ function renderError(msg) {
 
 /* ---------- initial load ---------- */
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("InquiryBase Frontend v5.0.0 initialized (Fixed DSpace & Research)");
+  console.log("InquiryBase Frontend initialized (Auto-Harvest + Selection Count)");
   initializeEventListeners();
   fetchResults(1);
 });
