@@ -22,43 +22,41 @@
       object-fit: contain;
       transition: transform 0.2s ease;
     }
-    .brand-logo:hover { transform: scale(1.05); }
+    .brand-logo:hover {
+      transform: scale(1.05);
+    }
 
     /* ========== Pagination ========== */
     .pagination-controls {
-      display: flex; justify-content: center; align-items: center; gap: 1rem;
-      margin: 30px 0; font-weight: 500;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin: 30px 0;
+      font-weight: 500;
     }
     .pagination-controls button {
-      background-color: #002c5f; color: white; border: none; border-radius: 6px;
-      padding: 8px 14px; cursor: pointer; font-size: 14px; transition: background-color 0.2s ease;
+      background-color: #002c5f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
     }
-    .pagination-controls button:hover { background-color: #01408b; }
-    .pagination-controls button[disabled] { opacity: 0.4; cursor: not-allowed; }
-    .pagination-controls #pageInfo, .pagination-controls #totalInfo { color: #333; font-size: 14px; }
-
-    /* ========== E-LIS mini search ========== */
-    .elis-wrap {
-      margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    .pagination-controls button:hover {
+      background-color: #01408b;
     }
-    .elis-label {
-      font-size: 13px; font-weight: 600; color: #444; display: inline-flex; align-items: center; gap: 6px;
+    .pagination-controls button[disabled] {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
-    .elis-row {
-      display: flex; gap: 6px; align-items: center;
+    .pagination-controls #pageInfo,
+    .pagination-controls #totalInfo {
+      color: #333;
+      font-size: 14px;
     }
-    .elis-input {
-      height: 34px; padding: 6px 10px; border: 1px solid #d5dbe1; border-radius: 6px; font-size: 13px; width: 260px;
-    }
-    .btn-elis {
-      height: 34px; padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
-      background: #eef3f9; color: #163a5f; cursor: pointer;
-    }
-    .btn-elis:hover { background: #e2edf8; }
-    .elis-browse {
-      font-size: 12px; color: #0b5bd3; text-decoration: none; font-weight: 600;
-    }
-    .elis-browse:hover { text-decoration: underline; }
   </style>
 </head>
 
@@ -93,27 +91,12 @@
         </button>
       </div>
 
-      <!-- E-prints (E-LIS) mini search -->
-      <div class="elis-wrap" aria-label="E-prints mini search">
-        <span class="elis-label">
-          <i class="fa-solid fa-book-open-reader"></i> E-prints (E-LIS):
-        </span>
-        <div class="elis-row">
-          <input id="elisBox" class="elis-input" type="text" placeholder="Search E-LIS (E-prints in LIS)..." />
-          <button id="elisSearchBtn" class="btn-elis" title="Search E-LIS">
-            Search
-          </button>
-          <a class="elis-browse" href="http://eprints.rclis.org/" target="_blank" rel="noopener">Browse E-LIS</a>
-        </div>
-      </div>
-
       <!-- Category tabs -->
-      <div class="source-tabs" style="margin-top:14px;">
+      <div class="source-tabs">
         <button class="tab active" data-type="all">All Sources</button>
         <button class="tab" data-type="research">Research Data</button>
         <button class="tab" data-type="articles">Journal Articles</button>
         <button class="tab" data-type="theses">Theses</button>
-        <!-- Note: E-prints is external (mini search above); not a cached category -->
       </div>
     </section>
 
