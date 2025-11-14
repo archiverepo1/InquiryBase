@@ -1,6 +1,6 @@
 # Academic Library Harvester
 
-A comprehensive academic library harvester that aggregates research data from multiple repositories including E-LIS, DSpace repositories, and research data sources.
+A comprehensive library that aggregates research data from multiple repositories including E-LIS, DSpace repositories, and research data sources.
 
 ## Features
 
