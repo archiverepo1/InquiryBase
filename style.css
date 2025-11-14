@@ -1,3 +1,4 @@
+
 :root {
   --primary: #0F204B;
   --secondary: #A71930;
@@ -184,6 +185,10 @@ body {
   opacity: 1;
   background: var(--secondary);
   transform: translateY(-1px);
+}
+
+.tab.elis.active {
+  background: #8b5cf6;
 }
 
 /* Results Section */
@@ -409,6 +414,58 @@ body {
 }
 
 .no-results p {
+  margin: 0;
+  color: #666;
+}
+
+.loading-state {
+  text-align: center;
+  color: #666;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+  grid-column: 1 / -1;
+}
+
+.loading-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: var(--muted);
+}
+
+.loading-state h3 {
+  margin: 0 0 8px;
+  color: var(--dark);
+}
+
+.loading-state p {
+  margin: 0;
+  color: #666;
+}
+
+.error-state {
+  text-align: center;
+  color: #666;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+  grid-column: 1 / -1;
+}
+
+.error-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #dc3545;
+}
+
+.error-state h3 {
+  margin: 0 0 8px;
+  color: var(--dark);
+}
+
+.error-state p {
   margin: 0;
   color: #666;
 }
