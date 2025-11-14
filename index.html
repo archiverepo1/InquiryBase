@@ -1,1076 +1,1343 @@
 
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    if (request.method === "OPTIONS") return new Response(null, { headers: cors() });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academic Library Harvester</title>
 
-    try {
-      // API routes
-      if (url.pathname === "/api/harvest" && request.method === "POST") return await handleHarvest(request, env);
-      if (url.pathname === "/api/ris" && request.method === "POST") return await handleRIS(request);
-      if (url.pathname === "/api/health") return await health(env);
-      if (url.pathname === "/api/harvest-now") return await harvestNow(env);
-      if (url.pathname === "/api/force-harvest") return await forceHarvest(env);
-      if (url.pathname === "/api/test-elis") return await testEliS(env);
-      if (url.pathname === "/api/elis-live-search" && request.method === "POST") return await handleEliSLiveSearch(request, env);
-      if (url.pathname === "/api/harvest-incremental" && request.method === "POST") return await handleIncrementalHarvest(request, env);
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-      return json({ 
-        ok: true, 
-        service: "Academic Library Harvester", 
-        version: "2.0.0",
-        timestamp: new Date().toISOString()
-      });
-    } catch (err) {
-      await logError(env, "Global", err);
-      return json({ success: false, error: err.message }, 500);
+  <style>
+    /* ========== Global Styles ========== */
+    :root {
+      --primary: #002c5f;
+      --primary-dark: #001f42;
+      --secondary: #666;
+      --success: #28a745;
+      --warning: #ffc107;
+      --error: #dc3545;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #333;
+      --border: #dee2e6;
+      --shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-  },
 
-  async scheduled(event, env, ctx) {
-    try {
-      if (event.cron === "0 2 * * *") { // Daily at 2 AM
-        console.log("🔄 Starting automated daily harvest (100 records per repository)");
-        await dailyHarvest(env);
-        await updateMeta(env);
-        console.log("✅ Automated harvest completed");
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ========== Header ========== */
+    .site-header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 0;
+      box-shadow: var(--shadow);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-logo {
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .header-spacer {
+      flex: 1;
+    }
+
+    /* ========== Buttons ========== */
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .btn.primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn.sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .search-btn {
+      background: var(--primary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .refresh-btn {
+      background: var(--secondary);
+      color: white;
+    }
+
+    /* ========== Search Section ========== */
+    .search-section {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      box-shadow: var(--shadow);
+    }
+
+    .search-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .source-tabs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+
+    .tab:hover {
+      background: var(--bg);
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .tab.elis.active {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
+    }
+
+    /* ========== Results Layout ========== */
+    .results-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      .results-layout {
+        grid-template-columns: 1fr;
       }
-    } catch (err) {
-      await logError(env, "Scheduled", err);
     }
-  }
-};
 
-/* ───────────────────────────── Config ───────────────────────────── */
-
-const USER_AGENT = "Academic-Library-Harvester/2.0.0";
-const PAGE_SIZE_DEFAULT = 24;
-const RECORDS_PER_REPOSITORY = 100;
-const INCREMENTAL_RECORDS = 20;
-
-// DSpace endpoints including E-LIS - FIXED URLs
-const DSPACE_ENDPOINTS = {
-  uct:   "https://open.uct.ac.za/oai/request",
-  spu:   "https://openhub.spu.ac.za/oai/request",
-  sun:   "https://scholar.sun.ac.za/server/oai/request",
-  ufs:   "https://scholar.ufs.ac.za/server/oai/request",
-  up:    "https://repository.up.ac.za/server/oai/request",
-  unisa: "https://uir.unisa.ac.za/server/oai/request",
-  nwu:   "https://repository.nwu.ac.za/server/oai/request",
-  wits:  "https://wiredspace.wits.ac.za/server/oai/request",
-  cut:   "https://cutscholar.cut.ac.za/server/oai/request",
-  elis:  "https://eprints.rclis.org/cgi/oai2" // Changed to https
-};
-
-const RESEARCH_DATA_SOURCES = [
-  {
-    name: "dryad",
-    apiUrl: "https://datadryad.org/api/v2/search",
-    displayName: "Dryad Digital Repository",
-    params: "&page=1&per_page=100"
-  },
-  {
-    name: "mendeley", 
-    apiUrl: "https://api.datacite.org/dois",
-    displayName: "Mendeley Data",
-    params: "&client-id=mendeley&page[size]=100"
-  },
-  {
-    name: "zenodo",
-    apiUrl: "https://zenodo.org/api/records",
-    displayName: "Zenodo",
-    params: "&size=100&sort=mostrecent"
-  }
-];
-
-const KV = {
-  theses:   "harvest_theses",
-  articles: "harvest_articles", 
-  research: "harvest_research",
-  meta:     "harvest_meta",
-  lastErr:  "last_error",
-  lastHarvest: "last_harvest"
-};
-
-/* ───────────────────────────── Core Routes ───────────────────────────── */
-
-async function handleHarvest(request, env) {
-  const body = await request.json().catch(() => ({}));
-  const {
-    category = "all",
-    query = "",
-    page = 1,
-    pageSize = PAGE_SIZE_DEFAULT,
-    filters = {}
-  } = body;
-
-  try {
-    const base = await loadBase(env, category);
-    let filtered = applyFacetFilters(base, filters, query);
-
-    const facets = buildFacets(filtered);
-    const { slice, total } = paginate(filtered, Number(page), Number(pageSize));
-
-    return json({
-      success: true,
-      results: slice,
-      total,
-      page: Number(page),
-      pageSize: Number(pageSize),
-      hasMore: Number(page) * Number(pageSize) < total,
-      facets
-    });
-  } catch (err) {
-    await logError(env, "Harvest", err);
-    return json({ success: false, error: err.message }, 500);
-  }
-}
-
-async function handleIncrementalHarvest(request, env) {
-  const body = await request.json().catch(() => ({}));
-  const { category = "all" } = body;
-
-  try {
-    console.log(`🔄 Incremental harvest triggered for category: ${category}`);
-    
-    let newRecords = 0;
-    
-    if (category === "all" || category === "theses" || category === "articles") {
-      console.log("📚 Incremental harvesting from DSpace repositories...");
-      const dspaceResults = await harvestDSpaceRepositoriesIncremental(env, INCREMENTAL_RECORDS);
-      newRecords += dspaceResults;
+    /* ========== Filters Sidebar ========== */
+    .filters-sidebar {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      height: fit-content;
+      position: sticky;
+      top: 100px;
     }
-    
-    if (category === "all" || category === "research") {
-      console.log("🔬 Incremental harvesting from research data sources...");
-      const researchResults = await harvestResearchDataIncremental(env, INCREMENTAL_RECORDS);
-      newRecords += researchResults;
+
+    .filters-title {
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    
-    await updateMeta(env);
-    
-    return json({
-      success: true,
-      message: `Incremental harvest completed`,
-      newRecords: newRecords,
-      category: category,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (err) {
-    await logError(env, "IncrementalHarvest", err);
-    return json({ success: false, error: err.message }, 500);
-  }
-}
 
-async function handleEliSLiveSearch(request, env) {
-  const body = await request.json().catch(() => ({}));
-  const { query = "", page = 1, pageSize = PAGE_SIZE_DEFAULT } = body;
+    .filter {
+      margin-bottom: 1.5rem;
+    }
 
-  try {
-    console.log(`🔍 E-LIS Live Search: "${query}"`);
-    const results = await searchEliSDirectly(query, pageSize);
-    
-    return json({
-      success: true,
-      results: results,
-      total: results.length,
-      page: Number(page),
-      pageSize: Number(pageSize),
-      hasMore: false,
-      source: "E-LIS Live Search"
-    });
-  } catch (err) {
-    await logError(env, "EliSLiveSearch", err);
-    return json({ success: false, error: err.message }, 500);
-  }
-}
+    .filter label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
 
-async function searchEliSDirectly(query = "", limit = 100) {
-  const results = [];
-  
-  try {
-    console.log(`   Searching E-LIS for: "${query}", limit: ${limit}`);
-    let token = null;
-    let pages = 0;
-    const maxPages = 10; // Increased to get more records
-    
-    while (results.length < limit && pages < maxPages) {
-      const searchUrl = token 
-        ? `https://eprints.rclis.org/cgi/oai2?verb=ListRecords&resumptionToken=${encodeURIComponent(token)}`
-        : `https://eprints.rclis.org/cgi/oai2?verb=ListRecords&metadataPrefix=oai_dc`;
+    .filter select, .filter input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: white;
+    }
+
+    /* ========== Main Results ========== */
+    .results-main {
+      min-height: 600px;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .progress {
+      height: 100%;
+      background: var(--primary);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    /* ========== Data Cards ========== */
+    .data-cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .data-card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .data-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-type {
+      background: var(--primary);
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-source {
+      color: var(--secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+      color: var(--text);
+    }
+
+    .card-authors {
+      color: var(--secondary);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    .card-description {
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--secondary);
+    }
+
+    .card-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-meta b {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .select-record {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    /* ========== Pagination ========== */
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin: 30px 0;
+      font-weight: 500;
+    }
+
+    .pagination-controls button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+
+    .pagination-controls button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .pagination-controls button[disabled] {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ========== Zotero Card ========== */
+    .zotero-card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      box-shadow: var(--shadow);
+    }
+
+    .zotero-head {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .zotero-mark {
+      background: #e74c3c;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .zotero-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .zotero-actions a {
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .zotero-actions a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========== Footer ========== */
+    .top-footer {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 0;
+      margin-top: 2rem;
+    }
+
+    .top-footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer {
+      background: var(--text);
+      color: white;
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .email-button {
+      background: var(--primary);
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* ========== Bulk Actions ========== */
+    .bulk-ris-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 1000;
+      background: var(--success);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+      border: none;
+      cursor: pointer;
+      display: none;
+    }
+
+    .bulk-ris-btn:hover {
+      background: #218838;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(40, 167, 69, 0.5);
+    }
+
+    /* ========== Loading and States ========== */
+    .loading-state, .no-results, .error-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--secondary);
+      grid-column: 1 / -1;
+    }
+
+    .loading-state i, .no-results i, .error-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.7;
+    }
+
+    .loading-state h3, .no-results h3, .error-state h3 {
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    /* ========== Source Indicator ========== */
+    .source-indicator {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: var(--secondary);
+      font-style: italic;
+      padding: 0.5rem;
+      background: var(--bg);
+      border-radius: 6px;
+      display: none;
+    }
+
+    .live-badge {
+      background: var(--success);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+
+    /* ========== Harvest Notification ========== */
+    .harvest-notification {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: var(--success);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 768px) {
+      .header-inner {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .search-row {
+        flex-direction: column;
+      }
+
+      .data-cards-container {
+        grid-template-columns: 1fr;
+      }
+
+      .top-footer-content {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .bulk-ris-btn {
+        bottom: 1rem;
+        right: 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-inner">
+        <a class="brand" href="#">
+          <img
+            class="brand-logo"
+            alt="Logo"
+            src="https://raw.githubusercontent.com/archiverepo1/InquiryBase/main/logo.png"
+          />
+        </a>
+        <div class="header-title">Academic Library Harvester</div>
+        <div class="header-spacer"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- SEARCH -->
+    <section class="search-section">
+      <div class="search-row">
+        <input
+          class="search-input"
+          id="searchBox"
+          type="text"
+          placeholder='Search by keyword, title, or author (use quotes "" for exact matches)...'
+        />
+        <button class="search-btn" id="searchBtn">
+          <i class="fa-solid fa-magnifying-glass"></i> Search
+        </button>
+      </div>
+
+      <!-- Source Indicator -->
+      <div id="sourceIndicator" class="source-indicator">
+        Searching: <span id="currentSource">All Sources</span>
+        <span id="liveBadge" class="live-badge" style="display: none;">Live Search</span>
+      </div>
+
+      <!-- Category tabs -->
+      <div class="source-tabs">
+        <button class="tab active" data-type="all">All Sources</button>
+        <button class="tab" data-type="research">Research Data</button>
+        <button class="tab" data-type="articles">Journal Articles</button>
+        <button class="tab" data-type="theses">Theses</button>
+        <button class="tab elis" data-type="elis">E-LIS Repository</button>
+      </div>
+    </section>
+
+    <!-- RESULTS + FILTERS LAYOUT -->
+    <section class="results-section">
+      <div class="results-header">
+        <button class="btn refresh-btn" id="clearBtn" style="display:none;">
+          <i class="fa-solid fa-trash"></i> Clear Results
+        </button>
+      </div>
+
+      <div class="results-layout">
+        <!-- Filters sidebar -->
+        <aside class="filters-sidebar" id="filtersSidebar" style="display:none;">
+          <h4 class="filters-title">
+            <i class="fa-solid fa-filter"></i> Filters
+          </h4>
+          <div class="filters" id="filtersWrap"><!-- built by JS --></div>
+          
+          <div class="system-status" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--secondary);">
+              <i class="fas fa-info-circle"></i> System Info
+            </h4>
+            <div id="systemInfo" style="font-size: 0.8rem; color: var(--secondary); line-height: 1.4;">
+              Loading system status...
+            </div>
+          </div>
+        </aside>
+
+        <!-- Results column -->
+        <div class="results-main">
+          <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+          </div>
+          <div class="data-cards-container" id="dataCardsContainer">
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <h3>Loading Research Data</h3>
+              <p>Harvesting from academic repositories...</p>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div id="pagination" class="pagination-controls" style="display:none;">
+            <button id="prevBtn" disabled>← Prev</button>
+            <span id="pageInfo">Page 1</span>
+            <button id="nextBtn" disabled>Next →</button>
+            <span id="totalInfo"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ZOTERO CARD -->
+    <section class="zotero-card">
+      <div class="zotero-head">
+        <div class="zotero-mark">Z</div>
+        <div class="zotero-copy">
+          <h3>Your Referencing Manager: Zotero</h3>
+          <p>
+            Zotero is a free, open-source tool for collecting, organizing,
+            citing, and sharing research. Save references directly from your
+            browser, organize them into collections, and sync across devices.
+          </p>
+        </div>
+      </div>
+      <div class="zotero-actions">
+        <a href="https://www.zotero.org/" target="_blank"
+          ><i class="fa-solid fa-globe"></i> Visit Zotero</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=JG7Uq_JFDzE"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 1</a
+        >
+        <a
+          href="https://www.youtube.com/watch?v=9tnWWiX7VbU"
+          target="_blank"
+          ><i class="fa-brands fa-youtube"></i> Tutorial 2</a
+        >
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <div class="top-footer">
+    <div class="container">
+      <div class="top-footer-content">
+        <div class="copyright">
+          © 2025 Academic Library Harvester. All rights reserved.
+        </div>
+        <button
+          class="email-button"
+          onclick="window.location.href='mailto:contact@qdataresearch.com?subject=Academic%20Library%20Harvester%20Inquiry'"
+        >
+          Email Us
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">Research Data Harvesting System v2.0</footer>
+
+  <!-- Floating bulk RIS export -->
+  <button id="bulkRisButton" class="bulk-ris-btn">
+    <i class="fa-solid fa-file-export"></i> Export Selected RIS
+  </button>
+
+  <!-- Harvest Notification -->
+  <div id="harvestNotification" class="harvest-notification"></div>
+
+  <script>
+    const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
+    const PAGE_SIZE = 24;
+
+    let currentCategory = "all";
+    let currentQuery = "";
+    let currentPage = 1;
+    let currentFilters = {};
+    let totalPages = 1;
+    let selectedCount = 0;
+    let lastHarvestTime = 0;
+    const HARVEST_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
+    /* ---------- Enhanced Helpers ---------- */
+    const qs = (s) => document.querySelector(s);
+    const qsa = (s) => [...document.querySelectorAll(s)];
+    const show = (el) => el && (el.style.display = "");
+    const hide = (el) => el && (el.style.display = "none");
+
+    /* ---------- Smart Search with Auto-Harvest ---------- */
+    async function smartSearch(page = 1) {
+      currentPage = page;
+      const progress = qs("#progressBar");
+      const progressContainer = qs(".progress-bar");
+      const sourceIndicator = qs("#sourceIndicator");
+      const currentSource = qs("#currentSource");
+      const liveBadge = qs("#liveBadge");
       
-      console.log(`   Fetching E-LIS page ${pages + 1}, token: ${token ? 'yes' : 'no'}`);
-      
-      const xml = await fetchWithRetry(searchUrl);
-      if (!xml || xml.length < 100) break;
+      if (progress && progressContainer) {
+        progressContainer.style.display = "block";
+        progress.style.width = "25%";
+      }
 
-      if (xml.includes('<error code=')) {
-        const errorMatch = xml.match(/<error code="([^"]*)">([^<]*)<\/error>/);
-        if (errorMatch) {
-          console.log(`   E-LIS error: ${errorMatch[1]} - ${errorMatch[2]}`);
-          if (errorMatch[1] === 'noRecordsMatch') break;
+      // Update source indicator
+      show(sourceIndicator);
+      if (currentCategory === "elis") {
+        currentSource.textContent = "E-LIS Repository";
+        show(liveBadge);
+      } else {
+        currentSource.textContent = getCategoryDisplayName(currentCategory);
+        hide(liveBadge);
+      }
+
+      showLoadingState();
+
+      console.log(`🔍 Smart Search: category=${currentCategory}, page=${page}, query="${currentQuery}"`);
+
+      try {
+        let apiUrl, requestBody;
+        
+        if (currentCategory === "elis") {
+          // E-LIS always uses live search
+          apiUrl = `${API_BASE}/elis-live-search`;
+          requestBody = {
+            query: currentQuery,
+            page: currentPage,
+            pageSize: PAGE_SIZE
+          };
+        } else {
+          // Other categories use cached data
+          apiUrl = `${API_BASE}/harvest`;
+          requestBody = {
+            category: currentCategory,
+            query: currentQuery,
+            page: currentPage,
+            pageSize: PAGE_SIZE,
+            filters: currentFilters
+          };
         }
-      }
 
-      const { records, next } = parseOai(xml, "elis");
-      console.log(`   E-LIS page ${pages + 1} found ${records.length} records`);
-      
-      // Filter by query if provided
-      let filteredRecords = records;
-      if (query) {
-        const q = query.toLowerCase();
-        filteredRecords = records.filter(record => {
-          const searchText = `${record.title || ""} ${record.description || ""} ${(record.authors || []).join(" ")} ${(record.keywords || []).join(" ")}`.toLowerCase();
-          return searchText.includes(q);
+        const res = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
         });
-        console.log(`   After query filtering: ${filteredRecords.length} records`);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        console.log("📦 API Response:", data);
+        
+        if (!data.success) {
+          throw new Error(data.error || "API returned failure");
+        }
+
+        if (!data.results || !Array.isArray(data.results)) {
+          throw new Error("Invalid response format: results array missing");
+        }
+
+        // Trigger auto-harvest for non-ELIS categories
+        if (currentCategory !== "elis") {
+          triggerAutoHarvest(currentCategory);
+        }
+
+        renderResults(data.results, currentCategory === "elis");
+        
+        if (currentCategory !== "elis") {
+          renderFilters(data.facets);
+          show(qs("#filtersSidebar"));
+        } else {
+          hide(qs("#filtersSidebar"));
+        }
+        
+        const totalRecords = data.total || 0;
+        totalPages = Math.ceil(totalRecords / PAGE_SIZE);
+        updatePagination(data.page, totalPages, totalRecords);
+
+        if (progress) {
+          progress.style.width = "100%";
+          setTimeout(() => {
+            progressContainer.style.display = "none";
+            progress.style.width = "0%";
+          }, 500);
+        }
+        
+      } catch (e) {
+        console.error("❌ Search error:", e);
+        renderError(e.message);
+        if (progress) {
+          progress.style.width = "0%";
+          progressContainer.style.display = "none";
+        }
       }
+    }
+
+    /* ---------- Auto-Harvest System ---------- */
+    async function triggerAutoHarvest(category) {
+      const now = Date.now();
       
-      results.push(...filteredRecords);
-      token = next;
-      pages++;
-      
-      if (!token) break;
-      
-      // Break if we have enough records
-      if (results.length >= limit) {
-        results.length = limit; // Trim to limit
-        break;
+      // Only harvest if it's been more than the interval since last harvest
+      if (now - lastHarvestTime < HARVEST_INTERVAL) {
+        console.log("⏱️  Using cached data, last harvest:", new Date(lastHarvestTime).toLocaleTimeString());
+        return;
       }
+
+      console.log(`🔄 Auto-harvesting fresh data for: ${category}`);
       
-      await sleep(1000);
+      try {
+        const response = await fetch(`${API_BASE}/harvest-incremental`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category: category })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          lastHarvestTime = now;
+          console.log(`✅ Auto-harvest completed: ${result.newRecords} new records`);
+          
+          // Show subtle notification
+          showHarvestNotification(result.newRecords);
+          
+          // Update system info to reflect new data
+          setTimeout(() => checkSystemHealth(), 2000);
+        } else {
+          console.error("❌ Auto-harvest failed:", result.error);
+        }
+      } catch (error) {
+        console.error("❌ Auto-harvest request failed:", error);
+      }
     }
-    
-    console.log(`   E-LIS search completed: ${results.length} records total`);
-    return results;
-    
-  } catch (err) {
-    console.error("   E-LIS direct search error:", err.message);
-    return results;
-  }
-}
 
-async function handleRIS(request) {
-  const { records = [] } = await request.json().catch(() => ({ records: [] }));
-  const lines = records.flatMap(toRIS);
-  return new Response(lines.join("\r\n") + "\r\n", {
-    headers: {
-      "Content-Type": "application/x-research-info-systems",
-      "Content-Disposition": 'attachment; filename="library_export.ris"',
-      ...cors()
+    function showHarvestNotification(newRecords) {
+      if (newRecords === 0) return;
+      
+      const notification = qs("#harvestNotification");
+      notification.textContent = `🔄 Added ${newRecords} new records`;
+      notification.style.display = "block";
+      
+      setTimeout(() => {
+        notification.style.display = "none";
+      }, 3000);
     }
-  });
-}
 
-async function health(env) {
-  const [theses, articles, research, meta, lastHarvest] = await Promise.all([
-    kvGetJSON(env, KV.theses, []),
-    kvGetJSON(env, KV.articles, []),
-    kvGetJSON(env, KV.research, []),
-    kvGetJSON(env, KV.meta, {}),
-    env.HARVEST_KV.get(KV.lastHarvest)
-  ]);
+    /* ---------- Results Rendering ---------- */
+    function renderResults(records = [], isLiveSearch = false) {
+      const c = qs("#dataCardsContainer");
+      if (!c) {
+        console.error("Could not find dataCardsContainer");
+        return;
+      }
 
-  const totalRecords = theses.length + articles.length + research.length;
+      c.innerHTML = "";
 
-  return json({
-    ok: true,
-    service: "Academic Library Harvester",
-    timestamp: new Date().toISOString(),
-    repositories: {
-      academic: Object.keys(DSPACE_ENDPOINTS).length,
-      research_data: RESEARCH_DATA_SOURCES.length,
-      includes_elis: true
-    },
-    data: {
-      total_records: totalRecords,
-      theses: theses.length,
-      articles: articles.length,
-      research: research.length
-    },
-    harvest: {
-      last_harvest: lastHarvest || "Never",
-      next_harvest: "Daily at 2 AM"
-    }
-  });
-}
+      if (!records.length) {
+        const noResultsMessage = isLiveSearch 
+          ? "No results found in E-LIS repository. Try a different search term."
+          : "No results found in cached data. Try a different search term or category.";
+          
+        c.innerHTML = `
+          <div class="no-results">
+            <i class="fas fa-database"></i>
+            <h3>No Results Found</h3>
+            <p>${noResultsMessage}</p>
+            ${!isLiveSearch && currentQuery ? `<p><button class="btn primary" onclick="switchToEliSLiveSearch()">Try E-LIS Live Search</button></p>` : ''}
+          </div>`;
+        hide(qs("#pagination"));
+        return;
+      }
 
-async function harvestNow(env) {
-  try {
-    console.log("🚀 Manual harvest triggered (100 records per repository)");
-    await dailyHarvest(env);
-    await updateMeta(env);
-    
-    return json({ 
-      success: true, 
-      message: "Manual harvest completed - 100 records from each repository",
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    await logError(env, "HarvestNow", err);
-    return json({ success: false, error: err.message }, 500);
-  }
-}
+      console.log(`🎨 Rendering ${records.length} records`);
 
-async function forceHarvest(env) {
-  try {
-    console.log("💥 Force harvest triggered");
-    
-    await Promise.all([
-      env.HARVEST_KV.delete(KV.theses),
-      env.HARVEST_KV.delete(KV.articles),
-      env.HARVEST_KV.delete(KV.research),
-      env.HARVEST_KV.delete(KV.meta)
-    ]);
-    
-    console.log("🧹 Cache cleared, starting fresh harvest");
-    await dailyHarvest(env);
-    await updateMeta(env);
-    
-    return json({ 
-      success: true, 
-      message: "Force harvest completed - cache cleared and fresh data harvested",
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    await logError(env, "ForceHarvest", err);
-    return json({ success: false, error: err.message }, 500);
-  }
-}
+      for (const r of records) {
+        try {
+          const recJSON = encodeURIComponent(JSON.stringify(r));
+          const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
+          const desc = (r.description || "").trim();
+          const title = r.title || "Untitled";
+          const source = r.source || "Unknown";
+          const type = r.type || "Record";
+          const year = r.year || "—";
+          const identifier = r.identifier || "—";
+          const url = r.url || "#";
 
-async function testEliS(env) {
-  try {
-    console.log("🧪 Testing E-LIS connection");
-    const testUrl = "https://eprints.rclis.org/cgi/oai2?verb=Identify";
-    const response = await fetchWithRetry(testUrl);
-    
-    if (response && response.includes('E-LIS')) {
-      return json({
-        success: true,
-        message: "E-LIS repository is accessible",
-        repository: "E-LIS e-prints in Library and Information Science",
-        status: "Online"
+          const hasValidUrl = url && url !== '#' && (url.startsWith('http://') || url.startsWith('https://'));
+
+          c.insertAdjacentHTML("beforeend", `
+            <div class="data-card">
+              <div class="card-type">${type}</div>
+              <div class="card-source">${source}</div>
+              <h3 class="card-title">${title}</h3>
+              ${authors ? `<p class="card-authors">${authors}</p>` : ''}
+              ${desc ? `<p class="card-description">${desc}</p>` : ''}
+              <div class="card-footer">
+                <div class="card-meta">
+                  <span><b>Year:</b> ${year}</span>
+                  <span><b>ID:</b> ${identifier}</span>
+                </div>
+                <div class="card-actions">
+                  ${hasValidUrl ? 
+                    `<a class="btn primary sm" href="${url}" target="_blank" rel="noopener">
+                      <i class="fas fa-external-link-alt"></i> Open
+                    </a>` : 
+                    `<span class="btn sm disabled">
+                      <i class="fas fa-unlink"></i> No URL
+                    </span>`
+                  }
+                  <input class="select-record" type="checkbox" data-record="${recJSON}">
+                </div>
+              </div>
+            </div>
+          `);
+        } catch (err) {
+          console.error("Error rendering record:", err, r);
+        }
+      }
+
+      qsa(".select-record").forEach(cb => {
+        cb.addEventListener("change", updateSelectedCount);
       });
-    } else {
-      return json({
-        success: false,
-        message: "E-LIS repository test failed"
-      }, 500);
-    }
-  } catch (err) {
-    return json({
-      success: false,
-      error: err.message,
-      message: "E-LIS test failed with error"
-    }, 500);
-  }
-}
 
-/* ─────────────────────────── Daily Harvest ─────────────────────────── */
-
-async function dailyHarvest(env) {
-  console.log("🔄 Starting daily harvest including E-LIS (100 records per repository)");
-  const harvestStart = Date.now();
-  
-  try {
-    await harvestDSpaceRepositories(env);
-    await harvestResearchData(env);
-    await env.HARVEST_KV.put(KV.lastHarvest, new Date().toISOString());
-    
-    const duration = Math.round((Date.now() - harvestStart) / 1000);
-    console.log(`✅ Daily harvest completed in ${duration} seconds`);
-    
-  } catch (err) {
-    await logError(env, "DailyHarvest", err);
-    throw err;
-  }
-}
-
-async function harvestDSpaceRepositories(env) {
-  const allTheses = [], allArticles = [];
-  
-  const [existingTheses, existingArticles] = await Promise.all([
-    kvGetJSON(env, KV.theses, []),
-    kvGetJSON(env, KV.articles, [])
-  ]);
-
-  console.log(`📚 Harvesting ${Object.keys(DSPACE_ENDPOINTS).length} repositories including E-LIS`);
-
-  for (const [id, endpoint] of Object.entries(DSPACE_ENDPOINTS)) {
-    try {
-      console.log(`🔍 Testing ${id} at ${endpoint}`);
-      
-      const testUrl = `${endpoint}?verb=Identify`;
-      const testResponse = await fetchWithRetry(testUrl);
-      
-      if (!testResponse) {
-        console.log(`⏭️ Skipping ${id} - no response from endpoint`);
-        continue;
-      }
-      
-      if (testResponse.includes('<error code=')) {
-        console.log(`⏭️ Skipping ${id} - endpoint returned error: ${testResponse}`);
-        continue;
-      }
-      
-      console.log(`✅ ${id} is accessible, starting harvest...`);
-      const { t: theses, a: articles } = await harvestDSpaceRepo(id, endpoint, RECORDS_PER_REPOSITORY);
-      allTheses.push(...theses);
-      allArticles.push(...articles);
-      console.log(`✅ ${id}: ${theses.length} theses, ${articles.length} articles`);
-    } catch (err) {
-      console.error(`❌ ${id} failed:`, err.message);
-      await logError(env, "DSpace:" + id, err);
-    }
-    
-    await sleep(2000);
-  }
-
-  const mergedTheses = accumulativeDedupe([...existingTheses, ...allTheses]);
-  const mergedArticles = accumulativeDedupe([...existingArticles, ...allArticles]);
-  
-  await kvPutJSON(env, KV.theses, mergedTheses);
-  await kvPutJSON(env, KV.articles, mergedArticles);
-  
-  console.log(`🎉 Repositories: ${allTheses.length} new theses, ${allArticles.length} new articles`);
-}
-
-async function harvestDSpaceRepositoriesIncremental(env, limit = 20) {
-  let totalNewRecords = 0;
-  
-  const [existingTheses, existingArticles] = await Promise.all([
-    kvGetJSON(env, KV.theses, []),
-    kvGetJSON(env, KV.articles, [])
-  ]);
-
-  console.log(`📚 Incremental harvesting from ${Object.keys(DSPACE_ENDPOINTS).length} repositories`);
-
-  for (const [id, endpoint] of Object.entries(DSPACE_ENDPOINTS)) {
-    try {
-      console.log(`🔍 Testing ${id} for incremental harvest`);
-      
-      const testUrl = `${endpoint}?verb=Identify`;
-      const testResponse = await fetchWithRetry(testUrl);
-      
-      if (!testResponse || testResponse.includes('<error code=')) {
-        console.log(`⏭️ Skipping ${id} - endpoint not accessible`);
-        continue;
-      }
-      
-      console.log(`✅ Incremental harvesting ${id}`);
-      const { t: theses, a: articles } = await harvestDSpaceRepo(id, endpoint, limit);
-      
-      // Filter out duplicates before adding
-      const newTheses = theses.filter(newThesis => 
-        !existingTheses.some(existing => 
-          createRecordSignature(existing) === createRecordSignature(newThesis)
-        )
-      );
-      
-      const newArticles = articles.filter(newArticle => 
-        !existingArticles.some(existing => 
-          createRecordSignature(existing) === createRecordSignature(newArticle)
-        )
-      );
-      
-      if (newTheses.length > 0) {
-        await kvPutJSON(env, KV.theses, [...existingTheses, ...newTheses]);
-        console.log(`✅ ${id}: Added ${newTheses.length} new theses`);
-        totalNewRecords += newTheses.length;
-      }
-      
-      if (newArticles.length > 0) {
-        await kvPutJSON(env, KV.articles, [...existingArticles, ...newArticles]);
-        console.log(`✅ ${id}: Added ${newArticles.length} new articles`);
-        totalNewRecords += newArticles.length;
-      }
-      
-    } catch (err) {
-      console.error(`❌ ${id} incremental harvest failed:`, err.message);
-      await logError(env, "DSpaceIncremental:" + id, err);
-    }
-    
-    await sleep(1000);
-  }
-
-  return totalNewRecords;
-}
-
-async function harvestResearchData(env) {
-  const allResearch = [];
-  const existingResearch = await kvGetJSON(env, KV.research, []);
-  
-  console.log(`🔬 Harvesting research data from ${RESEARCH_DATA_SOURCES.length} sources`);
-
-  for (const source of RESEARCH_DATA_SOURCES) {
-    try {
-      console.log(`   ${source.displayName}`);
-      const recs = await fetchResearchSource(source, "", RECORDS_PER_REPOSITORY);
-      allResearch.push(...recs);
-      console.log(`   ✅ ${source.name}: ${recs.length} records`);
-    } catch (err) {
-      console.error(`   ❌ ${source.name} failed:`, err.message);
-      await logError(env, "Research:" + source.name, err);
-    }
-    await sleep(2000);
-  }
-  
-  const mergedResearch = accumulativeDedupe([...existingResearch, ...allResearch]);
-  await kvPutJSON(env, KV.research, mergedResearch);
-  
-  console.log(`🎉 Research: ${allResearch.length} new records`);
-}
-
-async function harvestResearchDataIncremental(env, limit = 20) {
-  let totalNewRecords = 0;
-  const existingResearch = await kvGetJSON(env, KV.research, []);
-  
-  console.log(`🔬 Incremental harvesting research data from ${RESEARCH_DATA_SOURCES.length} sources`);
-
-  for (const source of RESEARCH_DATA_SOURCES) {
-    try {
-      console.log(`   ${source.displayName} incremental harvest`);
-      const recs = await fetchResearchSource(source, "", limit);
-      
-      // Filter out duplicates
-      const newRecs = recs.filter(newRec => 
-        !existingResearch.some(existing => 
-          createRecordSignature(existing) === createRecordSignature(newRec)
-        )
-      );
-      
-      if (newRecs.length > 0) {
-        await kvPutJSON(env, KV.research, [...existingResearch, ...newRecs]);
-        console.log(`   ✅ ${source.name}: Added ${newRecs.length} new records`);
-        totalNewRecords += newRecs.length;
-      }
-    } catch (err) {
-      console.error(`   ❌ ${source.name} incremental harvest failed:`, err.message);
-      await logError(env, "ResearchIncremental:" + source.name, err);
-    }
-    await sleep(1000);
-  }
-  
-  return totalNewRecords;
-}
-
-/* ─────────────────────────── Harvesting Functions ─────────────────────────── */
-
-async function harvestDSpaceRepo(id, endpoint, limit = 100) {
-  const theses = [], articles = [];
-  let token = null, pages = 0, maxPages = 10;
-
-  console.log(`   Starting harvest from ${id}, limit: ${limit} records`);
-
-  while (pages < maxPages && (theses.length + articles.length) < limit) {
-    const url = token
-      ? `${endpoint}?verb=ListRecords&resumptionToken=${encodeURIComponent(token)}`
-      : `${endpoint}?verb=ListRecords&metadataPrefix=oai_dc`;
-
-    console.log(`   Fetching from ${id}, page ${pages + 1}, token: ${token ? 'yes' : 'no'}`);
-    
-    const xml = await fetchWithRetry(url);
-    if (!xml || xml.length < 100) {
-      console.log(`   No data received from ${id}`);
-      break;
+      updateSelectedCount();
+      show(qs("#pagination"));
     }
 
-    if (xml.includes('<error code=')) {
-      const errorMatch = xml.match(/<error code="([^"]*)">([^<]*)<\/error>/);
-      if (errorMatch) {
-        console.log(`   ${id} returned error: ${errorMatch[1]} - ${errorMatch[2]}`);
-        if (errorMatch[1] === 'noRecordsMatch') break;
-      }
+    function switchToEliSLiveSearch() {
+      currentCategory = "elis";
+      qsa(".tab").forEach(t => t.classList.remove("active"));
+      qs('.tab[data-type="elis"]').classList.add("active");
+      smartSearch(1);
     }
 
-    const { records, next } = parseOai(xml, id);
-    console.log(`   ${id} page ${pages + 1} parsed ${records.length} records`);
-    
-    for (const r of records) {
-      if (/thesis|dissertation/i.test(r.type)) theses.push(r);
-      else if (/article/i.test(r.type)) articles.push(r);
-      else if (r.type && r.type !== "Other") articles.push(r);
+    function showLoadingState() {
+      const c = qs("#dataCardsContainer");
+      if (!c) return;
       
-      if ((theses.length + articles.length) >= limit) break;
-    }
-
-    token = next;
-    pages++;
-    if (!token) break;
-    
-    await sleep(1500);
-  }
-
-  console.log(`   ${id} harvest completed: ${theses.length} theses, ${articles.length} articles`);
-  return { t: theses.slice(0, limit), a: articles.slice(0, limit) };
-}
-
-async function fetchResearchSource(source, query = "", limit = 100) {
-  const out = [];
-  const size = Math.min(100, limit);
-
-  try {
-    for (let page = 1; out.length < limit; page++) {
-      let url = "";
-      if (source.name === "dryad") {
-        url = `${source.apiUrl}?q=${encodeURIComponent(query || "*")}&page=${page}&per_page=${size}`;
-      } else if (source.name === "mendeley") {
-        url = `${source.apiUrl}?query=${encodeURIComponent(query || "*")}${source.params}&page[number]=${page}`;
-      } else if (source.name === "zenodo") {
-        url = `${source.apiUrl}?q=${encodeURIComponent(query || "*")}${source.params}&page=${page}`;
-      }
-
-      console.log(`   Fetching from ${source.name}, page ${page}: ${url}`);
-      
-      const data = await fetchJSON(url);
-      if (!data) break;
-
-      if (source.name === "dryad") {
-        const results = data?._embedded?.["stash:items"] || data?.results || [];
-        if (!results.length) break;
-        for (const it of results) {
-          if (out.length >= limit) break;
-          const a = it.attributes || {};
-          const doi = a.doi || "";
-          out.push({
-            id: `dryad-${it.id}`,
-            title: a.title || "Untitled",
-            authors: (a.authors || []).map(x => x.fullName || x).filter(Boolean),
-            description: a.abstract || "",
-            keywords: a.keywords || [],
-            year: year(a.publicationDate),
-            source: source.displayName,
-            type: "Research Data",
-            identifier: doi || String(it.id),
-            identifierType: doi ? "DOI" : "Dryad ID",
-            url: doi ? `https://doi.org/${doi}` : `https://datadryad.org/stash/dataset/${it.id}`
-          });
-        }
-      } else if (source.name === "mendeley" && Array.isArray(data?.data)) {
-        for (const it of data.data) {
-          if (out.length >= limit) break;
-          const at = it.attributes || {};
-          const doi = at.doi || "";
-          out.push({
-            id: `mendeley-${it.id}`,
-            title: at.title || "Untitled",
-            authors: (at.creators || []).map(c => c?.name).filter(Boolean),
-            description: stripHtml(at.descriptions?.[0]?.description || ""),
-            keywords: (at.subjects || []).map(s => s.subject).filter(Boolean),
-            year: year(at.published),
-            source: source.displayName,
-            type: "Research Data",
-            identifier: doi || String(it.id),
-            identifierType: doi ? "DOI" : "ID",
-            url: at.url || (doi ? `https://doi.org/${doi}` : "")
-          });
-        }
-        if (data?.meta?.totalPages && page >= data.meta.totalPages) break;
-      } else if (source.name === "zenodo" && Array.isArray(data?.hits?.hits)) {
-        for (const it of data.hits.hits) {
-          if (out.length >= limit) break;
-          const md = it.metadata || {};
-          const doi = md.doi || "";
-          out.push({
-            id: `zenodo-${it.id}`,
-            title: md.title || "Untitled",
-            authors: (md.creators || []).map(c => c.name).filter(Boolean),
-            description: md.description || "",
-            keywords: md.keywords || [],
-            year: year(md.publication_date),
-            source: source.displayName,
-            type: "Research Data",
-            identifier: doi || String(it.id),
-            identifierType: doi ? "DOI" : "Zenodo ID",
-            url: md.doi ? `https://doi.org/${md.doi}` : it.links?.html || ""
-          });
-        }
-        if (data.hits.hits.length < size) break;
+      if (currentCategory === "elis") {
+        c.innerHTML = `
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <h3>Searching E-LIS Repository</h3>
+            <p>Performing live search in Library and Information Science e-prints...</p>
+          </div>`;
       } else {
-        break;
+        c.innerHTML = `
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <h3>Loading Research Data</h3>
+            <p>Searching ${getCategoryDisplayName(currentCategory)} records...</p>
+          </div>`;
       }
     }
-  } catch (err) {
-    console.error(`   Error fetching from ${source.name}:`, err.message);
-  }
 
-  console.log(`   ${source.name} returned ${out.length} records`);
-  return out;
-}
-
-/* ─────────────────────────── Utility Functions ─────────────────────────── */
-
-function cors() {
-  return { 
-    "Access-Control-Allow-Origin": "*", 
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS", 
-    "Access-Control-Allow-Headers": "Content-Type, Authorization" 
-  };
-}
-
-function json(obj, status=200) { 
-  return new Response(JSON.stringify(obj, null, 2), { 
-    status, 
-    headers: { "Content-Type": "application/json", ...cors() } 
-  }); 
-}
-
-async function kvGetJSON(env, key, fallback) {
-  try { 
-    const v = await env.HARVEST_KV.get(key); 
-    return v ? JSON.parse(v) : fallback; 
-  } catch (e) { 
-    console.error(`KV get error for ${key}:`, e.message);
-    return fallback; 
-  }
-}
-
-async function kvPutJSON(env, key, value) {
-  try { 
-    await env.HARVEST_KV.put(key, JSON.stringify(value)); 
-  } catch (e) { 
-    console.error("KV put fail", key, e.message); 
-    throw e; 
-  }
-}
-
-async function updateMeta(env) {
-  const [t, a, r] = await Promise.all([
-    kvGetJSON(env, KV.theses, []),
-    kvGetJSON(env, KV.articles, []),
-    kvGetJSON(env, KV.research, [])
-  ]);
-  await env.HARVEST_KV.put(KV.meta, JSON.stringify({
-    lastUpdated: new Date().toISOString(),
-    counts: { theses: t.length, articles: a.length, research: r.length, total: t.length + a.length + r.length }
-  }));
-}
-
-async function loadBase(env, category) {
-  if (category === "theses")   return kvGetJSON(env, KV.theses, []);
-  if (category === "articles") return kvGetJSON(env, KV.articles, []);
-  if (category === "research") return kvGetJSON(env, KV.research, []);
-  const [t, a, r] = await Promise.all([
-    kvGetJSON(env, KV.theses, []),
-    kvGetJSON(env, KV.articles, []),
-    kvGetJSON(env, KV.research, [])
-  ]);
-  return accumulativeDedupe([...t, ...a, ...r]);
-}
-
-function accumulativeDedupe(arr) {
-  const seen = new Set();
-  const unique = [];
-  
-  for (const r of arr) {
-    if (!r.id) continue;
-    
-    const signature = createRecordSignature(r);
-    
-    if (!seen.has(signature)) {
-      seen.add(signature);
-      unique.push(r);
+    function getCategoryDisplayName(category) {
+      const names = {
+        all: "All Sources",
+        research: "Research Data", 
+        articles: "Journal Articles",
+        theses: "Theses",
+        elis: "E-LIS Repository"
+      };
+      return names[category] || category;
     }
-  }
-  
-  return unique;
-}
 
-function createRecordSignature(record) {
-  const title = (record.title || '').trim().toLowerCase();
-  const authors = Array.isArray(record.authors) 
-    ? record.authors.join(',').toLowerCase() 
-    : (record.authors || '').toLowerCase();
-  const source = (record.source || '').toLowerCase();
-  const year = record.year || '';
-  const identifier = record.identifier || '';
-  
-  if (identifier) {
-    return `${source}-${identifier}`.toLowerCase();
-  }
-  
-  return `${source}-${title}-${authors}-${year}`.toLowerCase();
-}
-
-function applyFacetFilters(items, f = {}, keyword = "") {
-  const yearF   = f.year?.toString().trim();
-  const repoF   = f.repository?.trim();
-  const typeF   = f.type?.trim();
-  const authorF = f.author?.trim().toLowerCase();
-
-  let out = (items || []).filter(r =>
-    (!yearF   || String(r.year) === yearF) &&
-    (!repoF   || r.source === repoF) &&
-    (!typeF   || r.type === typeF) &&
-    (!authorF || (r.authors || []).some(a => a?.toLowerCase().includes(authorF)))
-  );
-
-  if (keyword) {
-    const q = keyword.toLowerCase();
-    out = out.filter(r => {
-      const hay = `${r.title||""} ${r.description||""} ${(r.keywords||[]).join(" ")} ${(r.authors||[]).join(" ")}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }
-
-  return out;
-}
-
-function buildFacets(records) {
-  const years = new Map(), authors = new Map(), repos = new Map(), types = new Map();
-  for (const r of records || []) {
-    if (r.year) years.set(r.year, (years.get(r.year)||0)+1);
-    (r.authors||[]).forEach(a => a && authors.set(a, (authors.get(a)||0)+1));
-    if (r.source) repos.set(r.source, (repos.get(r.source)||0)+1);
-    if (r.type)   types.set(r.type,   (types.get(r.type)||0)+1);
-  }
-  const mapify = (m) => [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([name,count])=>({ name, count }));
-  return {
-    years: mapify(years),
-    authors: mapify(authors).slice(0,100),
-    repositories: mapify(repos),
-    types: mapify(types)
-  };
-}
-
-function paginate(array, page, pageSize) {
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const slice = array.slice(start, end);
-  return { slice, total: array.length };
-}
-
-async function fetchWithRetry(url, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`   Fetch attempt ${i + 1}: ${url}`);
-      const response = await fetch(url, {
-        headers: {
-          "Accept": "application/xml, text/xml, */*;q=0.1",
-          "User-Agent": USER_AGENT
+    /* ---------- Selected Records Count ---------- */
+    function updateSelectedCount() {
+      selectedCount = qsa(".select-record:checked").length;
+      const risBtn = qs("#bulkRisButton");
+      
+      if (risBtn) {
+        if (selectedCount > 0) {
+          risBtn.style.display = "flex";
+          risBtn.innerHTML = `<i class="fas fa-download"></i> Export RIS (${selectedCount})`;
+        } else {
+          risBtn.style.display = "none";
         }
+      }
+    }
+
+    /* ---------- Filters ---------- */
+    function renderFilters(facets) {
+      const wrap = qs("#filtersWrap");
+      if (!facets || !wrap) return;
+
+      const years = facets.years || [];
+      const repositories = facets.repositories || [];
+      const types = facets.types || [];
+
+      wrap.innerHTML = `
+        <div class="filter">
+          <label>Year</label>
+          <select id="fltYear">
+            <option value="">All Years</option>
+            ${years.map(y => `<option value="${y.name}">${y.name} (${y.count})</option>`).join("")}
+          </select>
+        </div>
+        <div class="filter">
+          <label>Repository</label>
+          <select id="fltRepo">
+            <option value="">All Repositories</option>
+            ${repositories.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join("")}
+          </select>
+        </div>
+        <div class="filter">
+          <label>Type</label>
+          <select id="fltType">
+            <option value="">All Types</option>
+            ${types.map(t => `<option value="${t.name}">${t.name} (${t.count})</option>`).join("")}
+          </select>
+        </div>
+        <div class="filter">
+          <label>Author contains</label>
+          <input id="fltAuthor" type="text" placeholder="e.g. Smith" />
+        </div>
+        <button id="applyFilters" class="btn primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fa-solid fa-filter"></i> Apply Filters
+        </button>
+      `;
+
+      const applyBtn = qs("#applyFilters");
+      if (applyBtn) {
+        applyBtn.onclick = () => {
+          currentFilters = {
+            year: qs("#fltYear").value,
+            repository: qs("#fltRepo").value,
+            type: qs("#fltType").value,
+            author: qs("#fltAuthor").value
+          };
+          console.log("🎯 Applying filters:", currentFilters);
+          smartSearch(1);
+        };
+      }
+    }
+
+    /* ---------- Pagination ---------- */
+    function updatePagination(page, computedTotalPages, total) {
+      currentPage = page;
+      totalPages = computedTotalPages || 1;
+      
+      const pageInfo = qs("#pageInfo");
+      const totalInfo = qs("#totalInfo");
+      const prevBtn = qs("#prevBtn");
+      const nextBtn = qs("#nextBtn");
+      
+      if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+      if (totalInfo) totalInfo.textContent = `${total} records`;
+      if (prevBtn) prevBtn.disabled = currentPage <= 1;
+      if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    }
+
+    /* ---------- Search Function ---------- */
+    function performSearch() {
+      const searchBox = qs("#searchBox");
+      if (searchBox) {
+        currentQuery = searchBox.value.trim();
+        console.log("🔍 Performing search:", currentQuery);
+        
+        const searchBtn = qs("#searchBtn");
+        const originalHTML = searchBtn.innerHTML;
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+        searchBtn.disabled = true;
+        
+        smartSearch(1);
+        
+        setTimeout(() => {
+          searchBtn.innerHTML = originalHTML;
+          searchBtn.disabled = false;
+        }, 1000);
+      }
+    }
+
+    /* ---------- System Health Monitoring ---------- */
+    async function checkSystemHealth() {
+      try {
+        const res = await fetch(`${API_BASE}/health`);
+        const data = await res.json();
+        updateSystemInfo(data);
+        
+        // Update last harvest time from system info
+        if (data.harvest?.last_harvest) {
+          lastHarvestTime = new Date(data.harvest.last_harvest).getTime();
+        }
+      } catch (e) {
+        console.error("Health check failed:", e);
+        updateSystemInfo({ error: "Health check failed" });
+      }
+    }
+
+    function updateSystemInfo(data) {
+      const el = qs("#systemInfo");
+      if (!el) return;
+
+      if (data.error) {
+        el.innerHTML = `<span style="color: var(--error);">❌ ${data.error}</span>`;
+        return;
+      }
+
+      const healthData = data.data || {};
+      const lastHarvest = data.harvest?.last_harvest ? new Date(data.harvest.last_harvest).toLocaleString() : 'Never';
+      
+      el.innerHTML = `
+        <div><b>Records:</b> ${healthData.total_records?.toLocaleString() || 0}</div>
+        <div><b>Theses:</b> ${healthData.theses?.toLocaleString() || 0}</div>
+        <div><b>Articles:</b> ${healthData.articles?.toLocaleString() || 0}</div>
+        <div><b>Research Data:</b> ${healthData.research?.toLocaleString() || 0}</div>
+        <div><b>Last Harvest:</b> ${lastHarvest}</div>
+        <div><b>Includes E-LIS:</b> ${data.repositories?.includes_elis ? '✅' : '❌'}</div>
+      `;
+    }
+
+    /* ---------- Bulk RIS Export ---------- */
+    async function exportRIS() {
+      const selected = qsa(".select-record:checked").map(cb => {
+        try {
+          return JSON.parse(decodeURIComponent(cb.dataset.record));
+        } catch (e) {
+          console.error("Error parsing record:", e);
+          return null;
+        }
+      }).filter(record => record !== null);
+
+      if (!selected.length) {
+        alert("Please select at least one record to export.");
+        return;
+      }
+
+      console.log(`📤 Exporting ${selected.length} records to RIS`);
+
+      try {
+        const res = await fetch(`${API_BASE}/ris`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ records: selected })
+        });
+
+        if (!res.ok) {
+          throw new Error(`Export failed: HTTP ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `library-export-${new Date().toISOString().split('T')[0]}.ris`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+      } catch (e) {
+        console.error("❌ RIS export error:", e);
+        alert("Export failed: " + e.message);
+      }
+    }
+
+    /* ---------- Error Handling ---------- */
+    function renderError(msg) {
+      const c = qs("#dataCardsContainer");
+      if (!c) return;
+
+      c.innerHTML = `
+        <div class="error-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>Error Loading Data</h3>
+          <p>${msg}</p>
+          <p><small>Check the console for more details.</small></p>
+          <button class="btn primary" onclick="smartSearch(1)" style="margin-top: 1rem;">
+            <i class="fas fa-refresh"></i> Retry
+          </button>
+        </div>`;
+        
+      hide(qs("#pagination"));
+    }
+
+    /* ---------- Event Listeners ---------- */
+    function initializeEventListeners() {
+      // Search button
+      const searchBtn = qs("#searchBtn");
+      if (searchBtn) {
+        searchBtn.addEventListener("click", performSearch);
+      }
+
+      // Enter key in search box
+      const searchBox = qs("#searchBox");
+      if (searchBox) {
+        searchBox.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            performSearch();
+          }
+        });
+      }
+
+      // Tabs - with auto-harvest
+      qsa(".tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          qsa(".tab").forEach(t => t.classList.remove("active"));
+          btn.classList.add("active");
+          currentCategory = btn.dataset.type;
+          currentPage = 1;
+          console.log("📁 Switching to category:", currentCategory);
+          smartSearch(1);
+        });
       });
+
+      // Clear button
+      const clearBtn = qs("#clearBtn");
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          currentQuery = "";
+          currentFilters = {};
+          const searchBox = qs("#searchBox");
+          if (searchBox) searchBox.value = "";
+          console.log("🧹 Clearing search and filters");
+          smartSearch(1);
+        });
+      }
+
+      // Pagination
+      const prevBtn = qs("#prevBtn");
+      const nextBtn = qs("#nextBtn");
       
-      if (response.ok) {
-        const text = await response.text();
-        console.log(`   Fetch successful, length: ${text.length}`);
-        return text;
-      } else {
-        console.log(`   Fetch failed with status: ${response.status}`);
+      if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+          if (currentPage > 1) {
+            smartSearch(currentPage - 1);
+          }
+        });
       }
-    } catch (err) {
-      console.warn(`   Attempt ${i + 1} failed:`, err.message);
-    }
-    
-    if (i < retries - 1) {
-      await sleep(1000 * (i + 1));
-    }
-  }
-  console.log(`   All fetch attempts failed for: ${url}`);
-  return null;
-}
+      
+      if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+          if (currentPage < totalPages) {
+            smartSearch(currentPage + 1);
+          }
+        });
+      }
 
-async function fetchJSON(url) {
-  try {
-    console.log(`   Fetching JSON: ${url}`);
-    const r = await fetch(url, { 
-      headers: { 
-        "Accept":"application/json", 
-        "User-Agent": USER_AGENT 
-      } 
+      // RIS Export
+      const risBtn = qs("#bulkRisButton");
+      if (risBtn) {
+        risBtn.addEventListener("click", exportRIS);
+      }
+    }
+
+    /* ---------- Initial Load ---------- */
+    window.addEventListener("DOMContentLoaded", () => {
+      console.log("🚀 Academic Library Harvester initialized with Auto-Harvest System");
+      initializeEventListeners();
+      checkSystemHealth();
+      smartSearch(1);
+      
+      // Refresh health every 5 minutes
+      setInterval(checkSystemHealth, 300000);
+      
+      // Auto-harvest every 30 minutes if page remains open
+      setInterval(() => {
+        if (currentCategory !== "elis") {
+          triggerAutoHarvest(currentCategory);
+        }
+      }, HARVEST_INTERVAL);
     });
-    if (r.ok) {
-      const data = await r.json();
-      console.log(`   JSON fetch successful`);
-      return data;
-    } else {
-      console.log(`   JSON fetch failed: ${r.status}`);
-      return null;
-    }
-  } catch (e) {
-    console.error(`   fetchJSON fail for ${url}:`, e.message);
-    return null;
-  }
-}
-
-function parseOai(xml, id) {
-  if (!xml || xml.length < 100) {
-    console.log(`   parseOai: No XML to parse for ${id}`);
-    return { records: [], next: null };
-  }
-
-  let next = xml.match(/<resumptionToken[^>]*>([\s\S]*?)<\/resumptionToken>/i)?.[1]?.trim() || null;
-  const recs = [];
-
-  console.log(`   parseOai for ${id}, resumptionToken: ${next ? 'yes' : 'no'}`);
-
-  const hasOAI = /<OAI-PMH/i.test(xml) || /<record>/i.test(xml);
-  if (hasOAI) {
-    const recRegex = /<record>[\s\S]*?<\/record>/gi;
-    let m;
-    let count = 0;
-    while ((m = recRegex.exec(xml))) {
-      const block = m[0];
-      const record = makeRecordFromBlock(block, id);
-      if (record && record.title && record.title !== "Untitled") {
-        recs.push(record);
-        count++;
-      }
-    }
-    console.log(`   parseOai found ${count} records using record regex`);
-    return { records: recs, next };
-  }
-
-  const altRegex = /<oai_dc:dc[\s\S]*?<\/oai_dc:dc>/gi;
-  const blocks = xml.match(altRegex) || [];
-  console.log(`   parseOai found ${blocks.length} blocks using alt regex`);
-  for (const b of blocks) {
-    const record = makeRecordFromBlock(b, id);
-    if (record && record.title && record.title !== "Untitled") recs.push(record);
-  }
-  
-  next = null;
-  return { records: recs, next };
-}
-
-function makeRecordFromBlock(block, id) {
-  const title = pick(extract(block, "dc:title")) || "Untitled";
-  const creators = extract(block, "dc:creator");
-  const desc = pick(extract(block, "dc:description")) || "";
-  const subjects = extract(block, "dc:subject");
-  const types = extract(block, "dc:type").join(" ").toLowerCase();
-  const date = pick(extract(block, "dc:date"));
-  const identifiers = extract(block, "dc:identifier");
-
-  const { identifier, identifierType, url } = bestIdForDSpace(identifiers, id);
-
-  return {
-    id: `${id}-${rid()}`,
-    title,
-    authors: creators,
-    description: desc,
-    keywords: subjects,
-    year: year(date),
-    source: sourceMap(id),
-    type: /(thesis|dissertation)/i.test(types) ? "Thesis/Dissertation" :
-          /article/i.test(types) ? "Journal Article" : "Other",
-    identifier, 
-    identifierType, 
-    url: url || "#"
-  };
-}
-
-function bestIdForDSpace(ids = [], repositoryId) {
-  if (!ids || !ids.length) {
-    return { identifier: "", identifierType: "", url: "" };
-  }
-
-  // Priority 1: Handle URLs
-  const handleUri = ids.find(id => 
-    id && typeof id === 'string' && 
-    (id.includes('/handle/') || id.includes('hdl.handle.net'))
-  );
-  
-  if (handleUri) {
-    return {
-      identifier: handleUri,
-      identifierType: "Handle",
-      url: handleUri
-    };
-  }
-
-  // Priority 2: DOIs
-  const doi = ids.find(id => /^10\.\d{4,9}\/\S+/i.test(id));
-  if (doi) {
-    return {
-      identifier: doi,
-      identifierType: "DOI",
-      url: `https://doi.org/${doi}`
-    };
-  }
-
-  // Priority 3: Any HTTP URL
-  const httpUrl = ids.find(id => id && typeof id === 'string' && id.startsWith('http'));
-  if (httpUrl) {
-    return {
-      identifier: httpUrl,
-      identifierType: "URL",
-      url: httpUrl
-    };
-  }
-
-  // Fallback
-  const fallback = ids[0] || "";
-  return {
-    identifier: fallback,
-    identifierType: "Identifier",
-    url: fallback.startsWith('http') ? fallback : "#"
-  };
-}
-
-function toRIS(r) {
-  const isThesis = /(thesis|dissertation)/i.test(r.type||"");
-  const isArticle = /article/i.test(r.type||"");
-  const out = [];
-  out.push("TY  - " + (isThesis ? "THES" : isArticle ? "JOUR" : "DATA"));
-  if (r.title) out.push("TI  - " + r.title);
-  (r.authors||[]).forEach(a => a && out.push("AU  - " + a));
-  if (r.year) out.push("PY  - " + r.year);
-  if (r.source) out.push("PB  - " + r.source);
-  if (r.description) out.push("AB  - " + r.description.slice(0, 500));
-  if (r.url) out.push("UR  - " + r.url);
-  if (/^10\.\d{4,9}\//.test(r.identifier||"")) out.push("DO  - " + r.identifier);
-  out.push("ER  - ");
-  return out;
-}
-
-function sourceMap(id) {
-  const map = {
-    uct: "University of Cape Town",
-    spu: "Sol Plaatje University",
-    sun: "Stellenbosch University", 
-    ufs: "University of the Free State",
-    up: "University of Pretoria",
-    unisa: "University of South Africa",
-    nwu: "North-West University",
-    wits: "University of the Witwatersrand",
-    cut: "Central University of Technology",
-    elis: "E-LIS e-prints in Library and Information Science"
-  };
-  return map[id] || id.toUpperCase();
-}
-
-const pick = (arr) => arr?.[0] || "";
-const year = (d) => { 
-  if (!d) return undefined;
-  // Extract year from date string
-  const match = String(d).match(/\b(\d{4})\b/);
-  return match ? parseInt(match[1]) : undefined;
-};
-const stripHtml = (s) => String(s||"").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();
-function extract(xml, tag) {
-  const re = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, "gi");
-  const out=[]; 
-  let m; 
-  while((m=re.exec(xml))) {
-    const content = m[1].trim();
-    if (content && content.length > 0) {
-      const decoded = decode(content);
-      if (decoded && decoded.trim()) {
-        out.push(decoded.trim());
-      }
-    }
-  }
-  return out;
-}
-function decode(s) { return String(s||"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'"); }
-function rid() { return [...crypto.getRandomValues(new Uint8Array(8))].map(b=>b.toString(16).padStart(2,"0")).join(""); }
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-
-async function logError(env, context, error) {
-  const entry = { context, message: error?.message || String(error), time: new Date().toISOString() };
-  try { await env.HARVEST_KV.put(KV.lastErr, JSON.stringify(entry)); }
-  catch (e) { console.error("KV log error", e?.message); }
-  console.error("❌", context, entry.message);
-}
+  </script>
+</body>
+</html>
