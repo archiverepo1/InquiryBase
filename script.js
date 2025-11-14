@@ -1,3 +1,4 @@
+
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
 
@@ -7,8 +8,8 @@ let currentPage = 1;
 let currentFilters = {};
 let totalPages = 1;
 let selectedCount = 0;
-let lastIncrementalHarvest = 0;
-const INCREMENTAL_HARVEST_INTERVAL = 5 * 60 * 1000; // 5 minutes
+let lastHarvestTime = 0;
+const HARVEST_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
 /* ---------- helpers ---------- */
 const qs = (s) => document.querySelector(s);
@@ -16,15 +17,28 @@ const qsa = (s) => [...document.querySelectorAll(s)];
 const show = (el) => el && (el.style.display = "");
 const hide = (el) => el && (el.style.display = "none");
 
-/* ---------- Smart Search with Incremental Harvest ---------- */
+/* ---------- Smart Search with Auto-Harvest ---------- */
 async function smartSearch(page = 1) {
   currentPage = page;
   const progress = qs("#progressBar");
   const progressContainer = qs(".progress-bar");
+  const sourceIndicator = qs("#sourceIndicator");
+  const currentSource = qs("#currentSource");
+  const liveBadge = qs("#liveBadge");
   
   if (progress && progressContainer) {
     progressContainer.style.display = "block";
     progress.style.width = "25%";
+  }
+
+  // Update source indicator
+  show(sourceIndicator);
+  if (currentCategory === "elis") {
+    currentSource.textContent = "E-LIS Repository";
+    show(liveBadge);
+  } else {
+    currentSource.textContent = getCategoryDisplayName(currentCategory);
+    hide(liveBadge);
   }
 
   showLoadingState();
@@ -75,9 +89,9 @@ async function smartSearch(page = 1) {
       throw new Error("Invalid response format: results array missing");
     }
 
-    // Trigger incremental harvest if needed (except for E-LIS)
+    // Trigger auto-harvest for non-ELIS categories
     if (currentCategory !== "elis") {
-      triggerIncrementalHarvest(currentCategory);
+      triggerAutoHarvest(currentCategory);
     }
 
     renderResults(data.results, currentCategory === "elis");
@@ -111,17 +125,17 @@ async function smartSearch(page = 1) {
   }
 }
 
-/* ---------- Incremental Harvest System ---------- */
-async function triggerIncrementalHarvest(category) {
+/* ---------- Auto-Harvest System ---------- */
+async function triggerAutoHarvest(category) {
   const now = Date.now();
   
   // Only harvest if it's been more than the interval since last harvest
-  if (now - lastIncrementalHarvest < INCREMENTAL_HARVEST_INTERVAL) {
-    console.log("⏱️  Skipping incremental harvest - too soon");
+  if (now - lastHarvestTime < HARVEST_INTERVAL) {
+    console.log("⏱️  Using cached data, last harvest:", new Date(lastHarvestTime).toLocaleTimeString());
     return;
   }
 
-  console.log(`🔄 Triggering incremental harvest for: ${category}`);
+  console.log(`🔄 Auto-harvesting fresh data for: ${category}`);
   
   try {
     const response = await fetch(`${API_BASE}/harvest-incremental`, {
@@ -133,47 +147,29 @@ async function triggerIncrementalHarvest(category) {
     const result = await response.json();
     
     if (result.success) {
-      lastIncrementalHarvest = now;
-      console.log(`✅ Incremental harvest completed: ${result.newRecords} new records`);
+      lastHarvestTime = now;
+      console.log(`✅ Auto-harvest completed: ${result.newRecords} new records`);
       
-      // Show a subtle notification
+      // Show subtle notification
       showHarvestNotification(result.newRecords);
       
       // Update system info to reflect new data
       setTimeout(() => checkSystemHealth(), 2000);
     } else {
-      console.error("❌ Incremental harvest failed:", result.error);
+      console.error("❌ Auto-harvest failed:", result.error);
     }
   } catch (error) {
-    console.error("❌ Incremental harvest request failed:", error);
+    console.error("❌ Auto-harvest request failed:", error);
   }
 }
 
 function showHarvestNotification(newRecords) {
-  // Create or update notification element
-  let notification = qs("#harvestNotification");
-  if (!notification) {
-    notification = document.createElement("div");
-    notification.id = "harvestNotification";
-    notification.style.cssText = `
-      position: fixed;
-      top: 100px;
-      right: 20px;
-      background: #28a745;
-      color: white;
-      padding: 10px 15px;
-      border-radius: 5px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 1000;
-      font-size: 14px;
-    `;
-    document.body.appendChild(notification);
-  }
+  if (newRecords === 0) return;
   
+  const notification = qs("#harvestNotification");
   notification.textContent = `🔄 Added ${newRecords} new records`;
   notification.style.display = "block";
   
-  // Hide after 3 seconds
   setTimeout(() => {
     notification.style.display = "none";
   }, 3000);
@@ -224,11 +220,15 @@ function renderResults(records = [], isLiveSearch = false) {
 
       c.insertAdjacentHTML("beforeend", `
         <div class="data-card">
-          <div class="card-type">${type}</div>
-          <div class="card-source">${source}</div>
-          <h3 class="card-title">${title}</h3>
-          ${authors ? `<p class="card-authors">${authors}</p>` : ''}
-          ${desc ? `<p class="card-description">${desc}</p>` : ''}
+          <div class="card-header">
+            <span class="card-type">${type}</span>
+            <span class="card-source">${source}</span>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">${title}</h3>
+            ${authors ? `<p class="card-authors">${authors}</p>` : ''}
+            ${desc ? `<p class="card-description">${desc.length > 300 ? desc.slice(0,300) + "…" : desc}</p>` : ''}
+          </div>
           <div class="card-footer">
             <div class="card-meta">
               <span><b>Year:</b> ${year}</span>
@@ -236,7 +236,7 @@ function renderResults(records = [], isLiveSearch = false) {
             </div>
             <div class="card-actions">
               ${hasValidUrl ? 
-                `<a class="btn primary sm" href="${url}" target="_blank" rel="noopener">
+                `<a class="btn sm" href="${url}" target="_blank" rel="noopener">
                   <i class="fas fa-external-link-alt"></i> Open
                 </a>` : 
                 `<span class="btn sm disabled">
@@ -285,7 +285,7 @@ function showLoadingState() {
       <div class="loading-state">
         <i class="fas fa-spinner fa-spin"></i>
         <h3>Loading Research Data</h3>
-        <p>Searching cached ${getCategoryDisplayName(currentCategory)} records...</p>
+        <p>Searching ${getCategoryDisplayName(currentCategory)} records...</p>
       </div>`;
   }
 }
@@ -351,9 +351,7 @@ function renderFilters(facets) {
       <label>Author contains</label>
       <input id="fltAuthor" type="text" placeholder="e.g. Smith" />
     </div>
-    <button id="applyFilters" class="btn primary" style="width: 100%; margin-top: 1rem;">
-      <i class="fa-solid fa-filter"></i> Apply Filters
-    </button>
+    <button id="applyFilters" class="btn sm"><i class="fa-solid fa-filter"></i> Apply Filters</button>
   `;
 
   const applyBtn = qs("#applyFilters");
@@ -411,7 +409,7 @@ function initializeEventListeners() {
     });
   }
 
-  // Tabs - with incremental harvest
+  // Tabs - with auto-harvest
   qsa(".tab").forEach(btn => {
     btn.addEventListener("click", () => {
       qsa(".tab").forEach(t => t.classList.remove("active"));
@@ -456,108 +454,11 @@ function initializeEventListeners() {
     });
   }
 
-  // Harvest controls
-  const harvestBtn = qs("#harvestNowBtn");
-  const testEliSBtn = qs("#testEliSBtn");
-  
-  if (harvestBtn) harvestBtn.addEventListener("click", triggerManualHarvest);
-  if (testEliSBtn) testEliSBtn.addEventListener("click", testEliSConnection);
-
   // RIS Export
   const risBtn = qs("#bulkRisButton");
   if (risBtn) {
     risBtn.addEventListener("click", exportRIS);
   }
-}
-
-/* ---------- Manual Harvesting ---------- */
-async function triggerManualHarvest() {
-  const harvestBtn = qs("#harvestNowBtn");
-  const originalText = harvestBtn.innerHTML;
-  
-  harvestBtn.disabled = true;
-  harvestBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Harvesting...';
-  
-  try {
-    const response = await fetch(`${API_BASE}/harvest-now`, { 
-      method: 'POST' 
-    });
-    const result = await response.json();
-    
-    if (result.success) {
-      alert('Harvest completed successfully! 100 records harvested from each repository.');
-      // Refresh the current view after a short delay
-      setTimeout(() => {
-        smartSearch(currentPage);
-        checkSystemHealth();
-      }, 2000);
-    } else {
-      alert('Harvest failed: ' + result.error);
-    }
-  } catch (error) {
-    alert('Harvest request failed: ' + error.message);
-  } finally {
-    harvestBtn.disabled = false;
-    harvestBtn.innerHTML = originalText;
-  }
-}
-
-async function testEliSConnection() {
-  const testBtn = qs("#testEliSBtn");
-  const originalText = testBtn.innerHTML;
-  
-  testBtn.disabled = true;
-  testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-  
-  try {
-    const response = await fetch(`${API_BASE}/test-elis`);
-    const result = await response.json();
-    
-    if (result.success) {
-      alert('E-LIS connection successful! Repository is accessible.');
-    } else {
-      alert('E-LIS test failed: ' + (result.message || result.error));
-    }
-  } catch (error) {
-    alert('E-LIS test failed: ' + error.message);
-  } finally {
-    testBtn.disabled = false;
-    testBtn.innerHTML = originalText;
-  }
-}
-
-/* ---------- System Health Monitoring ---------- */
-async function checkSystemHealth() {
-  try {
-    const res = await fetch(`${API_BASE}/health`);
-    const data = await res.json();
-    updateSystemInfo(data);
-  } catch (e) {
-    console.error("Health check failed:", e);
-    updateSystemInfo({ error: "Health check failed" });
-  }
-}
-
-function updateSystemInfo(data) {
-  const el = qs("#systemInfo");
-  if (!el) return;
-
-  if (data.error) {
-    el.innerHTML = `<span style="color: #dc3545;">❌ ${data.error}</span>`;
-    return;
-  }
-
-  const healthData = data.data || {};
-  const lastHarvest = data.harvest?.last_harvest ? new Date(data.harvest.last_harvest).toLocaleString() : 'Never';
-  
-  el.innerHTML = `
-    <div><b>Records:</b> ${healthData.total_records?.toLocaleString() || 0}</div>
-    <div><b>Theses:</b> ${healthData.theses?.toLocaleString() || 0}</div>
-    <div><b>Articles:</b> ${healthData.articles?.toLocaleString() || 0}</div>
-    <div><b>Research Data:</b> ${healthData.research?.toLocaleString() || 0}</div>
-    <div><b>Last Harvest:</b> ${lastHarvest}</div>
-    <div><b>Includes E-LIS:</b> ${data.repositories?.includes_elis ? '✅' : '❌'}</div>
-  `;
 }
 
 /* ---------- bulk RIS ---------- */
@@ -605,13 +506,52 @@ async function exportRIS() {
   }
 }
 
+/* ---------- System Health Monitoring ---------- */
+async function checkSystemHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`);
+    const data = await res.json();
+    updateSystemInfo(data);
+    
+    // Update last harvest time from system info
+    if (data.harvest?.last_harvest) {
+      lastHarvestTime = new Date(data.harvest.last_harvest).getTime();
+    }
+  } catch (e) {
+    console.error("Health check failed:", e);
+    updateSystemInfo({ error: "Health check failed" });
+  }
+}
+
+function updateSystemInfo(data) {
+  const el = qs("#systemInfo");
+  if (!el) return;
+
+  if (data.error) {
+    el.innerHTML = `<span style="color: #dc3545;">❌ ${data.error}</span>`;
+    return;
+  }
+
+  const healthData = data.data || {};
+  const lastHarvest = data.harvest?.last_harvest ? new Date(data.harvest.last_harvest).toLocaleString() : 'Never';
+  
+  el.innerHTML = `
+    <div><b>Records:</b> ${healthData.total_records?.toLocaleString() || 0}</div>
+    <div><b>Theses:</b> ${healthData.theses?.toLocaleString() || 0}</div>
+    <div><b>Articles:</b> ${healthData.articles?.toLocaleString() || 0}</div>
+    <div><b>Research Data:</b> ${healthData.research?.toLocaleString() || 0}</div>
+    <div><b>Last Harvest:</b> ${lastHarvest}</div>
+    <div><b>Includes E-LIS:</b> ${data.repositories?.includes_elis ? '✅' : '❌'}</div>
+  `;
+}
+
 /* ---------- error ---------- */
 function renderError(msg) {
   const c = qs("#dataCardsContainer");
   if (!c) return;
 
   c.innerHTML = `
-    <div class="no-results">
+    <div class="error-state">
       <i class="fas fa-exclamation-triangle"></i>
       <h3>Error Loading Data</h3>
       <p>${msg}</p>
@@ -623,11 +563,18 @@ function renderError(msg) {
 
 /* ---------- initial load ---------- */
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 Library Frontend initialized with Incremental Harvest System");
+  console.log("🚀 Academic Library Harvester initialized with Auto-Harvest System");
   initializeEventListeners();
   checkSystemHealth();
   smartSearch(1);
   
   // Refresh health every 5 minutes
   setInterval(checkSystemHealth, 300000);
+  
+  // Auto-harvest every 30 minutes if page remains open
+  setInterval(() => {
+    if (currentCategory !== "elis") {
+      triggerAutoHarvest(currentCategory);
+    }
+  }, HARVEST_INTERVAL);
 });
