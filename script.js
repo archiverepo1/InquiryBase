@@ -1,4 +1,3 @@
-
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
 
@@ -17,15 +16,23 @@ const qsa = (s) => [...document.querySelectorAll(s)];
 const show = (el) => el && (el.style.display = "");
 const hide = (el) => el && (el.style.display = "none");
 
-/* ---------- Smart Search with Auto-Harvest ---------- */
-async function smartSearch(page = 1) {
+/* ---------- Smart Search with Cached-first + Background Harvest ---------- */
+/**
+ * Cached-first search:
+ *  1) Use KV cache via /api/harvest → show results immediately
+ *  2) Optionally trigger background incremental harvest
+ *  3) After harvest, re-run search (same query) WITHOUT re-triggering harvest
+ */
+async function smartSearch(page = 1, options = {}) {
+  const { runHarvest = true } = options;
+
   currentPage = page;
   const progress = qs("#progressBar");
   const progressContainer = qs(".progress-bar");
   const sourceIndicator = qs("#sourceIndicator");
   const currentSource = qs("#currentSource");
   const liveBadge = qs("#liveBadge");
-  
+
   if (progress && progressContainer) {
     progressContainer.style.display = "block";
     progress.style.width = "25%";
@@ -43,44 +50,46 @@ async function smartSearch(page = 1) {
 
   showLoadingState();
 
-  console.log(`🔍 Smart Search: category=${currentCategory}, page=${page}, query="${currentQuery}"`);
+  console.log(
+    `🔍 Smart Search (cached-first): category=${currentCategory}, page=${page}, query="${currentQuery}", runHarvest=${runHarvest}`
+  );
 
   try {
     let apiUrl, requestBody;
-    
+
     if (currentCategory === "elis") {
-      // E-LIS always uses live search
+      // E-LIS always uses live search only (no KV cache)
       apiUrl = `${API_BASE}/elis-live-search`;
       requestBody = {
         query: currentQuery,
         page: currentPage,
-        pageSize: PAGE_SIZE
+        pageSize: PAGE_SIZE,
       };
     } else {
-      // Other categories use cached data
+      // Other categories use cached data from KV
       apiUrl = `${API_BASE}/harvest`;
       requestBody = {
         category: currentCategory,
         query: currentQuery,
         page: currentPage,
         pageSize: PAGE_SIZE,
-        filters: currentFilters
+        filters: currentFilters,
       };
     }
 
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     });
-    
+
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
     console.log("📦 API Response:", data);
-    
+
     if (!data.success) {
       throw new Error(data.error || "API returned failure");
     }
@@ -89,20 +98,17 @@ async function smartSearch(page = 1) {
       throw new Error("Invalid response format: results array missing");
     }
 
-    // Trigger auto-harvest for non-ELIS categories
-    if (currentCategory !== "elis") {
-      triggerAutoHarvest(currentCategory);
-    }
-
+    // Render cached (or live, for E-LIS) results immediately
     renderResults(data.results, currentCategory === "elis");
-    
+
+    // Filters: only for cached categories (not E-LIS live search)
     if (currentCategory !== "elis") {
       renderFilters(data.facets);
       show(qs("#filtersSidebar"));
     } else {
       hide(qs("#filtersSidebar"));
     }
-    
+
     const totalRecords = data.total || 0;
     totalPages = Math.ceil(totalRecords / PAGE_SIZE);
     updatePagination(data.page, totalPages, totalRecords);
@@ -114,62 +120,85 @@ async function smartSearch(page = 1) {
         progress.style.width = "0%";
       }, 500);
     }
-    
+
+    // 🔁 After cached results are shown:
+    // Optionally trigger background incremental harvest to fetch FRESH data,
+    // then auto-refresh the same search once the harvest completes.
+    if (runHarvest && currentCategory !== "elis") {
+      triggerAutoHarvest(currentCategory, true);
+    }
   } catch (e) {
     console.error("❌ Search error:", e);
     renderError(e.message);
     if (progress) {
       progress.style.width = "0%";
-      progressContainer.style.display = "none";
+      if (progressContainer) progressContainer.style.display = "none";
     }
   }
 }
 
-/* ---------- Auto-Harvest System ---------- */
-async function triggerAutoHarvest(category) {
+/* ---------- Auto-Harvest System (background incremental refresh) ---------- */
+async function triggerAutoHarvest(category, refreshAfter = false) {
   const now = Date.now();
-  
+
   // Only harvest if it's been more than the interval since last harvest
   if (now - lastHarvestTime < HARVEST_INTERVAL) {
-    console.log("⏱️  Using cached data, last harvest:", new Date(lastHarvestTime).toLocaleTimeString());
-    return;
+    console.log(
+      "⏱️  Skipping live harvest – using cached data. Last harvest:",
+      new Date(lastHarvestTime).toLocaleTimeString()
+    );
+    return { skipped: true };
   }
 
-  console.log(`🔄 Auto-harvesting fresh data for: ${category}`);
-  
+  console.log(
+    `🔄 Background incremental harvest for category: ${category}, refreshAfter=${refreshAfter}`
+  );
+
   try {
     const response = await fetch(`${API_BASE}/harvest-incremental`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category: category })
+      body: JSON.stringify({ category }),
     });
-    
+
     const result = await response.json();
-    
+    console.log("📥 Incremental harvest result:", result);
+
     if (result.success) {
       lastHarvestTime = now;
-      console.log(`✅ Auto-harvest completed: ${result.newRecords} new records`);
-      
-      // Show subtle notification
+      console.log(`✅ Incremental harvest completed: ${result.newRecords} new records`);
+
+      // Small notification for the user
       showHarvestNotification(result.newRecords);
-      
-      // Update system info to reflect new data
+
+      // Refresh system health info
       setTimeout(() => checkSystemHealth(), 2000);
+
+      // 🔁 Auto-refresh results **without** re-triggering harvest
+      if (refreshAfter && result.newRecords > 0) {
+        console.log("🔁 Refreshing search results after live harvest…");
+        smartSearch(currentPage, { runHarvest: false });
+      }
     } else {
-      console.error("❌ Auto-harvest failed:", result.error);
+      console.error("❌ Incremental harvest failed:", result.error);
     }
+
+    return result;
   } catch (error) {
     console.error("❌ Auto-harvest request failed:", error);
+    return { success: false, error: error.message };
   }
 }
 
 function showHarvestNotification(newRecords) {
-  if (newRecords === 0) return;
-  
+  if (!newRecords || newRecords === 0) return;
+
   const notification = qs("#harvestNotification");
-  notification.textContent = `🔄 Added ${newRecords} new records`;
+  if (!notification) return;
+
+  notification.textContent = `🔄 Added ${newRecords} new records from live sources`;
   notification.style.display = "block";
-  
+
   setTimeout(() => {
     notification.style.display = "none";
   }, 3000);
@@ -186,16 +215,20 @@ function renderResults(records = [], isLiveSearch = false) {
   c.innerHTML = "";
 
   if (!records.length) {
-    const noResultsMessage = isLiveSearch 
+    const noResultsMessage = isLiveSearch
       ? "No results found in E-LIS repository. Try a different search term."
       : "No results found in cached data. Try a different search term or category.";
-      
+
     c.innerHTML = `
       <div class="no-results">
         <i class="fas fa-database"></i>
         <h3>No Results Found</h3>
         <p>${noResultsMessage}</p>
-        ${!isLiveSearch && currentQuery ? `<p><button class="btn primary" onclick="switchToEliSLiveSearch()">Try E-LIS Live Search</button></p>` : ''}
+        ${
+          !isLiveSearch && currentQuery
+            ? `<p><button class="btn primary" onclick="switchToEliSLiveSearch()">Try E-LIS Live Search</button></p>`
+            : ""
+        }
       </div>`;
     hide(qs("#pagination"));
     return;
@@ -206,7 +239,9 @@ function renderResults(records = [], isLiveSearch = false) {
   for (const r of records) {
     try {
       const recJSON = encodeURIComponent(JSON.stringify(r));
-      const authors = Array.isArray(r.authors) ? r.authors.join(", ") : (r.authors || "");
+      const authors = Array.isArray(r.authors)
+        ? r.authors.join(", ")
+        : r.authors || "";
       const desc = (r.description || "").trim();
       const title = r.title || "Untitled";
       const source = r.source || "Unknown";
@@ -216,9 +251,14 @@ function renderResults(records = [], isLiveSearch = false) {
       const url = r.url || "#";
 
       // URL validation
-      const hasValidUrl = url && url !== '#' && (url.startsWith('http://') || url.startsWith('https://'));
+      const hasValidUrl =
+        url &&
+        url !== "#" &&
+        (url.startsWith("http://") || url.startsWith("https://"));
 
-      c.insertAdjacentHTML("beforeend", `
+      c.insertAdjacentHTML(
+        "beforeend",
+        `
         <div class="data-card">
           <div class="card-header">
             <span class="card-type">${type}</span>
@@ -226,8 +266,14 @@ function renderResults(records = [], isLiveSearch = false) {
           </div>
           <div class="card-body">
             <h3 class="card-title">${title}</h3>
-            ${authors ? `<p class="card-authors">${authors}</p>` : ''}
-            ${desc ? `<p class="card-description">${desc.length > 300 ? desc.slice(0,300) + "…" : desc}</p>` : ''}
+            ${authors ? `<p class="card-authors">${authors}</p>` : ""}
+            ${
+              desc
+                ? `<p class="card-description">${
+                    desc.length > 300 ? desc.slice(0, 300) + "…" : desc
+                  }</p>`
+                : ""
+            }
           </div>
           <div class="card-footer">
             <div class="card-meta">
@@ -235,11 +281,12 @@ function renderResults(records = [], isLiveSearch = false) {
               <span><b>ID:</b> ${identifier}</span>
             </div>
             <div class="card-actions">
-              ${hasValidUrl ? 
-                `<a class="btn sm" href="${url}" target="_blank" rel="noopener">
+              ${
+                hasValidUrl
+                  ? `<a class="btn sm" href="${url}" target="_blank" rel="noopener">
                   <i class="fas fa-external-link-alt"></i> Open
-                </a>` : 
-                `<span class="btn sm disabled">
+                </a>`
+                  : `<span class="btn sm disabled">
                   <i class="fas fa-unlink"></i> No URL
                 </span>`
               }
@@ -247,14 +294,15 @@ function renderResults(records = [], isLiveSearch = false) {
             </div>
           </div>
         </div>
-      `);
+      `
+      );
     } catch (err) {
       console.error("Error rendering record:", err, r);
     }
   }
 
   // Add event listeners to checkboxes
-  qsa(".select-record").forEach(cb => {
+  qsa(".select-record").forEach((cb) => {
     cb.addEventListener("change", updateSelectedCount);
   });
 
@@ -264,15 +312,16 @@ function renderResults(records = [], isLiveSearch = false) {
 
 function switchToEliSLiveSearch() {
   currentCategory = "elis";
-  qsa(".tab").forEach(t => t.classList.remove("active"));
-  qs('.tab[data-type="elis"]').classList.add("active");
-  smartSearch(1);
+  qsa(".tab").forEach((t) => t.classList.remove("active"));
+  const elisTab = qs('.tab[data-type="elis"]');
+  if (elisTab) elisTab.classList.add("active");
+  smartSearch(1, { runHarvest: false }); // E-LIS is live-only, no harvest
 }
 
 function showLoadingState() {
   const c = qs("#dataCardsContainer");
   if (!c) return;
-  
+
   if (currentCategory === "elis") {
     c.innerHTML = `
       <div class="loading-state">
@@ -293,10 +342,10 @@ function showLoadingState() {
 function getCategoryDisplayName(category) {
   const names = {
     all: "All Sources",
-    research: "Research Data", 
+    research: "Research Data",
     articles: "Journal Articles",
     theses: "Theses",
-    elis: "E-LIS Repository"
+    elis: "E-LIS Repository",
   };
   return names[category] || category;
 }
@@ -305,7 +354,7 @@ function getCategoryDisplayName(category) {
 function updateSelectedCount() {
   selectedCount = qsa(".select-record:checked").length;
   const risBtn = qs("#bulkRisButton");
-  
+
   if (risBtn) {
     if (selectedCount > 0) {
       risBtn.style.display = "flex";
@@ -330,21 +379,31 @@ function renderFilters(facets) {
       <label>Year</label>
       <select id="fltYear">
         <option value="">All Years</option>
-        ${years.map(y => `<option value="${y.name}">${y.name} (${y.count})</option>`).join("")}
+        ${years
+          .map((y) => `<option value="${y.name}">${y.name} (${y.count})</option>`)
+          .join("")}
       </select>
     </div>
     <div class="filter">
       <label>Repository</label>
       <select id="fltRepo">
         <option value="">All Repositories</option>
-        ${repositories.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join("")}
+        ${repositories
+          .map(
+            (r) => `<option value="${r.name}">${r.name} (${r.count})</option>`
+          )
+          .join("")}
       </select>
     </div>
     <div class="filter">
       <label>Type</label>
       <select id="fltType">
         <option value="">All Types</option>
-        ${types.map(t => `<option value="${t.name}">${t.name} (${t.count})</option>`).join("")}
+        ${types
+          .map(
+            (t) => `<option value="${t.name}">${t.name} (${t.count})</option>`
+          )
+          .join("")}
       </select>
     </div>
     <div class="filter">
@@ -361,7 +420,7 @@ function renderFilters(facets) {
         year: qs("#fltYear").value,
         repository: qs("#fltRepo").value,
         type: qs("#fltType").value,
-        author: qs("#fltAuthor").value
+        author: qs("#fltAuthor").value,
       };
       console.log("🎯 Applying filters:", currentFilters);
       smartSearch(1);
@@ -373,12 +432,12 @@ function renderFilters(facets) {
 function updatePagination(page, computedTotalPages, total) {
   currentPage = page;
   totalPages = computedTotalPages || 1;
-  
+
   const pageInfo = qs("#pageInfo");
   const totalInfo = qs("#totalInfo");
   const prevBtn = qs("#prevBtn");
   const nextBtn = qs("#nextBtn");
-  
+
   if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
   if (totalInfo) totalInfo.textContent = `${total} records`;
   if (prevBtn) prevBtn.disabled = currentPage <= 1;
@@ -409,10 +468,10 @@ function initializeEventListeners() {
     });
   }
 
-  // Tabs - with auto-harvest
-  qsa(".tab").forEach(btn => {
+  // Tabs
+  qsa(".tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      qsa(".tab").forEach(t => t.classList.remove("active"));
+      qsa(".tab").forEach((t) => t.classList.remove("active"));
       btn.classList.add("active");
       currentCategory = btn.dataset.type;
       currentPage = 1;
@@ -437,7 +496,7 @@ function initializeEventListeners() {
   // Pagination
   const prevBtn = qs("#prevBtn");
   const nextBtn = qs("#nextBtn");
-  
+
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
@@ -445,7 +504,7 @@ function initializeEventListeners() {
       }
     });
   }
-  
+
   if (nextBtn) {
     nextBtn.addEventListener("click", () => {
       if (currentPage < totalPages) {
@@ -463,14 +522,16 @@ function initializeEventListeners() {
 
 /* ---------- bulk RIS ---------- */
 async function exportRIS() {
-  const selected = qsa(".select-record:checked").map(cb => {
-    try {
-      return JSON.parse(decodeURIComponent(cb.dataset.record));
-    } catch (e) {
-      console.error("Error parsing record:", e);
-      return null;
-    }
-  }).filter(record => record !== null);
+  const selected = qsa(".select-record:checked")
+    .map((cb) => {
+      try {
+        return JSON.parse(decodeURIComponent(cb.dataset.record));
+      } catch (e) {
+        console.error("Error parsing record:", e);
+        return null;
+      }
+    })
+    .filter((record) => record !== null);
 
   if (!selected.length) {
     alert("Select at least one record.");
@@ -483,7 +544,7 @@ async function exportRIS() {
     const res = await fetch(`${API_BASE}/ris`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ records: selected })
+      body: JSON.stringify({ records: selected }),
     });
 
     if (!res.ok) {
@@ -499,7 +560,6 @@ async function exportRIS() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
   } catch (e) {
     console.error("RIS export error:", e);
     alert("Export failed: " + e.message);
@@ -512,9 +572,9 @@ async function checkSystemHealth() {
     const res = await fetch(`${API_BASE}/health`);
     const data = await res.json();
     updateSystemInfo(data);
-    
-    // Update last harvest time from system info
-    if (data.harvest?.last_harvest) {
+
+    // Update last harvest time from system info (for interval logic)
+    if (data.harvest?.last_harvest && data.harvest.last_harvest !== "Never") {
       lastHarvestTime = new Date(data.harvest.last_harvest).getTime();
     }
   } catch (e) {
@@ -533,15 +593,21 @@ function updateSystemInfo(data) {
   }
 
   const healthData = data.data || {};
-  const lastHarvest = data.harvest?.last_harvest ? new Date(data.harvest.last_harvest).toLocaleString() : 'Never';
-  
+  const lastHarvest = data.harvest?.last_harvest
+    ? new Date(data.harvest.last_harvest).toLocaleString()
+    : "Never";
+
   el.innerHTML = `
     <div><b>Records:</b> ${healthData.total_records?.toLocaleString() || 0}</div>
     <div><b>Theses:</b> ${healthData.theses?.toLocaleString() || 0}</div>
     <div><b>Articles:</b> ${healthData.articles?.toLocaleString() || 0}</div>
-    <div><b>Research Data:</b> ${healthData.research?.toLocaleString() || 0}</div>
+    <div><b>Research Data:</b> ${
+      healthData.research?.toLocaleString() || 0
+    }</div>
     <div><b>Last Harvest:</b> ${lastHarvest}</div>
-    <div><b>Includes E-LIS:</b> ${data.repositories?.includes_elis ? '✅' : '❌'}</div>
+    <div><b>Includes E-LIS:</b> ${
+      data.repositories?.includes_elis ? "✅" : "❌"
+    }</div>
   `;
 }
 
@@ -557,20 +623,22 @@ function renderError(msg) {
       <p>${msg}</p>
       <p><small>Check the console for more details.</small></p>
     </div>`;
-    
+
   hide(qs("#pagination"));
 }
 
 /* ---------- initial load ---------- */
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 Academic Library Harvester initialized with Auto-Harvest System");
+  console.log(
+    "🚀 Academic Library Harvester initialized (cached-first with background live harvest)"
+  );
   initializeEventListeners();
   checkSystemHealth();
-  smartSearch(1);
-  
+  smartSearch(1); // initial cached search
+
   // Refresh health every 5 minutes
   setInterval(checkSystemHealth, 300000);
-  
+
   // Auto-harvest every 30 minutes if page remains open
   setInterval(() => {
     if (currentCategory !== "elis") {
