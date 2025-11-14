@@ -1,5 +1,4 @@
-# Academic Library Harvester
-
+# Library
 A comprehensive library that aggregates research data from multiple repositories including E-LIS, DSpace repositories, and research data sources.
 
 ## Features
