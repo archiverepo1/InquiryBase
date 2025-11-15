@@ -1,3 +1,4 @@
+
 const API_BASE = "https://inquirybase.archiverepo1.workers.dev/api";
 const PAGE_SIZE = 24;
 
@@ -16,12 +17,36 @@ const qsa = (s) => [...document.querySelectorAll(s)];
 const show = (el) => el && (el.style.display = "");
 const hide = (el) => el && (el.style.display = "none");
 
+/* ---------- Source Indicator helper ---------- */
+function updateSourceIndicator() {
+  const sourceIndicator = qs("#sourceIndicator");
+  const currentSource = qs("#currentSource");
+  const liveBadge = qs("#liveBadge");
+
+  if (!sourceIndicator || !currentSource) return;
+
+  show(sourceIndicator);
+
+  if (currentCategory === "elis") {
+    currentSource.textContent = "E-LIS Repository";
+    if (liveBadge) show(liveBadge);
+  } else {
+    currentSource.textContent = getCategoryDisplayName(currentCategory);
+    if (liveBadge) hide(liveBadge);
+  }
+}
+
 /* ---------- Smart Search with Cached-first + Background Harvest ---------- */
 /**
  * Cached-first search:
  *  1) Use KV cache via /api/harvest → show results immediately
  *  2) Optionally trigger background incremental harvest
  *  3) After harvest, re-run search (same query) WITHOUT re-triggering harvest
+ *
+ * For E-LIS:
+ *  - Uses live /api/elis-live-search
+ *  - Only runs when there is a query
+ *  - No background harvest, no filters
  */
 async function smartSearch(page = 1, options = {}) {
   const { runHarvest = true } = options;
@@ -29,23 +54,24 @@ async function smartSearch(page = 1, options = {}) {
   currentPage = page;
   const progress = qs("#progressBar");
   const progressContainer = qs(".progress-bar");
-  const sourceIndicator = qs("#sourceIndicator");
-  const currentSource = qs("#currentSource");
-  const liveBadge = qs("#liveBadge");
 
   if (progress && progressContainer) {
     progressContainer.style.display = "block";
     progress.style.width = "25%";
   }
 
-  // Update source indicator
-  show(sourceIndicator);
-  if (currentCategory === "elis") {
-    currentSource.textContent = "E-LIS Repository";
-    show(liveBadge);
-  } else {
-    currentSource.textContent = getCategoryDisplayName(currentCategory);
-    hide(liveBadge);
+  // Update source indicator for current category
+  updateSourceIndicator();
+
+  // For E-LIS: if there's no query, don't hit the API, just show idle state
+  if (currentCategory === "elis" && !currentQuery) {
+    renderElisIdleState();
+    hide(qs("#filtersSidebar"));
+    if (progress && progressContainer) {
+      progress.style.width = "0%";
+      progressContainer.style.display = "none";
+    }
+    return;
   }
 
   showLoadingState();
@@ -130,11 +156,26 @@ async function smartSearch(page = 1, options = {}) {
   } catch (e) {
     console.error("❌ Search error:", e);
     renderError(e.message);
-    if (progress) {
+    if (progress && progressContainer) {
       progress.style.width = "0%";
-      if (progressContainer) progressContainer.style.display = "none";
+      progressContainer.style.display = "none";
     }
   }
+}
+
+/* ---------- E-LIS idle (no query yet) ---------- */
+function renderElisIdleState() {
+  const c = qs("#dataCardsContainer");
+  if (!c) return;
+
+  c.innerHTML = `
+    <div class="no-results">
+      <i class="fas fa-database"></i>
+      <h3>E-LIS Repository Selected</h3>
+      <p>Enter a search term above to perform a live search in the E-LIS Repository.</p>
+    </div>
+  `;
+  hide(qs("#pagination"));
 }
 
 /* ---------- Auto-Harvest System (background incremental refresh) ---------- */
@@ -312,10 +353,17 @@ function renderResults(records = [], isLiveSearch = false) {
 
 function switchToEliSLiveSearch() {
   currentCategory = "elis";
+  currentPage = 1;
+
+  // Update tabs
   qsa(".tab").forEach((t) => t.classList.remove("active"));
   const elisTab = qs('.tab[data-type="elis"]');
   if (elisTab) elisTab.classList.add("active");
-  smartSearch(1, { runHarvest: false }); // E-LIS is live-only, no harvest
+
+  // Update source indicator & show idle state (no auto-search)
+  updateSourceIndicator();
+  hide(qs("#filtersSidebar"));
+  renderElisIdleState();
 }
 
 function showLoadingState() {
@@ -476,7 +524,18 @@ function initializeEventListeners() {
       currentCategory = btn.dataset.type;
       currentPage = 1;
       console.log("📁 Switching to category:", currentCategory);
-      smartSearch(1);
+
+      // Update source indicator for new category
+      updateSourceIndicator();
+
+      if (currentCategory === "elis") {
+        // E-LIS: no auto-search; show idle message instead
+        hide(qs("#filtersSidebar"));
+        renderElisIdleState();
+      } else {
+        // Other categories: perform cached-first search
+        smartSearch(1);
+      }
     });
   });
 
@@ -630,11 +689,12 @@ function renderError(msg) {
 /* ---------- initial load ---------- */
 window.addEventListener("DOMContentLoaded", () => {
   console.log(
-    "🚀 Academic Library Harvester initialized (cached-first with background live harvest)"
+    "🚀 Academic Library Harvester initialized (cached-first with background live harvest + E-LIS live search)"
   );
   initializeEventListeners();
+  updateSourceIndicator();
   checkSystemHealth();
-  smartSearch(1); // initial cached search
+  smartSearch(1); // initial cached search on "All Sources"
 
   // Refresh health every 5 minutes
   setInterval(checkSystemHealth, 300000);
