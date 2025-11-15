@@ -147,7 +147,7 @@ async function smartSearch(page = 1, options = {}) {
       }, 500);
     }
 
-    // 🔁 After cached results are shown:
+    // After cached results are shown:
     // Optionally trigger background incremental harvest to fetch FRESH data,
     // then auto-refresh the same search once the harvest completes.
     if (runHarvest && currentCategory !== "elis") {
