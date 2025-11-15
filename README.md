@@ -1,6 +1,6 @@
 # Library
 A comprehensive library that aggregates research data from multiple repositories including E-LIS, DSpace repositories, and research data sources.
-
+Vuyo can be contacted for support (jobs.vuyo@gmail.com)
 ## Features
 
 - **Multi-source harvesting**: 9 DSpace repositories + E-LIS + research data sources
