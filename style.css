@@ -274,15 +274,16 @@ body {
 /* Results Main Column */
 .results-main {
   flex: 1;
-  min-width: 0; /* Prevents flex item from overflowing */
+  min-width: 0;
 }
 
-/* Cards Grid */
+/* Cards Grid – FIXED GRID, NO MASONRY */
 .data-cards-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 22px;
   margin-top: 14px;
+  align-items: stretch;       /* each grid cell same height in a row */
 }
 
 /* Data Cards */
@@ -292,8 +293,7 @@ body {
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  transition: .2s;
-  overflow: hidden;
+  height: 100%;               /* fill row height → no vertical gaps */
 }
 
 .data-card:hover {
@@ -325,7 +325,7 @@ body {
 
 .card-body {
   padding: 16px;
-  flex: 1;
+  flex: 1;                     /* stretch so footer sticks to bottom */
 }
 
 .card-title {
@@ -392,58 +392,8 @@ body {
 }
 
 /* Empty and Loading States */
-.no-results {
-  text-align: center;
-  color: #666;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 28px;
-  grid-column: 1 / -1;
-}
-
-.no-results i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: var(--muted);
-}
-
-.no-results h3 {
-  margin: 0 0 8px;
-  color: var(--dark);
-}
-
-.no-results p {
-  margin: 0;
-  color: #666;
-}
-
-.loading-state {
-  text-align: center;
-  color: #666;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 28px;
-  grid-column: 1 / -1;
-}
-
-.loading-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: var(--muted);
-}
-
-.loading-state h3 {
-  margin: 0 0 8px;
-  color: var(--dark);
-}
-
-.loading-state p {
-  margin: 0;
-  color: #666;
-}
-
+.no-results,
+.loading-state,
 .error-state {
   text-align: center;
   color: #666;
@@ -454,17 +404,31 @@ body {
   grid-column: 1 / -1;
 }
 
+.no-results i,
+.loading-state i,
 .error-state i {
   font-size: 48px;
   margin-bottom: 16px;
+}
+
+.no-results i,
+.loading-state i {
+  color: var(--muted);
+}
+
+.error-state i {
   color: #dc3545;
 }
 
+.no-results h3,
+.loading-state h3,
 .error-state h3 {
   margin: 0 0 8px;
   color: var(--dark);
 }
 
+.no-results p,
+.loading-state p,
 .error-state p {
   margin: 0;
   color: #666;
